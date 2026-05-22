@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>VideoMetadataEditor v1.4.0.89</AssemblyName>
+    <RootNamespace>VideoMetadataEditor</RootNamespace>
+    <ApplicationIcon>Resources\app.ico</ApplicationIcon>
+    <StartupObject>VideoMetadataEditor.App</StartupObject>
+
+    <!-- Version shown in title bar, Help tab, status bar, and file properties -->
+    <Version>1.4.0</Version>
+    <AssemblyVersion>1.4.0.89</AssemblyVersion>
+    <FileVersion>1.4.0.89</FileVersion>
+
+    <!-- File properties (visible in Windows Explorer → Properties → Details) -->
+    <Product>Video Metadata Editor</Product>
+    <Description>Batch tag, rename, and embed metadata into video files. Supports MP4, MKV, MOV, WMV, M4V and WebM with TMDB and OMDB API integration.</Description>
+    <Company>VideoMetadataEditor</Company>
+    <Copyright>Copyright © 2026 VideoMetadataEditor</Copyright>
+    <NeutralLanguage>en-US</NeutralLanguage>
+
+    <!-- Single self-contained EXE -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishTrimmed>false</PublishTrimmed>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\app.ico" />
+    <Resource Include="Resources\splash.png" Condition="Exists('Resources\splash.png')" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Content Include="Languages\*.xaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

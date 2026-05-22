@@ -1,0 +1,17 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+publish/
+
+## Config (has API keys — don't commit)
+config.json
+
+## Logs
+*.log
+
+## OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,46 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- Merged ON TOP of Strings.en.xaml — only keys that differ from English -->
+
+    <sys:String x:Key="Tab.RawData">📝 ROHDATEN</sys:String>
+    <sys:String x:Key="Tab.RetrievedData">🔍 ABGERUFENE DATEN</sys:String>
+    <sys:String x:Key="Tab.MoveCopy">📦 VERSCHIEBEN / KOPIEREN</sys:String>
+    <sys:String x:Key="Tab.Settings">⚙️ EINSTELLUNGEN</sys:String>
+    <sys:String x:Key="Tab.Library">📚 BIBLIOTHEK</sys:String>
+    <sys:String x:Key="Tab.Duplicates">🔍 DUPLIKATE</sys:String>
+    <sys:String x:Key="Tab.Help">❓ HILFE</sys:String>
+    <sys:String x:Key="Tab.Log">📋 PROTOKOLL</sys:String>
+    <sys:String x:Key="Btn.AddFiles">Dateien hinzufügen</sys:String>
+    <sys:String x:Key="Btn.AddFolder">📁 Ordner hinzufügen</sys:String>
+    <sys:String x:Key="Btn.Recursive">Rekursiv</sys:String>
+    <sys:String x:Key="Btn.All">☑ Alle</sys:String>
+    <sys:String x:Key="Btn.None">☐ Keine</sys:String>
+    <sys:String x:Key="Btn.Lock">🔒 Sperren</sys:String>
+    <sys:String x:Key="Btn.Unlock">🔓 Entsperren</sys:String>
+    <sys:String x:Key="Btn.BatchProcess">⚡ Stapelverarbeitung</sys:String>
+    <sys:String x:Key="Btn.TvBatch">📺 TV-Stapel</sys:String>
+    <sys:String x:Key="Btn.BatchRename">Batch-Umbenennen</sys:String>
+    <sys:String x:Key="Btn.SelectUnwatched">Ungesehene auswählen</sys:String>
+    <sys:String x:Key="Btn.SelectWatched">✓ Gesehene auswählen</sys:String>
+    <sys:String x:Key="Files.Header">DATEIEN</sys:String>
+    <sys:String x:Key="Files.Refresh">↻ Aktualisieren</sys:String>
+    <sys:String x:Key="Files.Clear">✕ Leeren</sys:String>
+    <sys:String x:Key="Files.RemoveFromList">↩ Aus Liste entfernen</sys:String>
+    <sys:String x:Key="Files.DeleteFile">🗑 Datei löschen</sys:String>
+    <sys:String x:Key="Files.UndoLastEmbed">↩ Letztes Einbetten rückgängig</sys:String>
+    <sys:String x:Key="Lib.ScanLibrary">🔄 Bibliothek scannen</sys:String>
+    <sys:String x:Key="Lib.SaveLayout">💾 Layout speichern</sys:String>
+    <sys:String x:Key="Lib.FilterPlaceholder">Nach Titel, Genre, Regisseur, Jahr, Besetzung filtern…</sys:String>
+    <sys:String x:Key="Lib.TreeFilterPlaceholder">🔎 Serien filtern…</sys:String>
+    <sys:String x:Key="Lib.TreeSort.AZ">A → Z</sys:String>
+    <sys:String x:Key="Lib.TreeSort.EpisodeCount">Episodenanzahl</sys:String>
+    <sys:String x:Key="Lib.TreeSort.RecentlyAdded">Zuletzt hinzugefügt</sys:String>
+    <sys:String x:Key="Set.Language">🌐 Sprache</sys:String>
+    <sys:String x:Key="Lang.Label">ANWENDUNGSSPRACHE</sys:String>
+    <sys:String x:Key="Lang.RestartNote">Das Ändern der Sprache aktualisiert Datums-/Zahlenformate sofort. Ein Neustart ist erforderlich, um den übersetzten UI-Text vollständig anzuwenden. Der Anwendungsname bleibt immer Video Metadata Editor.</sys:String>
+    <sys:String x:Key="Copy.CopyFiles">📋 Dateien kopieren</sys:String>
+    <sys:String x:Key="Copy.MoveFiles">✂ Dateien verschieben</sys:String>
+    <sys:String x:Key="Copy.SmartOrganise">Intelligente Organisation (Unterordner Filme / Serien)</sys:String>
+
+</ResourceDictionary>

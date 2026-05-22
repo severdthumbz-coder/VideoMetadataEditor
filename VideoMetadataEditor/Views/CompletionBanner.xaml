@@ -1,0 +1,113 @@
+<UserControl x:Class="VideoMetadataEditor.Views.CompletionBanner"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="0"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Top"
+             ClipToBounds="True"
+             Panel.ZIndex="200"
+             IsHitTestVisible="False">
+
+    <!-- No storyboards here — all animation driven in code-behind to avoid
+         XamlParseException from out-of-scope TargetName references. -->
+
+    <!-- Content panel — height animated via code -->
+    <Grid x:Name="BannerContent" Opacity="0" Height="88">
+
+        <!-- Gradient background -->
+        <Border x:Name="GradientBg" CornerRadius="0">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop x:Name="GradStop1" Color="#4CAF82" Offset="0"/>
+                    <GradientStop x:Name="GradStop2" Color="#1E7D52" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+
+        <!-- Subtle circle overlay -->
+        <Canvas ClipToBounds="True" Opacity="0.08">
+            <Ellipse Canvas.Left="-40" Canvas.Top="-30" Width="180" Height="180" Fill="White"/>
+            <Ellipse Canvas.Left="700" Canvas.Top="-50"  Width="160" Height="160" Fill="White"/>
+        </Canvas>
+
+        <!-- Content row -->
+        <Grid Margin="24,0,16,0" VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Icon circle -->
+            <Border Grid.Column="0" Width="44" Height="44" CornerRadius="22" Margin="0,0,18,0">
+                <Border.Background><SolidColorBrush Color="#30FFFFFF"/></Border.Background>
+                <TextBlock x:Name="BannerIcon" Text="✓" FontSize="22"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="White"/>
+            </Border>
+
+            <!-- Title + body -->
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock x:Name="BannerTitle" Text="Operation Complete"
+                           FontSize="15" FontWeight="Bold" Foreground="White"
+                           TextTrimming="CharacterEllipsis"/>
+                <TextBlock x:Name="BannerBody" FontSize="12" Foreground="#CCFFFFFF"
+                           TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+            </StackPanel>
+
+            <!-- Stat chips -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                <Border x:Name="Chip1" CornerRadius="12" Padding="12,5" Margin="0,0,8,0" Visibility="Collapsed">
+                    <Border.Background><SolidColorBrush Color="#28FFFFFF"/></Border.Background>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="Chip1Icon" Text="✓" FontSize="12" Foreground="White" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="Chip1Text" FontSize="12" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+                <Border x:Name="Chip2" CornerRadius="12" Padding="12,5" Margin="0,0,8,0" Visibility="Collapsed">
+                    <Border.Background><SolidColorBrush Color="#28FFFFFF"/></Border.Background>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="Chip2Icon" Text="↗" FontSize="12" Foreground="White" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="Chip2Text" FontSize="12" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+                <Border x:Name="Chip3" CornerRadius="12" Padding="12,5" Visibility="Collapsed">
+                    <Border.Background><SolidColorBrush Color="#28FFFFFF"/></Border.Background>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="Chip3Icon" Text="✕" FontSize="12" Foreground="White" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="Chip3Text" FontSize="12" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- Dismiss button -->
+            <Button Grid.Column="3" x:Name="DismissBtn" Width="32" Height="32"
+                    VerticalAlignment="Center" IsHitTestVisible="True"
+                    Click="DismissBtn_Click" Cursor="Hand" ToolTip="Dismiss">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" CornerRadius="16" Background="Transparent">
+                            <TextBlock Text="✕" FontSize="13" Foreground="#99FFFFFF"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#30FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+        </Grid>
+
+        <!-- Countdown bar -->
+        <Border VerticalAlignment="Bottom" Height="3">
+            <Border.Background><SolidColorBrush Color="#22000000"/></Border.Background>
+            <Border x:Name="CountdownBar" HorizontalAlignment="Left" Width="0">
+                <Border.Background><SolidColorBrush Color="#55FFFFFF"/></Border.Background>
+            </Border>
+        </Border>
+    </Grid>
+
+</UserControl>

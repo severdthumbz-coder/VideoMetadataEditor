@@ -1,0 +1,26 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- Merged ON TOP of Strings.en.xaml — only keys that differ from English -->
+
+    <sys:String x:Key="Tab.RawData">📝 원시 데이터</sys:String>
+    <sys:String x:Key="Tab.RetrievedData">🔍 검색된 데이터</sys:String>
+    <sys:String x:Key="Tab.MoveCopy">📦 이동 / 복사</sys:String>
+    <sys:String x:Key="Tab.Settings">⚙️ 설정</sys:String>
+    <sys:String x:Key="Tab.Library">📚 라이브러리</sys:String>
+    <sys:String x:Key="Tab.Duplicates">🔍 중복</sys:String>
+    <sys:String x:Key="Tab.Help">❓ 도움말</sys:String>
+    <sys:String x:Key="Tab.Log">📋 로그</sys:String>
+    <sys:String x:Key="Btn.AddFiles">파일 추가</sys:String>
+    <sys:String x:Key="Btn.AddFolder">📁 폴더 추가</sys:String>
+    <sys:String x:Key="Btn.All">☑ 전체</sys:String>
+    <sys:String x:Key="Btn.None">☐ 없음</sys:String>
+    <sys:String x:Key="Btn.BatchProcess">⚡ 일괄 처리</sys:String>
+    <sys:String x:Key="Btn.TvBatch">📺 TV 배치</sys:String>
+    <sys:String x:Key="Files.Header">파일</sys:String>
+    <sys:String x:Key="Files.Refresh">↻ 새로 고침</sys:String>
+    <sys:String x:Key="Files.Clear">✕ 지우기</sys:String>
+    <sys:String x:Key="Set.Language">🌐 언어</sys:String>
+    <sys:String x:Key="Lang.Label">응용 프로그램 언어</sys:String>
+
+</ResourceDictionary>

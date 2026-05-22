@@ -1,0 +1,74 @@
+<UserControl x:Class="VideoMetadataEditor.Views.ToastNotification"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="340"
+             HorizontalAlignment="Right"
+             VerticalAlignment="Bottom"
+             IsHitTestVisible="False"
+             Opacity="0"
+             Margin="0,0,16,-80">
+
+    <!-- No storyboards — all animation driven in code-behind -->
+
+    <Border x:Name="ToastRoot"
+            Background="{DynamicResource SurfaceBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1"
+            CornerRadius="10"
+            Padding="0">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.35" Color="Black"/>
+        </Border.Effect>
+
+        <Grid>
+            <Border x:Name="AccentBar"
+                    Width="5"
+                    CornerRadius="10,0,0,10"
+                    HorizontalAlignment="Left"
+                    Background="{DynamicResource SuccessBrush}"/>
+
+            <Grid Margin="16,12,14,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock x:Name="ToastIcon"
+                           Grid.Column="0"
+                           Text="✅"
+                           FontSize="20"
+                           VerticalAlignment="Center"
+                           Margin="0,0,10,0"/>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock x:Name="ToastTitle"
+                               Text="Notification"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ForegroundBrush}"
+                               TextWrapping="Wrap"/>
+                    <TextBlock x:Name="ToastBody"
+                               FontSize="12"
+                               Foreground="{DynamicResource ForegroundMutedBrush}"
+                               TextWrapping="Wrap"
+                               Margin="0,2,0,0"
+                               MaxWidth="230"/>
+                </StackPanel>
+
+                <Button Grid.Column="2"
+                        x:Name="DismissButton"
+                        Content="✕"
+                        FontSize="11"
+                        Foreground="{DynamicResource ForegroundMutedBrush}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Cursor="Hand"
+                        VerticalAlignment="Top"
+                        Padding="4,2"
+                        IsHitTestVisible="True"
+                        Click="DismissButton_Click"/>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

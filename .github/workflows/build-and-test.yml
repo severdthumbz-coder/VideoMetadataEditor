@@ -1,0 +1,41 @@
+name: Build and Test
+
+# Runs on every push and pull request to main/master, plus manual dispatch.
+# Catches build breaks and failing tests BEFORE they reach a local build.
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:        # allows running manually from the Actions tab
+
+jobs:
+  build-and-test:
+    # WPF (UseWPF / WinExe / win-x64) can only build on Windows runners.
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'   # stable channel — not the local preview SDK
+
+      # Restore both projects. No .sln exists, so target the .csproj files directly.
+      - name: Restore main project
+        run: dotnet restore "VideoMetadataEditor/VideoMetadataEditor.csproj"
+
+      - name: Restore test project
+        run: dotnet restore "VideoMetadataEditor.Tests/VideoMetadataEditor.Tests.csproj"
+
+      # Build the app in Release. This is the step that catches the XAML / C#
+      # compile breaks that have been surfacing only on the local machine.
+      - name: Build app (Release)
+        run: dotnet build "VideoMetadataEditor/VideoMetadataEditor.csproj" --configuration Release --no-restore
+
+      # Build + run the unit tests (RemuxCommit, MediaHealth, FingerprintCache,
+      # FileCopy routing, orphan sweep, FilenameParser, FileRenameService).
+      - name: Run tests
+        run: dotnet test "VideoMetadataEditor.Tests/VideoMetadataEditor.Tests.csproj" --configuration Release --verbosity normal

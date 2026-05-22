@@ -1,0 +1,28 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- Merged ON TOP of Strings.en.xaml — only keys that differ from English -->
+
+    <sys:String x:Key="Tab.RawData">📝 生データ</sys:String>
+    <sys:String x:Key="Tab.RetrievedData">🔍 取得データ</sys:String>
+    <sys:String x:Key="Tab.MoveCopy">📦 移動 / コピー</sys:String>
+    <sys:String x:Key="Tab.Settings">⚙️ 設定</sys:String>
+    <sys:String x:Key="Tab.Library">📚 ライブラリ</sys:String>
+    <sys:String x:Key="Tab.Duplicates">🔍 重複</sys:String>
+    <sys:String x:Key="Tab.Help">❓ ヘルプ</sys:String>
+    <sys:String x:Key="Tab.Log">📋 ログ</sys:String>
+    <sys:String x:Key="Btn.AddFiles">ファイル追加</sys:String>
+    <sys:String x:Key="Btn.AddFolder">📁 フォルダ追加</sys:String>
+    <sys:String x:Key="Btn.All">☑ すべて</sys:String>
+    <sys:String x:Key="Btn.None">☐ なし</sys:String>
+    <sys:String x:Key="Btn.Lock">🔒 ロック</sys:String>
+    <sys:String x:Key="Btn.Unlock">🔓 解除</sys:String>
+    <sys:String x:Key="Btn.BatchProcess">⚡ 一括処理</sys:String>
+    <sys:String x:Key="Btn.TvBatch">📺 TVバッチ</sys:String>
+    <sys:String x:Key="Files.Header">ファイル</sys:String>
+    <sys:String x:Key="Files.Refresh">↻ 更新</sys:String>
+    <sys:String x:Key="Files.Clear">✕ クリア</sys:String>
+    <sys:String x:Key="Set.Language">🌐 言語</sys:String>
+    <sys:String x:Key="Lang.Label">アプリケーション言語</sys:String>
+
+</ResourceDictionary>

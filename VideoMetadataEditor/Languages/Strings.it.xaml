@@ -1,0 +1,37 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- Merged ON TOP of Strings.en.xaml — only keys that differ from English -->
+
+    <sys:String x:Key="Tab.RawData">📝 DATI GREZZI</sys:String>
+    <sys:String x:Key="Tab.RetrievedData">🔍 DATI RECUPERATI</sys:String>
+    <sys:String x:Key="Tab.MoveCopy">📦 SPOSTA / COPIA</sys:String>
+    <sys:String x:Key="Tab.Settings">⚙️ IMPOSTAZIONI</sys:String>
+    <sys:String x:Key="Tab.Library">📚 LIBRERIA</sys:String>
+    <sys:String x:Key="Tab.Duplicates">🔍 DUPLICATI</sys:String>
+    <sys:String x:Key="Tab.Help">❓ AIUTO</sys:String>
+    <sys:String x:Key="Tab.Log">📋 REGISTRO</sys:String>
+    <sys:String x:Key="Btn.AddFiles">Aggiungi file</sys:String>
+    <sys:String x:Key="Btn.AddFolder">📁 Aggiungi cartella</sys:String>
+    <sys:String x:Key="Btn.Recursive">Ricorsivo</sys:String>
+    <sys:String x:Key="Btn.All">☑ Tutti</sys:String>
+    <sys:String x:Key="Btn.None">☐ Nessuno</sys:String>
+    <sys:String x:Key="Btn.Lock">🔒 Blocca</sys:String>
+    <sys:String x:Key="Btn.Unlock">🔓 Sblocca</sys:String>
+    <sys:String x:Key="Btn.BatchProcess">⚡ Elaborazione batch</sys:String>
+    <sys:String x:Key="Btn.TvBatch">📺 Batch TV</sys:String>
+    <sys:String x:Key="Btn.BatchRename">Rinomina batch</sys:String>
+    <sys:String x:Key="Btn.SelectUnwatched">Sel. non visti</sys:String>
+    <sys:String x:Key="Btn.SelectWatched">✓ Sel. visti</sys:String>
+    <sys:String x:Key="Files.Header">FILE</sys:String>
+    <sys:String x:Key="Files.Refresh">↻ Aggiorna</sys:String>
+    <sys:String x:Key="Files.Clear">✕ Cancella</sys:String>
+    <sys:String x:Key="Files.RemoveFromList">↩ Rimuovi dalla lista</sys:String>
+    <sys:String x:Key="Files.DeleteFile">🗑 Elimina file</sys:String>
+    <sys:String x:Key="Files.UndoLastEmbed">↩ Annulla incorporamento</sys:String>
+    <sys:String x:Key="Lib.ScanLibrary">🔄 Scansiona libreria</sys:String>
+    <sys:String x:Key="Lib.SaveLayout">💾 Salva layout</sys:String>
+    <sys:String x:Key="Set.Language">🌐 Lingua</sys:String>
+    <sys:String x:Key="Lang.Label">LINGUA APPLICAZIONE</sys:String>
+
+</ResourceDictionary>

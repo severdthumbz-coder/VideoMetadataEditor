@@ -1,0 +1,147 @@
+<Window x:Class="VideoMetadataEditor.Views.DuplicateCompareDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Compare Duplicates"
+        Height="640" Width="1100" MinHeight="480" MinWidth="800"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource SurfaceBrush}">
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>      <!-- players -->
+            <RowDefinition Height="Auto"/>   <!-- file info -->
+            <RowDefinition Height="Auto"/>   <!-- transport controls -->
+            <RowDefinition Height="Auto"/>   <!-- action buttons -->
+        </Grid.RowDefinitions>
+
+        <!-- ── Side-by-side players ──────────────────────────────────────── -->
+        <Grid Grid.Row="0" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- LEFT player -->
+            <Border Grid.Column="0" Background="#111" CornerRadius="4">
+                <Grid>
+                    <MediaElement x:Name="PlayerLeft"
+                                  Stretch="Uniform"
+                                  LoadedBehavior="Manual"
+                                  UnloadedBehavior="Stop"
+                                  MediaOpened="Player_MediaOpened"
+                                  MediaFailed="Player_MediaFailed"
+                                  MediaEnded="Player_MediaEnded"/>
+                    <TextBlock x:Name="LeftLabel" Text="LEFT"
+                               HorizontalAlignment="Left" VerticalAlignment="Top"
+                               Margin="8,6" FontSize="11" FontWeight="SemiBold"
+                               Foreground="White" Background="#80000000" Padding="4,2"/>
+                    <Border x:Name="LeftSelectedBorder"
+                            BorderBrush="#4CAF50" BorderThickness="3"
+                            CornerRadius="4" IsHitTestVisible="False"
+                            Visibility="Collapsed"/>
+                </Grid>
+            </Border>
+
+            <!-- RIGHT player -->
+            <Border Grid.Column="2" Background="#111" CornerRadius="4">
+                <Grid>
+                    <MediaElement x:Name="PlayerRight"
+                                  Stretch="Uniform"
+                                  LoadedBehavior="Manual"
+                                  UnloadedBehavior="Stop"
+                                  MediaOpened="Player_MediaOpened"
+                                  MediaFailed="Player_MediaFailed"
+                                  MediaEnded="Player_MediaEnded"/>
+                    <TextBlock x:Name="RightLabel" Text="RIGHT"
+                               HorizontalAlignment="Left" VerticalAlignment="Top"
+                               Margin="8,6" FontSize="11" FontWeight="SemiBold"
+                               Foreground="White" Background="#80000000" Padding="4,2"/>
+                    <Border x:Name="RightSelectedBorder"
+                            BorderBrush="#4CAF50" BorderThickness="3"
+                            CornerRadius="4" IsHitTestVisible="False"
+                            Visibility="Collapsed"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ── File info strips ───────────────────────────────────────────── -->
+        <Grid Grid.Row="1" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="{DynamicResource SurfaceVariantBrush}"
+                    CornerRadius="4" Padding="8,6">
+                <StackPanel>
+                    <TextBlock x:Name="LeftFileName" FontSize="12" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource ForegroundBrush}"/>
+                    <TextBlock x:Name="LeftFileInfo" FontSize="11"
+                               Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="2" Background="{DynamicResource SurfaceVariantBrush}"
+                    CornerRadius="4" Padding="8,6">
+                <StackPanel>
+                    <TextBlock x:Name="RightFileName" FontSize="12" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource ForegroundBrush}"/>
+                    <TextBlock x:Name="RightFileInfo" FontSize="11"
+                               Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ── Transport controls ────────────────────────────────────────── -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal"
+                    HorizontalAlignment="Center" Margin="0,0,0,10">
+            <Button Content="▶  Play Both"   Click="PlayBoth_Click"
+                    Width="110" Margin="0,0,6,0" Padding="0,8"/>
+            <Button Content="⏸  Pause Both"  Click="PauseBoth_Click"
+                    Width="110" Margin="0,0,6,0" Padding="0,8"/>
+            <Button Content="⏹  Stop Both"   Click="StopBoth_Click"
+                    Width="110" Margin="0,0,12,0" Padding="0,8"/>
+            <Slider x:Name="VolumeSlider" Minimum="0" Maximum="1" Value="0.7"
+                    Width="100" VerticalAlignment="Center"
+                    ValueChanged="VolumeSlider_ValueChanged"
+                    ToolTip="Volume"/>
+            <TextBlock Text="🔊" VerticalAlignment="Center" Margin="4,0,0,0"
+                       Foreground="{DynamicResource ForegroundMutedBrush}"/>
+        </StackPanel>
+
+        <!-- ── Keep / Delete buttons ─────────────────────────────────────── -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0"
+                    Content="🗑 Delete LEFT — Keep Right"
+                    Click="DeleteLeft_Click"
+                    Padding="0,10"
+                    Foreground="{DynamicResource ErrorBrush}"
+                    Style="{StaticResource SecondaryButton}"/>
+
+            <Button Grid.Column="2"
+                    Content="⏭ Skip"
+                    Click="Skip_Click"
+                    Padding="20,10"
+                    Style="{StaticResource SecondaryButton}"/>
+
+            <Button Grid.Column="4"
+                    Content="🗑 Delete RIGHT — Keep Left"
+                    Click="DeleteRight_Click"
+                    Padding="0,10"
+                    Foreground="{DynamicResource ErrorBrush}"
+                    Style="{StaticResource SecondaryButton}"/>
+        </Grid>
+    </Grid>
+</Window>
