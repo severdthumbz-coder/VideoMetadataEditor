@@ -1,0 +1,21 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+publish/
+*.user
+
+# Rider / VS
+.vs/
+.idea/
+
+# Runtime data that shouldn't be versioned
+appsettings.json
+fingerprints.json
+library_cache.json
+native/fpcalc.exe
+native/ffmpeg.exe
+*.log
+
+# OS
+Thumbs.db
+.DS_Store
