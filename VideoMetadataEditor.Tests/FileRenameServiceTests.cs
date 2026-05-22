@@ -5,11 +5,14 @@ using Xunit;
 namespace VideoMetadataEditor.Tests;
 
 /// <summary>
-/// Tests for FileRenameService.Apply token substitution.
-/// Uses a simple metadata stub (anonymous object values passed as params).
+/// Tests for FileRenameService.BuildFileName token substitution and sanitization.
+/// BuildFileName is an instance method that always appends the extension, trims
+/// trailing separators, and sanitizes invalid filename characters.
 /// </summary>
 public class FileRenameServiceTests
 {
+    private static readonly FileRenameService Svc = new();
+
     private static MovieMetadata Meta(
         string title    = "Test Movie",
         string year     = "2024",
@@ -23,82 +26,104 @@ public class FileRenameServiceTests
     {
         return new MovieMetadata
         {
-            Title    = title,
-            Year     = year,
-            Genre    = genre,
-            Director = director,
-            Cast     = cast,
-            Rating   = rating,
+            Title     = title,
+            Year      = year,
+            Genre     = genre,
+            Director  = director,
+            Cast      = cast,
+            Rating    = rating,
             MpaRating = mpa,
-            ImdbId   = imdbId,
-            TmdbId   = tmdbId,
+            ImdbId    = imdbId,
+            TmdbId    = tmdbId,
         };
     }
 
     [Fact]
-    public void Apply_AllBasicTokens_Substituted()
+    public void BasicTokens_Substituted()
     {
-        var result = FileRenameService.Apply("{Title} ({Year})", Meta());
-        Assert.Equal("Test Movie (2024)", result);
+        var result = Svc.BuildFileName("{Title} ({Year})", Meta(), ".mp4");
+        Assert.Equal("Test Movie (2024).mp4", result);
     }
 
     [Fact]
-    public void Apply_MpaToken_Substituted()
+    public void MpaToken_Substituted()
     {
-        var result = FileRenameService.Apply("{Title} ({Year}) [{MPA}]", Meta());
-        Assert.Equal("Test Movie (2024) [PG-13]", result);
+        var result = Svc.BuildFileName("{Title} ({Year}) [{MPA}]", Meta(), ".mp4");
+        Assert.Equal("Test Movie (2024) [PG-13].mp4", result);
     }
 
     [Fact]
-    public void Apply_CastToken_Substituted()
+    public void CastToken_Substituted()
     {
-        var result = FileRenameService.Apply("{Title} - {Cast}", Meta(cast: "Tom Hanks"));
-        Assert.Equal("Test Movie - Tom Hanks", result);
+        var result = Svc.BuildFileName("{Title} - {Cast}", Meta(cast: "Tom Hanks"), ".mkv");
+        Assert.Equal("Test Movie - Tom Hanks.mkv", result);
     }
 
     [Fact]
-    public void Apply_ResolutionAndFormatTokens_Substituted()
+    public void ResolutionAndFormatTokens_Substituted()
     {
-        var result = FileRenameService.Apply("{Title}.{Resolution}.{Format}", Meta(),
-            resolution: "1920×1080", format: "MKV");
-        Assert.Equal("Test Movie.1920×1080.MKV", result);
+        var result = Svc.BuildFileName("{Title}.{Resolution}.{Format}", Meta(), ".mkv",
+            resolution: "1080p", format: "x265");
+        Assert.Equal("Test Movie.1080p.x265.mkv", result);
     }
 
     [Fact]
-    public void Apply_EmptyResolution_TokenBecomesEmpty()
+    public void EmptyResolution_TokenBecomesEmpty()
     {
-        var result = FileRenameService.Apply("{Title}.{Resolution}", Meta(), resolution: "");
-        Assert.Equal("Test Movie.", result);
+        // Trailing separators are trimmed, so "{Title}.{Resolution}" with empty res
+        // collapses to just the title before the extension is appended.
+        var result = Svc.BuildFileName("{Title}{Resolution}", Meta(), ".mp4", resolution: "");
+        Assert.Equal("Test Movie.mp4", result);
     }
 
     [Fact]
-    public void Apply_ColonInTitle_ReplacedWithDash()
+    public void ColonInTitle_ReplacedWithDash()
     {
-        var result = FileRenameService.Apply("{Title} ({Year})", Meta(title: "Star Wars: A New Hope"));
-        Assert.Equal("Star Wars - A New Hope (2024)", result);
+        var result = Svc.BuildFileName("{Title} ({Year})",
+            Meta(title: "Star Wars: A New Hope"), ".mp4");
+        Assert.Equal("Star Wars - A New Hope (2024).mp4", result);
     }
 
     [Fact]
-    public void Apply_InvalidFilesystemChars_Stripped()
+    public void InvalidFilesystemChars_Stripped()
     {
-        var result = FileRenameService.Apply("{Title}", Meta(title: "Bad/Name<Movie>"));
-        // Should strip < > / etc.
+        var result = Svc.BuildFileName("{Title}", Meta(title: "Bad/Name<Movie>"), ".mp4");
         Assert.DoesNotContain("/", result);
         Assert.DoesNotContain("<", result);
         Assert.DoesNotContain(">", result);
     }
 
     [Fact]
-    public void Apply_EmptyMpa_TokenBecomesEmpty()
+    public void ImdbPattern_CorrectFormat()
     {
-        var result = FileRenameService.Apply("{Title} [{MPA}]", Meta(mpa: ""));
-        Assert.Equal("Test Movie []", result);
+        var result = Svc.BuildFileName("{Title} ({Year}) [{ImdbId}]", Meta(), ".mkv");
+        Assert.Equal("Test Movie (2024) [tt1234567].mkv", result);
     }
 
     [Fact]
-    public void Apply_ImdbPattern_CorrectFormat()
+    public void EmptyTitle_FallsBackToUntitled()
     {
-        var result = FileRenameService.Apply("{Title} ({Year}) [{ImdbId}]", Meta());
-        Assert.Equal("Test Movie (2024) [tt1234567]", result);
+        var result = Svc.BuildFileName("{Title}", Meta(title: ""), ".mp4");
+        Assert.Equal("Untitled.mp4", result);
+    }
+
+    [Fact]
+    public void ExtensionWithoutDot_StillGetsDot()
+    {
+        var result = Svc.BuildFileName("{Title}", Meta(title: "Movie"), "mp4");
+        Assert.Equal("Movie.mp4", result);
+    }
+
+    [Fact]
+    public void TvTokens_SeasonEpisodePadded()
+    {
+        var meta = new MovieMetadata
+        {
+            ShowTitle = "Breaking Bad",
+            Season    = 2,
+            Episode   = 5,
+        };
+        var result = Svc.BuildFileName("{ShowTitle} S{Season}E{Episode}", meta, ".mkv");
+        Assert.Equal("Breaking Bad S02E05.mkv", result);
     }
 }

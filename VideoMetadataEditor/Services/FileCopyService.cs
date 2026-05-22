@@ -427,6 +427,13 @@ public class FileCopyService
         int    lastFilesDone = 0;
         string lastCurrent   = string.Empty;
 
+#if NO_WPF
+        // Test/headless build (NO_WPF defined): skip the UI-thread progress timer,
+        // which depends on System.Windows.Threading. Just wait for the process.
+        // This path is never compiled into the real WPF app.
+        _ = lastBytesDone; _ = lastFilesDone; _ = lastCurrent;
+        await proc.WaitForExitAsync(ct);
+#else
         var timer = new System.Windows.Threading.DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(300)
@@ -487,6 +494,7 @@ public class FileCopyService
             timer.Stop();
             timer = null;
         }
+#endif
     }
 
     /// <summary>Parses a FastCopy log file for summary counts.</summary>
