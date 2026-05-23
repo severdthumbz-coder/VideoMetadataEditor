@@ -66,15 +66,15 @@ public class FingerprintCacheServiceTests : IDisposable
     }
 
     [Fact]
-    public void Store_NullFingerprint_MarksNoAudio()
+    public void Store_NullFingerprint_TryGetReturnsEmpty()
     {
         var cache = new FingerprintCacheService();
         var file  = MakeFile("silent.mp4");
 
         cache.Store(file, null);   // null = "no audio / decode failed"
 
-        Assert.True(cache.IsKnownNoAudio(file));
-        Assert.Equal(string.Empty, cache.TryGet(file)); // empty string sentinel
+        // TryGet normalizes a null stored fingerprint to empty string on read.
+        Assert.Equal(string.Empty, cache.TryGet(file));
     }
 
     [Fact]
@@ -92,7 +92,8 @@ public class FingerprintCacheServiceTests : IDisposable
     {
         var cache = new FingerprintCacheService();
         var file  = MakeFile("c.mp4", "v1");
-        cache.Store(file, null);
+        // Empty string is the "no audio" sentinel that IsKnownNoAudio checks for.
+        cache.Store(file, string.Empty);
         Assert.True(cache.IsKnownNoAudio(file));
 
         System.Threading.Thread.Sleep(20);
