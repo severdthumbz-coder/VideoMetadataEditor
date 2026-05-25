@@ -2477,8 +2477,10 @@ public partial class MainViewModel : INotifyPropertyChanged
 
         if (!isExpiring) return true;
 
-        ConsoleLog.Insert(0,
-            $"[{DateTime.Now:HH:mm:ss}] 🎯 Trakt: access token expiring soon — refreshing…");
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+
+        dispatcher?.InvokeAsync(() => ConsoleLog.Insert(0,
+            $"[{DateTime.Now:HH:mm:ss}] 🎯 Trakt: access token expiring soon — refreshing…"));
 
         var (newToken, err) = await _traktService.RefreshAccessTokenAsync(
             TraktClientId,
@@ -2488,8 +2490,8 @@ public partial class MainViewModel : INotifyPropertyChanged
 
         if (newToken == null)
         {
-            ConsoleLog.Insert(0,
-                $"[{DateTime.Now:HH:mm:ss}] ⚠ Trakt token refresh failed: {err}. Please reconnect.");
+            dispatcher?.InvokeAsync(() => ConsoleLog.Insert(0,
+                $"[{DateTime.Now:HH:mm:ss}] ⚠ Trakt token refresh failed: {err}. Please reconnect."));
             StatusText = "Trakt: token expired — go to Settings → Trakt.tv and reconnect.";
             return false;
         }
@@ -2498,7 +2500,8 @@ public partial class MainViewModel : INotifyPropertyChanged
         Settings.TraktRefreshToken = newToken.RefreshToken;
         Settings.TraktTokenExpiry  = newToken.ExpiresAt;
         _ = App.ConfigService.SaveAsync();
-        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] ✓ Trakt token refreshed.");
+        dispatcher?.InvokeAsync(() => ConsoleLog.Insert(0,
+            $"[{DateTime.Now:HH:mm:ss}] ✓ Trakt token refreshed."));
         return true;
     }
 
