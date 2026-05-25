@@ -295,6 +295,12 @@ public partial class MainViewModel
             && int.TryParse(year, out int qY) && int.TryParse(r.Year, out int rY)
             && Math.Abs(qY - rY) == 1)               score += 10;
 
+        // Popularity tiebreaker: highly-voted entries get a small bonus so
+        // "The Mummy (1999)" beats "The Mummy (1932)" when both match equally.
+        // Capped at +10 so it can't override a year or title match.
+        if (r.Popularity > 0)
+            score += (int)Math.Min(10, Math.Log10(r.Popularity + 1) * 3);
+
         return score;
     }
 

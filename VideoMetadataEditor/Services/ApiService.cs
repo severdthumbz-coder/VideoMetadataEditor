@@ -138,13 +138,18 @@ public class ApiService
             {
                 results.Add(new SearchResult
                 {
-                    Title     = item["title"]?.ToString() ?? "",
-                    Year      = item["release_date"]?.ToString().Split('-').FirstOrDefault() ?? "",
-                    TmdbId    = item["id"]?.ToString() ?? "",
-                    PosterUrl = item["poster_path"] != null
+                    Title      = item["title"]?.ToString() ?? "",
+                    Year       = item["release_date"]?.ToString().Split('-').FirstOrDefault() ?? "",
+                    TmdbId     = item["id"]?.ToString() ?? "",
+                    Popularity = item["popularity"] != null
+                        ? double.TryParse(item["popularity"]!.ToString(),
+                            System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out double pop)
+                                ? pop : 0 : 0,
+                    PosterUrl  = item["poster_path"] != null
                         ? $"https://image.tmdb.org/t/p/w185{item["poster_path"]}"
                         : "",
-                    Overview  = item["overview"]?.ToString() ?? ""
+                    Overview   = item["overview"]?.ToString() ?? ""
                 });
             }
             SetCached(cacheKey, results);

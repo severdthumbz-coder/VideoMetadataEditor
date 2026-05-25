@@ -245,6 +245,20 @@ public class MediaHealthViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Replaces a HealthResult in the list with a fresh scan of the renamed/fixed
+    /// file at newPath. Called after Fix Extension renames a file so the grid
+    /// reflects the corrected state without a full re-scan.
+    /// </summary>
+    public void ReplaceResult(MediaHealthService.HealthResult old, string newPath)
+    {
+        var idx = Results.IndexOf(old);
+        if (idx < 0) return;
+        var updated = MediaHealthService.Analyse(newPath);
+        Results[idx] = updated;
+        RaiseCounts();
+    }
+
+    /// <summary>
     /// Stage 2: losslessly adds faststart to every MP4 flagged with NoFaststart.
     /// Uses ffmpeg stream-copy — no re-encode, original timestamps preserved.
     /// </summary>

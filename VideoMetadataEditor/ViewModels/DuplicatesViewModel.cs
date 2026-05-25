@@ -617,7 +617,11 @@ public class DuplicatesViewModel : ViewModelBase
                 videoFiles, useHashing: true, progress: progressReporter, ct: ct);
 
             // ── Phase 4: build result view models ────────────────────────────
-            var grouped = groups
+            // Deduplicate groups across stages: if two groups share the same
+            // set of files (e.g. caught by both size-match and metadata-match),
+            // keep the one with higher confidence and discard the other.
+            var deduped = DeduplicateGroups(groups);
+            var grouped = deduped
                 .Select(g => new DuplicateGroupViewModel(g, _sourceFolder, _destinationFolder))
                 .ToList();
 
@@ -1373,25 +1377,36 @@ public class DuplicatesViewModel : ViewModelBase
                 Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory,
                 "fingerprints.json");
 
-            // Confirm before overwriting an existing cache
+            // Ask whether to merge or replace when a cache already exists
+            bool merge = false;
             if (File.Exists(dest))
             {
                 var res = System.Windows.MessageBox.Show(
-                    "An existing fingerprint cache will be replaced. Continue?",
-                    "Confirm import",
-                    System.Windows.MessageBoxButton.YesNo,
-                    System.Windows.MessageBoxImage.Question);
-                if (res != System.Windows.MessageBoxResult.Yes) return;
+                    "An existing fingerprint cache was found.\n\n" +
+                    "  • Merge  — add the imported entries to your existing cache\n" +
+                    "  • Replace  — discard your existing cache and use the imported one\n\n" +
+                    "Choose Merge to keep both.",
+                    "Import fingerprint cache",
+                    System.Windows.MessageBoxButton.YesNoCancel,
+                    System.Windows.MessageBoxImage.Question,
+                    System.Windows.MessageBoxResult.Yes);
+                if (res == System.Windows.MessageBoxResult.Cancel) return;
+                merge = res == System.Windows.MessageBoxResult.Yes; // Yes=Merge, No=Replace
             }
 
-            File.Copy(dlg.FileName, dest, overwrite: true);
-            // Reload cache from new file
-            _fpCache.ClearMemory();
-            // Force re-load on next access — FingerprintCacheService.Load is called in ctor
-            // Re-instantiate via reflection or just keep using; the new file will be picked up
-            // on next TryGet via the existing service instance.
-            ScanStatus = $"✓ Fingerprint cache imported from {Path.GetFileName(dlg.FileName)}. " +
-                         "Restart the app for changes to take full effect.";
+            if (merge)
+            {
+                // Merge: load the import file into the cache without touching the existing file
+                _fpCache.MergeFrom(dlg.FileName);
+                _fpCache.SaveIfDirty();
+            }
+            else
+            {
+                File.Copy(dlg.FileName, dest, overwrite: true);
+                _fpCache.Reload();   // live reload — no restart needed
+            }
+
+            ScanStatus = $"✓ Fingerprint cache imported from {Path.GetFileName(dlg.FileName)}.";
         }
         catch (Exception ex)
         {
@@ -1650,6 +1665,40 @@ public class DuplicateFileViewModel : ViewModelBase
             Duration   = tech?.DurationDisplay   ?? string.Empty;
         }
         catch { Resolution = VideoCodec = AudioCodec = Duration = string.Empty; }
+    }
+
+    /// <summary>
+    /// Removes duplicate groups that contain the same file set caught by multiple
+    /// detection stages. When two groups share identical members, the one with
+    /// higher confidence wins; if equal confidence, the one with more files wins.
+    /// </summary>
+    private static IReadOnlyList<Models.DuplicateGroup> DeduplicateGroups(
+        IEnumerable<Models.DuplicateGroup> groups)
+    {
+        var result  = new List<Models.DuplicateGroup>();
+        var seen    = new Dictionary<string, int>();   // key → index in result
+
+        foreach (var g in groups)
+        {
+            // Canonical key: sorted file paths joined — uniquely identifies the member set
+            var key = string.Join("|",
+                g.Files.Select(f => f.FilePath.ToLowerInvariant()).OrderBy(x => x));
+
+            if (seen.TryGetValue(key, out int idx))
+            {
+                var existing = result[idx];
+                // Replace if this group has higher confidence
+                if ((int)g.Confidence > (int)existing.Confidence
+                    || (g.Confidence == existing.Confidence && g.Files.Count > existing.Files.Count))
+                    result[idx] = g;
+            }
+            else
+            {
+                seen[key] = result.Count;
+                result.Add(g);
+            }
+        }
+        return result;
     }
 
 

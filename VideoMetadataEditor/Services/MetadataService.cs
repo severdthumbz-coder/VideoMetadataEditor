@@ -116,6 +116,50 @@ public class MetadataService
             if (string.IsNullOrWhiteSpace(meta.Description))
                 meta.Description = tag.Description ?? string.Empty;
 
+            // ── Standard tag fallbacks ────────────────────────────────────────
+            // Files tagged by external tools (TagScanner, tinyMediaManager, Plex)
+            // write to standard fields, not VME comment tokens. Fill any gaps so
+            // their data is visible without re-tagging everything through VME.
+
+            // IMDB ID — MP4 stores it in tag.Comment naively; some taggers use
+            // a dedicated custom field accessible via tag.GetField / tag.Comment
+            if (string.IsNullOrWhiteSpace(meta.ImdbId))
+            {
+                // TagLib# exposes freeform atoms; try the common storage location
+                if (tagFile.Tag is TagLib.Mpeg4.AppleTag appleTag)
+                {
+                    var imdbAtom = appleTag.GetDashBox("com.apple.iTunes", "IMDB")
+                                ?? appleTag.GetDashBox("com.apple.iTunes", "imdb")
+                                ?? appleTag.GetDashBox("com.apple.iTunes", "iTunEXTC");
+                    if (!string.IsNullOrWhiteSpace(imdbAtom))
+                        meta.ImdbId = imdbAtom.Trim();
+                }
+            }
+
+            // Rating — some taggers write a float in tag.BeatsPerMinute (Plex hack),
+            // or in freeform fields. The most common standard approach is a 0–10 float.
+            if (meta.Rating <= 0 && tagFile.Tag is TagLib.Mpeg4.AppleTag appleTag2)
+            {
+                var ratingAtom = appleTag2.GetDashBox("com.apple.iTunes", "RATING")
+                              ?? appleTag2.GetDashBox("com.apple.iTunes", "rating");
+                if (!string.IsNullOrWhiteSpace(ratingAtom)
+                    && float.TryParse(ratingAtom,
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out float extRating)
+                    && extRating > 0)
+                    meta.Rating = extRating;
+            }
+
+            // MPA / content rating — standard iTunes contentrating atom
+            if (string.IsNullOrWhiteSpace(meta.MpaRating) && tagFile.Tag is TagLib.Mpeg4.AppleTag appleTag3)
+            {
+                var mpa = appleTag3.GetDashBox("com.apple.iTunes", "iTunEXTC")
+                       ?? appleTag3.GetDashBox("com.apple.iTunes", "contentrating")
+                       ?? appleTag3.GetDashBox("com.apple.iTunes", "CONTENTRATING");
+                if (!string.IsNullOrWhiteSpace(mpa))
+                    meta.MpaRating = mpa.Trim();
+            }
+
             if (includeArtwork && tag.Pictures is { Length: > 0 })
                 meta.ArtworkBytes = tag.Pictures[0].Data.Data;
         }

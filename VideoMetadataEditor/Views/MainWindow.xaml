@@ -4270,6 +4270,8 @@
                                       x:Name="HealthGrid">
                                 <DataGrid.ContextMenu>
                                     <ContextMenu>
+                                        <MenuItem Header="✏ Fix Extension (rename only — no remux needed)"
+                                                  Click="HealthFixExtension_Click"/>
                                         <MenuItem Header="🔧 Remux to .mkv (fix tagging issues)"
                                                   Click="RemuxToMkv_Click"/>
                                         <MenuItem Header="🔧 Remux to .mp4 (fix + faststart)"

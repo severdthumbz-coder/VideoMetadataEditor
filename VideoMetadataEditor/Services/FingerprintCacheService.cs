@@ -117,7 +117,52 @@ public class FingerprintCacheService
         }
     }
 
+    /// <summary>
+    /// Merges the cache file on disk into the in-memory state without requiring
+    /// a restart. Entries already in memory that are not on disk are kept.
+    /// Called after a cache import so the app doesn't need to restart.
+    /// </summary>
+    public void Reload()
+    {
+        lock (_lock)
+        {
+            // Snapshot what's in memory (freshly computed since last save)
+            var inMemoryOnly = new Dictionary<string, CacheEntry>(
+                _cache, StringComparer.OrdinalIgnoreCase);
+            _cache.Clear();
+            Load();   // reads new file into _cache
+            // Re-add anything that was only in memory (don't lose fresh work)
+            foreach (var kvp in inMemoryOnly)
+                _cache.TryAdd(kvp.Key, kvp.Value);
+            _dirty = false;
+        }
+    }
+
     // ── Private ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Merges entries from an external cache file into the in-memory state.
+    /// Existing entries are kept; imported entries only fill gaps (don't overwrite).
+    /// </summary>
+    public void MergeFrom(string filePath)
+    {
+        lock (_lock)
+        {
+            try
+            {
+                var json    = File.ReadAllText(filePath);
+                var entries = JsonSerializer.Deserialize<List<CacheEntry>>(json);
+                if (entries == null) return;
+                foreach (var entry in entries)
+                    _cache.TryAdd(entry.FilePath, entry);   // don't overwrite fresher local entries
+                _dirty = true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FingerprintCache] MergeFrom failed: {ex.Message}");
+            }
+        }
+    }
 
     private void Load()
     {

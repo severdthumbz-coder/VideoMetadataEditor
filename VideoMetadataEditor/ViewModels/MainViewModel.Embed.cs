@@ -1528,10 +1528,25 @@ public partial class MainViewModel
             }
 
             if (skipped.Count > 0)
+            {
                 ConsoleLog.Insert(0,
                     $"[{DateTime.Now:HH:mm:ss}] ⚠ TV Batch — {skipped.Count} file(s) skipped: " +
                     $"no S##E## code found. ({string.Join(", ", skipped.Take(3).Select(f => f.FileName))}" +
                     (skipped.Count > 3 ? $"… +{skipped.Count - 3} more" : "") + ")");
+
+                // Cross-reference skipped files with library gap data to give
+                // the user actionable information about which episodes are missing.
+                var libraryGaps = GetLibraryGapsForFiles(parseable
+                    .Select(p => p.showTitle).Distinct().ToList());
+                if (libraryGaps.Count > 0)
+                {
+                    ConsoleLog.Insert(0,
+                        $"[{DateTime.Now:HH:mm:ss}] 💡 Known library gaps that could not be auto-matched: " +
+                        string.Join(", ", libraryGaps.Take(8)) +
+                        (libraryGaps.Count > 8 ? $" (+{libraryGaps.Count - 8} more)" : "") +
+                        " — rename files to S##E## format to enable auto-embedding.");
+                }
+            }
 
             if (parseable.Count == 0)
             {
@@ -1964,6 +1979,33 @@ public partial class MainViewModel
             NormaliseShowTitle(candidateTitle),
             NormaliseShowTitle(query));
         return score >= threshold;
+    }
+
+    /// <summary>
+    /// Cross-references the library's known TV shows against the parsed show titles
+    /// from the TV batch and returns any episode gaps it finds, formatted as
+    /// "ShowTitle S01E03" strings. Surfaces actionable rename hints in the log.
+    /// </summary>
+    private List<string> GetLibraryGapsForFiles(IEnumerable<string> showTitles)
+    {
+        var gaps = new List<string>();
+        try
+        {
+            var normalised = showTitles
+                .Select(NormaliseShowTitle)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var show in TvShowTree ?? Enumerable.Empty<Models.TvShowNode>())
+            {
+                if (!normalised.Contains(NormaliseShowTitle(show.ShowTitle))) continue;
+                foreach (var season in show.Seasons ?? Enumerable.Empty<Models.TvSeasonNode>())
+                    foreach (var ep in season.Episodes
+                        .Where(e => e.IsMissingEpisode && e.Episode.HasValue))
+                        gaps.Add($"{show.ShowTitle} S{season.SeasonNumber:D2}E{ep.Episode!.Value:D2}");
+            }
+        }
+        catch { /* library not loaded or tree unavailable */ }
+        return gaps;
     }
 
 

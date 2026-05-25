@@ -349,6 +349,61 @@ public partial class MainWindow : Window
         }
     }
 
+    private void HealthFixExtension_Click(object sender, RoutedEventArgs e)
+    {
+        if (HealthGrid.SelectedItem is not Services.MediaHealthService.HealthResult r) return;
+
+        if (r.Issue != Services.MediaHealthService.IssueType.ExtensionMismatch)
+        {
+            System.Windows.MessageBox.Show(
+                "This option is only available for Extension Mismatch issues.\n\n" +
+                "Select a file flagged with Extension Mismatch first.",
+                "Not applicable", System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Information);
+            return;
+        }
+
+        var correctExt = Services.MediaHealthService.GetCorrectExtension(r);
+        if (correctExt == null)
+        {
+            System.Windows.MessageBox.Show(
+                "Could not determine the correct extension for this file.",
+                "Fix Extension", System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning);
+            return;
+        }
+
+        var newPath = System.IO.Path.ChangeExtension(r.FilePath, correctExt);
+        var confirm = System.Windows.MessageBox.Show(
+            $"Rename this file?\n\n" +
+            $"  From:  {r.FileName}\n" +
+            $"  To:    {System.IO.Path.GetFileName(newPath)}\n\n" +
+            "This only renames the file — no remux, no re-encoding, instant.",
+            "Fix Extension — Rename Only",
+            System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        try
+        {
+            if (System.IO.File.Exists(newPath))
+            {
+                System.Windows.MessageBox.Show(
+                    $"A file already exists at:\n{System.IO.Path.GetFileName(newPath)}\n\nRename cancelled.",
+                    "File already exists", System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+            System.IO.File.Move(r.FilePath, newPath);
+            VM.StatusText = $"✓ Renamed to {System.IO.Path.GetFileName(newPath)}";
+            VM.MediaHealthVM.ReplaceResult(r, newPath);
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Rename failed: {ex.Message}", "Error",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+        }
+    }
+
     // ── FILES panel context menu ────────────────────────────────────────────
 
     /// <summary>Resolves the VideoFile a context-menu click targets, via the menu DataContext.</summary>

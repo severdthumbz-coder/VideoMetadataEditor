@@ -515,6 +515,8 @@ public class SearchResult
     public string DisplayText => $"{TypeIcon} {Title} ({Year})";
     /// <summary>Identifies which API produced this result for the detail-fetch call.</summary>
     public string Source { get; set; } = "TMDB"; // "TMDB", "OMDB", "AniList"
+    /// <summary>TMDB popularity score — used as a tiebreaker in result ranking.</summary>
+    public double Popularity { get; set; }
 }
 
 // ─── Library Column persistence ───────────────────────────────────────────────

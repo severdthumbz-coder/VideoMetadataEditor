@@ -182,6 +182,28 @@ public static class MediaHealthService
     };
 
     /// <summary>
+    /// For an ExtensionMismatch result, returns the correct extension the file
+    /// should have (e.g. ".mkv" for a Matroska file named ".mp4"). Returns null
+    /// for non-mismatch results or unrecognised containers.
+    /// </summary>
+    public static string? GetCorrectExtension(HealthResult result)
+    {
+        if (result.Issue != IssueType.ExtensionMismatch) return null;
+        // Re-detect from the file to get the container name
+        try
+        {
+            var h = new byte[64];
+            using var fs = new FileStream(result.FilePath, FileMode.Open,
+                FileAccess.Read, FileShare.ReadWrite);
+            int read = fs.Read(h, 0, 64);
+            if (read < 8) return null;
+            var container = DetectContainer(h[..read]);
+            return container != null ? ExtensionsFor(container).FirstOrDefault() : null;
+        }
+        catch { return null; }
+    }
+
+    /// <summary>
     /// Returns true if MP4 has faststart (moov before mdat), false if not,
     /// null if it couldn't be determined. Scans top-level atoms only.
     /// </summary>

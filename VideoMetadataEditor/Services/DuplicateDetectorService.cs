@@ -78,7 +78,14 @@ public static class DuplicateDetectorService
         IProgress<(string current, int done, int total)>? progress = null,
         CancellationToken ct = default)
     {
-        var list = files.Where(f => f.FileSizeBytes > 0).ToList();
+        // Honour excluded patterns (same set as Deep Scan) so files the user has
+        // configured to ignore don't appear as duplicates in Quick Scan results.
+        var excludedPatterns = BuildExcludedPatterns(
+            App.ConfigService.Settings.DuplicateExcludedPatterns);
+        var list = files
+            .Where(f => f.FileSizeBytes > 0
+                     && !IsExcludedByPatterns(f.FilePath, excludedPatterns))
+            .ToList();
         if (list.Count < 2) return [];
 
         // ── Stage 1: bucket by file size ──────────────────────────────────────
@@ -563,5 +570,41 @@ public static class DuplicateDetectorService
             $"✓ Deep scan complete  ·  {groups.Count:N0} audio duplicate group(s) found."));
 
         return groups;
+    }
+
+    // ── Shared excluded-pattern helpers (used by both Quick and Deep scan) ────
+
+    /// <summary>
+    /// Compiles the pattern string from settings into a list of regex strings.
+    /// Extracted so both DetectAsync and DeepScanAsync share the same logic.
+    /// </summary>
+    public static List<System.Text.RegularExpressions.Regex> BuildExcludedPatterns(string patterns)
+    {
+        var result = new List<System.Text.RegularExpressions.Regex>();
+        if (string.IsNullOrWhiteSpace(patterns)) return result;
+        foreach (var raw in patterns.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var pattern = raw.Trim();
+            if (string.IsNullOrEmpty(pattern)) continue;
+            try
+            {
+                var regex = "^" + System.Text.RegularExpressions.Regex.Escape(pattern)
+                    .Replace("\\*", ".*").Replace("\\?", ".") + "$";
+                result.Add(new System.Text.RegularExpressions.Regex(
+                    regex, System.Text.RegularExpressions.RegexOptions.IgnoreCase |
+                           System.Text.RegularExpressions.RegexOptions.Compiled));
+            }
+            catch { /* malformed pattern — skip */ }
+        }
+        return result;
+    }
+
+    public static bool IsExcludedByPatterns(
+        string filePath,
+        IEnumerable<System.Text.RegularExpressions.Regex> patterns)
+    {
+        foreach (var rx in patterns)
+            try { if (rx.IsMatch(filePath)) return true; } catch { }
+        return false;
     }
 }
