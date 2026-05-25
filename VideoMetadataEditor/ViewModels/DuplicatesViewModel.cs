@@ -1672,22 +1672,20 @@ public class DuplicateFileViewModel : ViewModelBase
     /// detection stages. When two groups share identical members, the one with
     /// higher confidence wins; if equal confidence, the one with more files wins.
     /// </summary>
-    private static IReadOnlyList<Models.DuplicateGroup> DeduplicateGroups(
-        IEnumerable<Models.DuplicateGroup> groups)
+    private static IReadOnlyList<DuplicateGroup> DeduplicateGroups(
+        IEnumerable<DuplicateGroup> groups)
     {
-        var result  = new List<Models.DuplicateGroup>();
-        var seen    = new Dictionary<string, int>();   // key → index in result
+        var result  = new List<DuplicateGroup>();
+        var seen    = new Dictionary<string, int>();
 
         foreach (var g in groups)
         {
-            // Canonical key: sorted file paths joined — uniquely identifies the member set
             var key = string.Join("|",
                 g.Files.Select(f => f.FilePath.ToLowerInvariant()).OrderBy(x => x));
 
             if (seen.TryGetValue(key, out int idx))
             {
                 var existing = result[idx];
-                // Replace if this group has higher confidence
                 if ((int)g.Confidence > (int)existing.Confidence
                     || (g.Confidence == existing.Confidence && g.Files.Count > existing.Files.Count))
                     result[idx] = g;
