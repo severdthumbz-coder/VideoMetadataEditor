@@ -327,6 +327,29 @@ public partial class MainWindow : Window
         }
     }
 
+    private void DownloadMkvToolNix_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName        = "https://mkvtoolnix.download/downloads.html",
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            var nativeDir = Services.NativeLibraryExtractor.NativeDir;
+            System.Windows.MessageBox.Show(
+                "Couldn't open the browser. Download MKVToolNix manually from:\n" +
+                "https://mkvtoolnix.download/downloads.html\n\n" +
+                "Then drop mkvpropedit.exe into:\n" + nativeDir + "\n\n" +
+                ex.Message,
+                "Download MKVToolNix", System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Information);
+        }
+    }
+
     private async void RemuxToMkv_Click(object sender, RoutedEventArgs e)
     {
         if (HealthGrid.SelectedItem is Services.MediaHealthService.HealthResult r)

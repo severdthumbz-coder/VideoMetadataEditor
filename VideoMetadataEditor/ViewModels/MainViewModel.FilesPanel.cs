@@ -54,14 +54,14 @@ public partial class MainViewModel
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
-                ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Deleted: {Path.GetFileName(filePath)}");
+                Log( $"[{DateTime.Now:HH:mm:ss}] Deleted: {Path.GetFileName(filePath)}");
                 StatusText = $"Deleted: {Path.GetFileName(filePath)}";
             }
         }
         catch (Exception ex)
         {
             StatusText = $"Delete failed: {ex.Message}";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Delete error: {ex.Message}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] Delete error: {ex.Message}");
         }
     }
 
@@ -294,7 +294,7 @@ public partial class MainViewModel
                         vf.EmbeddedMetadata.ArtworkBytes = meta.ArtworkBytes;
                         vf.PendingMetadata.ArtworkBytes  = meta.ArtworkBytes;
                         Interlocked.Increment(ref ok);
-                        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Artwork: {vf.FileName}");
+                        Log( $"[{DateTime.Now:HH:mm:ss}] Artwork: {vf.FileName}");
                     }
                 }
                 finally
@@ -344,7 +344,7 @@ public partial class MainViewModel
             }
             await File.WriteAllLinesAsync(dlg.FileName, lines, System.Text.Encoding.UTF8);
             StatusText = $"Exported {Files.Count(f => !f.IsSeparator)} file(s) to CSV.";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] CSV export: {dlg.FileName}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] CSV export: {dlg.FileName}");
         }
         catch (Exception ex) { StatusText = $"Export error: {ex.Message}"; }
         finally { EndOperation(resetProgress: false); }
@@ -375,7 +375,7 @@ public partial class MainViewModel
             var ct = BeginOperation();
             var (ok, failed) = await Services.NfoExportService.ExportAsync(pairs, progress, ct);
             StatusText = $"NFO export: {ok} ok, {failed} failed.";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] NFO export: {ok} written.");
+            Log( $"[{DateTime.Now:HH:mm:ss}] NFO export: {ok} written.");
         }
         catch (Exception ex) { StatusText = $"NFO export error: {ex.Message}"; }
         finally { EndOperation(); }
@@ -422,7 +422,7 @@ public partial class MainViewModel
             StatusText = SelectedFile.IsReadOnly
                 ? $"🔒 Locked: {SelectedFile.FileName}"
                 : $"🔓 Unlocked: {SelectedFile.FileName}";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] {StatusText}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] {StatusText}");
         }
         else
         {
@@ -449,7 +449,7 @@ public partial class MainViewModel
         IsBusy = true;
         ProgressValue = 0;
         StatusText = $"Scanning {Files.Count(f => !f.IsSeparator)} files for duplicates…";
-        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Duplicate scan started — {Files.Count(f => !f.IsSeparator)} files");
+        Log( $"[{DateTime.Now:HH:mm:ss}] Duplicate scan started — {Files.Count(f => !f.IsSeparator)} files");
 
         try
         {
@@ -469,14 +469,14 @@ public partial class MainViewModel
             if (Duplicates.Count == 0)
             {
                 StatusText = "No duplicates found.";
-                ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] No duplicates found.");
+                Log( $"[{DateTime.Now:HH:mm:ss}] No duplicates found.");
             }
             else
             {
                 StatusText = $"Found {Duplicates.Count} duplicate group(s) — {totalDupes} redundant file(s).";
-                ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] {StatusText}");
+                Log( $"[{DateTime.Now:HH:mm:ss}] {StatusText}");
                 foreach (var g in Duplicates)
-                    ConsoleLog.Insert(0,
+                    Log(
                         $"[{DateTime.Now:HH:mm:ss}]   {g.ConfidenceLabel}: " +
                         string.Join(", ", g.Files.Select(f => f.FileName)));
                 SelectedTabIndex = 5;

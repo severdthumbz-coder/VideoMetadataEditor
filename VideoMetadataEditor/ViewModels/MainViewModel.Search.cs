@@ -164,7 +164,7 @@ public partial class MainViewModel
                     var (alMeta, _) = await _aniListService.GetDetailsAsync(alBest.AniListId, ct);
                     meta = alMeta;
                     if (meta != null)
-                        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] ℹ AniList used for: {title}");
+                        Log( $"[{DateTime.Now:HH:mm:ss}] ℹ AniList used for: {title}");
                 }
             }
 
@@ -528,7 +528,7 @@ public partial class MainViewModel
         catch (Exception ex)
         {
             StatusText = $"Search error: {ex.Message}";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Search error: {ex.Message}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] Search error: {ex.Message}");
         }
         finally
         {

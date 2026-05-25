@@ -1869,13 +1869,58 @@
                     <!-- ══════════════════════════════════════════════════════ -->
                     <!-- TAB 3 — SETTINGS -->
                     <!-- ══════════════════════════════════════════════════════ -->
-                    <TabItem Header="{DynamicResource Tab.Settings}">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <StackPanel Margin="24" MaxWidth="640">
+                     <!-- ══════════════════════════════════════════════════════ -->
+                     <TabItem Header="{DynamicResource Tab.Settings}">
+                         <Grid>
+                             <Grid.ColumnDefinitions>
+                                 <!-- Left nav list — fixed width -->
+                                 <ColumnDefinition Width="175"/>
+                                 <!-- Right content area — fills remaining space -->
+                                 <ColumnDefinition Width="*"/>
+                             </Grid.ColumnDefinitions>
 
-                                <TextBlock Text="Settings" Style="{StaticResource SectionHeader}" FontSize="20"/>
+                             <!-- ── Left nav ──────────────────────────────── -->
+                             <Border Grid.Column="0"
+                                     BorderThickness="0,0,1,0"
+                                     BorderBrush="{DynamicResource BorderColorBrush}">
+                                 <ListBox x:Name="SettingsNavList"
+                                          SelectedIndex="0"
+                                          BorderThickness="0"
+                                          Background="Transparent"
+                                          Margin="0,12,0,0"
+                                          VirtualizingPanel.IsVirtualizing="False">
+                                     <ListBoxItem Padding="12,8">🔑  Metadata &amp; APIs</ListBoxItem>
+                                     <ListBoxItem Padding="12,8">✏  Files &amp; Renaming</ListBoxItem>
+                                     <ListBoxItem Padding="12,8">🎨  Artwork &amp; Performance</ListBoxItem>
+                                     <ListBoxItem Padding="12,8">🖥  Appearance</ListBoxItem>
+                                     <ListBoxItem Padding="12,8">🔍  Duplicates</ListBoxItem>
+                                     <ListBoxItem Padding="12,8">📦  Move / Copy</ListBoxItem>
+                                     <ListBoxItem Padding="12,8">📚  Library</ListBoxItem>
+                                     <ListBoxItem Padding="12,8">⚕  Recovery</ListBoxItem>
+                                 </ListBox>
+                             </Border>
 
-                                <!-- API Keys -->
+                             <!-- ── Right content ─────────────────────────── -->
+                             <ScrollViewer Grid.Column="1"
+                                           VerticalScrollBarVisibility="Auto">
+                                 <StackPanel Margin="20,16,20,20" MaxWidth="620">
+
+                                     <TextBlock Text="Settings"
+                                                Style="{StaticResource SectionHeader}"
+                                                FontSize="20"/>
+
+                                    <!-- ── 0 ──────────────────────────────────────────────── -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=SettingsNavList}" Value="0">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
                                 <GroupBox Header="API Keys">
                                     <StackPanel>
 
@@ -2016,8 +2061,6 @@
                                         </StackPanel>
                                     </StackPanel>
                                 </GroupBox>
-
-                                <!-- Trakt.tv -->
                                 <GroupBox Header="🎯 Trakt.tv">
                                     <StackPanel>
                                         <!-- Client ID -->
@@ -2148,8 +2191,6 @@
                                         </TextBlock>
                                     </StackPanel>
                                 </GroupBox>
-
-                                <!-- OpenSubtitles -->
                                 <GroupBox Header="🗒 OpenSubtitles">
                                     <StackPanel>
                                         <TextBlock Text="OPENSUBTITLES API KEY" Style="{StaticResource LabelText}"/>
@@ -2201,8 +2242,6 @@
                                         </TextBlock>
                                     </StackPanel>
                                 </GroupBox>
-
-                                <!-- AniList -->
                                 <GroupBox Header="🎌 AniList (Anime)">
                                     <StackPanel>
                                         <CheckBox Content="Include AniList as fallback metadata source for anime"
@@ -2220,7 +2259,19 @@
                                     </StackPanel>
                                 </GroupBox>
 
-                                <!-- Rename Behaviour -->
+                                    </StackPanel>
+                                    <!-- ── 1 ──────────────────────────────────────────────── -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=SettingsNavList}" Value="1">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
                                 <GroupBox Header="✏ Rename Behaviour">
                                     <StackPanel>
                                         <CheckBox Content="Auto-rename during Batch Process and Watch Folder"
@@ -2245,8 +2296,6 @@
                                         </TextBlock>
                                     </StackPanel>
                                 </GroupBox>
-
-                                <!-- Smart File Rename Pattern -->
                                 <GroupBox Header="🎬 Smart File Rename Pattern">
                                     <StackPanel>
                                         <!-- Movie Pattern -->
@@ -2292,8 +2341,6 @@
                                         </TextBlock>
                                     </StackPanel>
                                 </GroupBox>
-
-                                <!-- UX Preferences -->
                                 <GroupBox Header="Behaviour">
                                     <StackPanel>
                                         <CheckBox Content="Auto-save settings on change (800ms debounce)"
@@ -2308,8 +2355,6 @@
                                                  ToolTip="Delay in ms before auto-search fires when switching files (default 300)"/>
                                     </StackPanel>
                                 </GroupBox>
-
-                                <!-- Write Diagnostics -->
                                 <GroupBox Header="Write Error Diagnostics">
                                     <StackPanel>
                                         <CheckBox Content="Show detailed write-failure dialog (VerboseWriteErrors)"
@@ -2409,7 +2454,19 @@
                                     </StackPanel>
                                 </GroupBox>
 
-                                <!-- Artwork -->
+                                    </StackPanel>
+                                    <!-- ── 2 ──────────────────────────────────────────────── -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=SettingsNavList}" Value="2">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
                                 <GroupBox Header="Artwork Compression">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -2427,8 +2484,6 @@
                                         </StackPanel>
                                     </Grid>
                                 </GroupBox>
-
-                                <!-- Performance -->
                                 <GroupBox Header="Performance — Batch Write Concurrency">
                                     <StackPanel>
                                         <CheckBox Content="Auto (tune to drive type and CPU)"
@@ -2466,8 +2521,6 @@
                                         </TextBlock>
                                     </StackPanel>
                                 </GroupBox>
-
-                                <!-- MKV Artwork Engine -->
                                 <GroupBox Header="{DynamicResource Set.MkvArtwork}">
                                     <StackPanel>
                                         <TextBlock Text="{Binding MkvPropEditStatus}"
@@ -2475,19 +2528,30 @@
                                                    Foreground="{DynamicResource ForegroundBrush}"
                                                    TextWrapping="Wrap"
                                                    Margin="0,0,0,8"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                            <Button Content="🔄 Re-detect"
+                                                    Command="{Binding RedetectMkvPropEditCommand}"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Padding="10,5" Margin="0,0,8,0"
+                                                    ToolTip="Re-scan for mkvpropedit.exe after installing MKVToolNix or dropping it in the native\ folder"/>
+                                            <Button Content="🌐 Download MKVToolNix"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Padding="10,5"
+                                                    Click="DownloadMkvToolNix_Click"
+                                                    ToolTip="Opens mkvtoolnix.download in your browser"/>
+                                        </StackPanel>
                                         <Separator Margin="0,0,0,8"/>
                                         <TextBlock FontSize="11" TextWrapping="Wrap"
                                                    Foreground="{DynamicResource ForegroundMutedBrush}">
-                                            For portable use, place the MKVToolNix folder next to VideoMetadataEditor.exe.
-                                            Example: VideoMetadataEditor.exe sits in C:\Apps\ — place MKVToolNix\ there too
-                                            so C:\Apps\MKVToolNix\mkvpropedit.exe exists. The app detects it automatically.
+                                            Quickest portable setup: drop mkvpropedit.exe into the native\ folder
+                                            next to VideoMetadataEditor.exe — no installer needed. Alternatively,
+                                            install MKVToolNix normally and click 🔄 Re-detect.
                                             Standard install at %ProgramFiles%\MKVToolNix\ is also auto-detected.
-                                            Download free: mkvtoolnix.download/downloads.html
+                                            Required for proper Matroska cover.jpg embedding (Plex/Jellyfin/Emby).
+                                            Without it, TagLib# is used as fallback (some media servers ignore it).
                                         </TextBlock>
                                     </StackPanel>
                                 </GroupBox>
-
-                                <!-- Copy Engine Retry Settings -->
                                 <GroupBox Header="Copy Engine — Retry Settings">
                                     <StackPanel>
                                         <TextBlock Text="These apply to the built-in copy engine only."
@@ -2519,7 +2583,19 @@
                                     </StackPanel>
                                 </GroupBox>
 
-                                <!-- Theme & UI -->
+                                    </StackPanel>
+                                    <!-- ── 3 ──────────────────────────────────────────────── -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=SettingsNavList}" Value="3">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
                                 <GroupBox Header="Theme &amp; UI">
                                     <StackPanel>
                                         <CheckBox Content="Dark Mode"
@@ -2529,8 +2605,33 @@
                                                   IsChecked="{Binding Settings.ShowSplashScreen}"/>
                                     </StackPanel>
                                 </GroupBox>
+                                <GroupBox Header="{DynamicResource Set.Language}">
+                                    <StackPanel>
+                                        <TextBlock Text="{DynamicResource Lang.Label}"
+                                                   Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                                        <ComboBox ItemsSource="{Binding SupportedLanguageDisplayNames}"
+                                                  SelectedIndex="{Binding LanguageSelectedIndex}"
+                                                  Margin="0,0,0,8" FontSize="12"
+                                                  ToolTip="Sets the application language. Tab labels, button text and interface strings update immediately. Date and number formats also change live."/>
+                                        <TextBlock Text="{DynamicResource Lang.RestartNote}"
+                                                   FontSize="11" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                                    </StackPanel>
+                                </GroupBox>
 
-                                <!-- Enable Duplicates Tab -->
+                                    </StackPanel>
+                                    <!-- ── 4 ──────────────────────────────────────────────── -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=SettingsNavList}" Value="4">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
                                 <GroupBox Header="🔍 Duplicates Tab">
                                     <StackPanel>
                                         <CheckBox Content="Enable Duplicates Tab"
@@ -2545,8 +2646,6 @@
                                         </TextBlock>
                                     </StackPanel>
                                 </GroupBox>
-
-                                <!-- External Tools -->
                                 <GroupBox Header="🛠 External Tools (Media Health Check Stage 2)">
                                     <StackPanel>
                                         <TextBlock TextWrapping="Wrap" FontSize="12"
@@ -2582,7 +2681,19 @@
                                     </StackPanel>
                                 </GroupBox>
 
-                                <!-- Smart Move/Copy Organisation -->
+                                    </StackPanel>
+                                    <!-- ── 5 ──────────────────────────────────────────────── -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=SettingsNavList}" Value="5">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
                                 <GroupBox Header="🗂 Move / Copy — Smart Organisation">
                                     <StackPanel>
                                         <CheckBox Content="Organise by content type (Movies and TV Episodes to separate folders)"
@@ -2658,8 +2769,6 @@
                                         </StackPanel>
                                     </StackPanel>
                                 </GroupBox>
-
-                                <!-- Move / Copy Persistent Settings -->
                                 <GroupBox Header="📦 Move / Copy — Saved Settings">
                                     <StackPanel>
                                         <TextBlock FontSize="11"
@@ -2698,50 +2807,94 @@
                                     </StackPanel>
                                 </GroupBox>
 
-                                <!-- Language -->
-                                <GroupBox Header="{DynamicResource Set.Language}">
-                                    <StackPanel>
-                                        <TextBlock Text="{DynamicResource Lang.Label}"
-                                                   Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
-                                        <ComboBox ItemsSource="{Binding SupportedLanguageDisplayNames}"
-                                                  SelectedIndex="{Binding LanguageSelectedIndex}"
-                                                  Margin="0,0,0,8" FontSize="12"
-                                                  ToolTip="Sets the application language. Tab labels, button text and interface strings update immediately. Date and number formats also change live."/>
-                                        <TextBlock Text="{DynamicResource Lang.RestartNote}"
-                                                   FontSize="11" TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource ForegroundMutedBrush}"/>
                                     </StackPanel>
-                                </GroupBox>
-
-                                <!-- Orphan Temp File Policy -->
-                                <GroupBox Header="🗑 Temp File Handling">
+                                    <!-- ── 6 ──────────────────────────────────────────────── -->
                                     <StackPanel>
-                                        <TextBlock Text="WHEN TEMP/BACKUP FILES ARE DETECTED"
-                                                   Style="{StaticResource LabelText}"/>
-                                        <ComboBox SelectedValue="{Binding OrphanTempFilePolicy}"
-                                                  SelectedValuePath="Tag"
-                                                  Margin="0,4,0,6">
-                                            <ComboBoxItem Content="Ask — show Recovery dialog (recommended)"
-                                                          Tag="Ask"/>
-                                            <ComboBoxItem Content="Auto-Delete — silently remove orphans"
-                                                          Tag="AutoDelete"/>
-                                            <ComboBoxItem Content="Ignore — skip orphan scan entirely"
-                                                          Tag="Ignore"/>
-                                        </ComboBox>
-                                        <TextBlock FontSize="11"
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=SettingsNavList}" Value="6">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                <GroupBox Header="📚 Library Display">
+                                    <StackPanel>
+                                        <CheckBox Content="Tabbed library display (one tab per folder)"
+                                                  IsChecked="{Binding LibraryTabbedMode}"
+                                                  ToolTip="When enabled, each library folder gets its own tab with independent filtering and sorting."/>
+                                        <CheckBox Content="📺 TV Shows tree view (Show &#x2192; Season &#x2192; Episodes)"
+                                                  IsChecked="{Binding LibraryTvTreeView}"
+                                                  Margin="0,6,0,0"
+                                                  ToolTip="When a TV Shows tab is active, shows entries in a collapsible tree. Double-click an episode to load it. Movie tabs always use list view."/>
+                                        <TextBlock FontSize="11" TextWrapping="Wrap"
                                                    Foreground="{DynamicResource ForegroundMutedBrush}"
-                                                   TextWrapping="Wrap">
-                                            Temp files (.vme_tmp_*) contain pending tag changes from
-                                            a previous crashed session. Backups (.vme_bak_*) are safe
-                                            to delete — the write already succeeded.
-                                            "Ask" lets you resume incomplete writes or delete.
-                                            "Auto-Delete" cleans all orphans silently on load.
-                                            "Ignore" skips the scan — manual cleanup only.
+                                                   Margin="0,4,0,0">
+                                            When multiple folders are added via ➕ Folder, each gets its own
+                                            tab above the filter box. Filter, sort, and selection are
+                                            independent per tab. Enable this to also show tabs for a single folder.
                                         </TextBlock>
                                     </StackPanel>
                                 </GroupBox>
-
-                                <!-- Watch Folder -->
+                                <GroupBox Header="📚 Library Watch">
+                                    <StackPanel>
+                                        <CheckBox Content="Watch Library folder for new files"
+                                                  IsChecked="{Binding LibraryWatchEnabled}"
+                                                  Margin="0,0,0,6"
+                                                  ToolTip="Monitors the Library folder and adds new video files to the Library grid automatically — no re-scan required."/>
+                                        <TextBlock FontSize="11"
+                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,0,0,8">
+                                            When enabled, the Library grid updates automatically when new
+                                            video files arrive in the Library folder. Uses the same
+                                            FileSystemWatcher + poll approach as Watch Folder.
+                                            Only works if a library folder has been selected and scanned.
+                                        </TextBlock>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="80"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0"
+                                                       Text="Poll interval (minutes):"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,8,0"
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource ForegroundBrush}"/>
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding LibraryWatchPollMinutes, UpdateSourceTrigger=PropertyChanged}"
+                                                     IsEnabled="{Binding LibraryWatchEnabled}"
+                                                     ToolTip="How often (in minutes) the library folder is polled. Minimum 1."/>
+                                        </Grid>
+                                    </StackPanel>
+                                </GroupBox>
+                                <GroupBox Header="⚡ Library Scan Cache">
+                                    <StackPanel>
+                                        <TextBlock FontSize="11"
+                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                   TextWrapping="Wrap" Margin="0,0,0,8">
+                                            After the first scan, file metadata is cached locally. Scan multiple folders (Movies + TV Shows) using ➕ Folder — all results appear in one unified library.
+                                            Subsequent scans skip TagLib# for unchanged files —
+                                            a 2,000-file library with nothing changed loads in under
+                                            3 seconds instead of minutes. Artwork is never cached
+                                            (loaded separately to keep cache files small).
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding LibraryCacheInfo}"
+                                                   FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource ForegroundBrush}"
+                                                   TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                        <Button Content="🗑 Clear Library Cache"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Command="{Binding ClearLibraryCacheCommand}"
+                                                HorizontalAlignment="Left"
+                                                Padding="12,6"
+                                                ToolTip="Deletes the local cache file. The next scan will read every file from disk and rebuild the cache."/>
+                                    </StackPanel>
+                                </GroupBox>
                                 <GroupBox Header="📁 Watch Folder">
                                     <StackPanel>
                                         <CheckBox Content="Enable Watch Folder (monitor loaded folder for new files)"
@@ -2814,96 +2967,60 @@
                                     </StackPanel>
                                 </GroupBox>
 
-                                <!-- Library Display -->
-                                <GroupBox Header="📚 Library Display">
-                                    <StackPanel>
-                                        <CheckBox Content="Tabbed library display (one tab per folder)"
-                                                  IsChecked="{Binding LibraryTabbedMode}"
-                                                  ToolTip="When enabled, each library folder gets its own tab with independent filtering and sorting."/>
-                                        <CheckBox Content="📺 TV Shows tree view (Show &#x2192; Season &#x2192; Episodes)"
-                                                  IsChecked="{Binding LibraryTvTreeView}"
-                                                  Margin="0,6,0,0"
-                                                  ToolTip="When a TV Shows tab is active, shows entries in a collapsible tree. Double-click an episode to load it. Movie tabs always use list view."/>
-                                        <TextBlock FontSize="11" TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
-                                                   Margin="0,4,0,0">
-                                            When multiple folders are added via ➕ Folder, each gets its own
-                                            tab above the filter box. Filter, sort, and selection are
-                                            independent per tab. Enable this to also show tabs for a single folder.
-                                        </TextBlock>
                                     </StackPanel>
-                                </GroupBox>
-
-                                <!-- Library Watch -->
-                                <GroupBox Header="📚 Library Watch">
+                                    <!-- ── 7 ──────────────────────────────────────────────── -->
                                     <StackPanel>
-                                        <CheckBox Content="Watch Library folder for new files"
-                                                  IsChecked="{Binding LibraryWatchEnabled}"
-                                                  Margin="0,0,0,6"
-                                                  ToolTip="Monitors the Library folder and adds new video files to the Library grid automatically — no re-scan required."/>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=SettingsNavList}" Value="7">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                <GroupBox Header="🗑 Temp File Handling">
+                                    <StackPanel>
+                                        <TextBlock Text="WHEN TEMP/BACKUP FILES ARE DETECTED"
+                                                   Style="{StaticResource LabelText}"/>
+                                        <ComboBox SelectedValue="{Binding OrphanTempFilePolicy}"
+                                                  SelectedValuePath="Tag"
+                                                  Margin="0,4,0,6">
+                                            <ComboBoxItem Content="Ask — show Recovery dialog (recommended)"
+                                                          Tag="Ask"/>
+                                            <ComboBoxItem Content="Auto-Delete — silently remove orphans"
+                                                          Tag="AutoDelete"/>
+                                            <ComboBoxItem Content="Ignore — skip orphan scan entirely"
+                                                          Tag="Ignore"/>
+                                        </ComboBox>
                                         <TextBlock FontSize="11"
                                                    Foreground="{DynamicResource ForegroundMutedBrush}"
-                                                   TextWrapping="Wrap"
-                                                   Margin="0,0,0,8">
-                                            When enabled, the Library grid updates automatically when new
-                                            video files arrive in the Library folder. Uses the same
-                                            FileSystemWatcher + poll approach as Watch Folder.
-                                            Only works if a library folder has been selected and scanned.
+                                                   TextWrapping="Wrap">
+                                            Temp files (.vme_tmp_*) contain pending tag changes from
+                                            a previous crashed session. Backups (.vme_bak_*) are safe
+                                            to delete — the write already succeeded.
+                                            "Ask" lets you resume incomplete writes or delete.
+                                            "Auto-Delete" cleans all orphans silently on load.
+                                            "Ignore" skips the scan — manual cleanup only.
                                         </TextBlock>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="80"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0"
-                                                       Text="Poll interval (minutes):"
-                                                       VerticalAlignment="Center"
-                                                       Margin="0,0,8,0"
-                                                       FontSize="12"
-                                                       Foreground="{DynamicResource ForegroundBrush}"/>
-                                            <TextBox Grid.Column="1"
-                                                     Text="{Binding LibraryWatchPollMinutes, UpdateSourceTrigger=PropertyChanged}"
-                                                     IsEnabled="{Binding LibraryWatchEnabled}"
-                                                     ToolTip="How often (in minutes) the library folder is polled. Minimum 1."/>
-                                        </Grid>
                                     </StackPanel>
                                 </GroupBox>
 
-                                <!-- Library Cache -->
-                                <GroupBox Header="⚡ Library Scan Cache">
-                                    <StackPanel>
-                                        <TextBlock FontSize="11"
-                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
-                                                   TextWrapping="Wrap" Margin="0,0,0,8">
-                                            After the first scan, file metadata is cached locally. Scan multiple folders (Movies + TV Shows) using ➕ Folder — all results appear in one unified library.
-                                            Subsequent scans skip TagLib# for unchanged files —
-                                            a 2,000-file library with nothing changed loads in under
-                                            3 seconds instead of minutes. Artwork is never cached
-                                            (loaded separately to keep cache files small).
-                                        </TextBlock>
-                                        <TextBlock Text="{Binding LibraryCacheInfo}"
-                                                   FontSize="11" FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource ForegroundBrush}"
-                                                   TextWrapping="Wrap" Margin="0,0,0,8"/>
-                                        <Button Content="🗑 Clear Library Cache"
-                                                Style="{StaticResource SecondaryButton}"
-                                                Command="{Binding ClearLibraryCacheCommand}"
-                                                HorizontalAlignment="Left"
-                                                Padding="12,6"
-                                                ToolTip="Deletes the local cache file. The next scan will read every file from disk and rebuild the cache."/>
                                     </StackPanel>
-                                </GroupBox>
+                                     <!-- Save — always visible regardless of active panel -->
+                                     <Button Content="💾 Save Settings"
+                                             Style="{StaticResource PrimaryButton}"
+                                             Command="{Binding SaveSettingsCommand}"
+                                             HorizontalAlignment="Left"
+                                             Margin="0,12,0,0"/>
 
-                                <!-- Save -->
-                                <Button Content="💾 Save Settings"
-                                        Style="{StaticResource PrimaryButton}"
-                                        Command="{Binding SaveSettingsCommand}"
-                                        HorizontalAlignment="Left"
-                                        Margin="0,8,0,0"/>
-                            </StackPanel>
-                        </ScrollViewer>
-                    </TabItem>
+                                 </StackPanel>
+                             </ScrollViewer>
+
+                         </Grid>
+                     </TabItem>
+
 
                     <!-- ══════════════════════════════════════════════════════ -->
                     <!-- TAB — LIBRARY                                         -->
@@ -4480,73 +4597,252 @@
                                 <!-- Workflow -->
                                 <TextBlock Text="Recommended Workflow" Style="{StaticResource SectionHeader}"/>
                                 <StackPanel Margin="0,0,0,16">
-                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,4">Standard single-file workflow</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">1. Add files via Add Files / Add Folder / drag-and-drop</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">2. Click a file in the FILES panel to select it (RAW DATA tab shows embedded tags)</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">3. Go to RETRIEVED DATA tab — search auto-runs; or type a title and press Search</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">4. Click the correct result → click "Use Retrieved" to copy into the editor fields</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">5. Review fields (RAW DATA), adjust if needed, then click "Apply + Embed + Rename"</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">6. ✅ row = success. ❌ row = hover for error; Verbose Write Errors shows full diagnosis
-                                    <TextBlock Style="{StaticResource BaseText}">   └ If Fallback App is configured: "🔧 Open in [App]" button appears on the error dialog</TextBlock></TextBlock>
 
-                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,8,0,4">Batch workflow (fastest)</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">1. Add Folder — all files load into FILES panel immediately as they're read</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">2. Select all (All button) or cherry-pick with checkboxes</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">3. Click Batch Process — auto-searches metadata for all selected, then embeds + renames</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">4. Progress bar shows search phase (0–50%) then write phase (50–100%)</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">5. Cancel button stops at the next safe point (never mid-write)</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">6. Review failures in the completion banner; retry individually if needed</TextBlock>
+                                    <!-- Topic selector -->
+                                    <ComboBox x:Name="WorkflowTopicSelector"
+                                              SelectedIndex="0"
+                                              Margin="0,0,0,12"
+                                              ToolTip="Select a workflow topic">
+                                        <ComboBoxItem>📝  Standard single-file workflow</ComboBoxItem>
+                                        <ComboBoxItem>⚡  Batch workflow (fastest)</ComboBoxItem>
+                                        <ComboBoxItem>📚  Library workflow</ComboBoxItem>
+                                        <ComboBoxItem>👁  Watch Folder workflow</ComboBoxItem>
+                                        <ComboBoxItem>📦  Move / Copy workflow</ComboBoxItem>
+                                        <ComboBoxItem>🔍  Duplicates workflow</ComboBoxItem>
+                                        <ComboBoxItem>📋  Media Health Check workflow</ComboBoxItem>
+                                        <ComboBoxItem>🗒  Subtitles, Trakt &amp; NFO</ComboBoxItem>
+                                        <ComboBoxItem>⚕  Recovery workflow</ComboBoxItem>
+                                    </ComboBox>
 
-                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,8,0,4">Library workflow</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">7. Go to LIBRARY tab → Browse to pick your movies folder → Scan Library (first scan builds cache; subsequent scans use cache — much faster)</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">8. Browse all films by title, rating, year, genre, size. Click ⚙ Columns to customise</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">9. Double-click a row to load into Files panel and switch to RAW DATA</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">10. Ctrl+Click or Shift+Click to select multiple rows, then 📥 Load Selected</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">11. Separator rows distinguish Library-loaded files from existing Files panel files</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">12. After embedding, Library grid updates in-place and cache refreshes — no re-scan needed</TextBlock>
+                                    <!-- ── 0: Standard single-file ─────────────────────────────── -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=WorkflowTopicSelector}" Value="0">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Style="{StaticResource BaseText}">1. Add files via Add Files / Add Folder / drag-and-drop</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">2. Click a file in the FILES panel to select it — RAW DATA tab shows embedded tags</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">3. Go to RETRIEVED DATA tab — search auto-runs; or type a title and press Search</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">4. Click the correct result → click "Use Retrieved" to copy into the editor fields</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">5. Review fields in RAW DATA, adjust if needed, then click "Apply + Embed + Rename"</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">6. ✅ row = success. ❌ row = hover for the error message; enable Verbose Write Errors in Settings for full diagnosis including suggested fixes</TextBlock>
+                                    </StackPanel>
 
-                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,8,0,4">Watch Folder workflow</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">13. Enable Watch Folder in SETTINGS — monitors the loaded folder for new arrivals</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">14. New files appear highlighted yellow; temp files (.vme_tmp_*) are hidden automatically</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">15. Process yellow-highlighted files like any other file</TextBlock>
+                                    <!-- ── 1: Batch workflow ────────────────────────────────────── -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=WorkflowTopicSelector}" Value="1">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Style="{StaticResource BaseText}">1. Add Folder — all files load into the FILES panel</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">2. Select all (All button) or cherry-pick with checkboxes</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">3. Click Batch Process — auto-searches metadata for all selected, then embeds + renames</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">4. Progress bar: 0–50% = search phase, 50–100% = write phase</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">5. Cancel stops at the next safe point — never mid-write</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">6. Review failures in the completion banner; retry individually if needed</TextBlock>
+                                    </StackPanel>
 
-                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,8,0,4">Move / Copy workflow</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">16. Select files → MOVE / COPY tab → destination restored from last session; Browse to change; if Smart Organisation is enabled in Settings, Movies and TV Episodes are automatically routed to separate subfolders</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">17. Choose conflict resolution (Overwrite / Skip / Rename) → Copy or Move</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">18. After a Move, the FILES panel reloads from the destination folder automatically</TextBlock>
+                                    <!-- ── 2: Library workflow ──────────────────────────────────── -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=WorkflowTopicSelector}" Value="2">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Style="{StaticResource BaseText}">1. LIBRARY tab → Browse to your movies folder → Scan Library</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">2. First scan builds a cache; subsequent scans use it — much faster</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">3. Browse all films by title, rating, year, genre, size. Click ⚙ Columns to customise</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">4. Double-click a row to load it into the Files panel and switch to RAW DATA</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">5. Ctrl+Click or Shift+Click to select multiple rows, then 📥 Load Selected</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">6. Separator rows distinguish Library-loaded files from existing Files panel files</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">7. After embedding, the Library grid updates in-place — no re-scan needed</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">8. Cache auto-prunes entries for files moved or deleted outside VME on each scan</TextBlock>
+                                    </StackPanel>
 
-                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,8,0,4">Duplicates workflow</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">19. Enable Duplicates Tab in Settings → the 🔍 DUPLICATES tab appears in the tab bar</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">20. Set Source Folder; Destination is optional (leave blank to scan one folder; set it only to compare two folders or to Move instead of Delete)</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">21. Click 🔍 Scan for Duplicates for the fast size/metadata/hash scan</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">22. For renamed / re-encoded / untagged copies, click ⬇ Install fpcalc (once), then ♪ Deep Scan to match by audio fingerprint</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">23. After results appear, click ⚙ Keep Tagged (or Keep Largest / Keep Newest) to auto-select losers across all groups</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">24. Watch the "📊 N selected · X GB to recover" badge; tick/untick individual checkboxes to adjust</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">25. Use 🎬 Compare Side-by-Side on any uncertain group, then 🗑 Delete Selected (Recycle Bin) or 📤 Move Selected</TextBlock>
+                                    <!-- ── 3: Watch Folder ──────────────────────────────────────── -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=WorkflowTopicSelector}" Value="3">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Style="{StaticResource BaseText}">1. Enable Watch Folder in SETTINGS — monitors the loaded folder for new arrivals</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">2. New files appear highlighted yellow in the FILES panel; existing files are never re-reported</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">3. Temp files (.vme_tmp_*) are hidden automatically — they won't appear as false positives</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">4. Process yellow-highlighted files like any other file — select, search, embed</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">5. If the watcher misses a file (network path, slow drive), it catches it on the next poll interval</TextBlock>
+                                    </StackPanel>
 
-                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,8,0,4">Media Health Check workflow</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">26. Open the 📋 HEALTH CHECK tab → Browse to a folder → 📋 Scan for Problems</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">27. Review warnings/errors — each row gives the detected container, the issue, and a suggested fix; 📋 Copy Report for the full list</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">28. To fix MP4 no-faststart in bulk: install ffmpeg (Settings → External Tools → 🌐 Download, drop ffmpeg.exe in native\), then click ⚡ Fix All Faststart</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">29. Faststart fixes are lossless stream-copy remuxes (no re-encode) and preserve original timestamps; fixed rows turn green</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">30. Extension/container mismatches (e.g. .mp4 that is really Matroska) explain why metadata wouldn't embed — rename or remux to the correct container</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">31. If a metadata write FAILS after all attempts: right-click the file in the FILES panel → 🔧 Remux to .mp4 (keeps MP4 + faststart) or 🔧 Remux to .mkv. Then retry embedding on the clean file. Use 🔧 Open in fallback app (TagScanner) as an alternative</TextBlock>
+                                    <!-- ── 4: Move / Copy ───────────────────────────────────────── -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=WorkflowTopicSelector}" Value="4">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Style="{StaticResource BaseText}">1. Select files in the FILES panel → MOVE / COPY tab</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">2. Destination folder is restored from the last session; Browse to change it</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">3. Enable Smart Organisation in Settings to route Movies and TV Episodes to separate subfolders automatically — untagged files with S##E## filenames are also rescued to TV Shows</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">4. Choose conflict resolution: Overwrite / Skip / Rename → Copy or Move</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">5. After a Move, the FILES panel reloads from the destination folder automatically</TextBlock>
+                                    </StackPanel>
 
-                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,8,0,4">Recovery workflow</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">32. On every launch, the app scans the last-used folder and Library folder for crash orphans</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">33. If orphans are found, the Recovery dialog opens automatically after the main window loads</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">34. INCOMPLETE WRITE (.vme_tmp_*): Resume applies pending tags; Delete discards the temp file</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">35. STALE BACKUP (.vme_bak_*): write already succeeded — just Delete the redundant backup</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">36. Change behaviour in Settings → Temp File Handling: Ask / Auto-Delete / Ignore</TextBlock>
+                                    <!-- ── 5: Duplicates ────────────────────────────────────────── -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=WorkflowTopicSelector}" Value="5">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Style="{StaticResource BaseText}">1. Enable Duplicates Tab in Settings — the 🔍 DUPLICATES tab appears in the tab bar</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">2. Set Source Folder; leave Destination blank to scan one folder, or set it to compare two</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">3. 🔍 Scan for Duplicates — fast size/metadata/hash scan (respects excluded patterns from Settings)</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">4. For renamed / re-encoded / untagged copies: click ⬇ Install fpcalc (once), then ♪ Deep Scan to match by audio fingerprint regardless of filename or tags</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">5. Export your fingerprint cache (⬆ Export Cache) to back it up or share with another machine</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">6. Import a cache (⬇ Import Cache) → choose Merge (add to existing) or Replace. No restart needed</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">7. After results appear, click ⚙ Keep Tagged / Keep Largest / Keep Newest to auto-select across all groups</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">8. Watch the "📊 N selected · X GB" badge; tick/untick individual checkboxes to adjust</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">9. Use 🎬 Compare Side-by-Side on any uncertain group, then 🗑 Delete Selected (Recycle Bin) or 📤 Move Selected</TextBlock>
+                                    </StackPanel>
+
+                                    <!-- ── 6: Media Health Check ────────────────────────────────── -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=WorkflowTopicSelector}" Value="6">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Style="{StaticResource BaseText}">1. Open the 📋 HEALTH CHECK tab → Browse to a folder → 📋 Scan for Problems</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">2. Each row shows the detected container, the issue, and a suggested fix; 📋 Copy Report exports the full list</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">3. To fix MP4 no-faststart in bulk: install ffmpeg (Settings → External Tools → 🌐 Download, drop ffmpeg.exe in native\), then click ⚡ Fix All Faststart. A red warning banner appears while files are being modified — don't close the app until it finishes</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">4. Faststart fixes are lossless (no re-encode) and preserve timestamps; fixed rows update in-place</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">5. Extension/container mismatch (e.g. .mp4 containing Matroska bytes): right-click → ✏ Fix Extension renames instantly — no remux, no re-encode, no quality loss</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">6. If a metadata write keeps failing: right-click → 🔧 Remux to .mp4 or 🔧 Remux to .mkv for a lossless container rebuild. The original file is untouched</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">7. After remuxing, the clean copy loads in the FILES panel marked REMUXED. Use the buttons under the Preview panel: ✓ Replace Original or ↩ Restore Original — nothing is deleted until you choose</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">8. For proper MKV artwork embedding (Plex/Jellyfin/Emby): install MKVToolNix — drop mkvpropedit.exe into the native\ folder, or install normally and click 🔄 Re-detect in Settings → MKV Artwork Engine. Without it, TagLib# handles MKV artwork as a fallback</TextBlock>
+                                    </StackPanel>
+
+                                    <!-- ── 7: Subtitles, Trakt and NFO ─────────────────────────── -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=WorkflowTopicSelector}" Value="7">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,4">Subtitles</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">1. Settings → OpenSubtitles API key (free account at opensubtitles.com)</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">2. Select a file → RETRIEVED DATA tab → Subtitles section — search runs automatically</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">3. Click a result to download — the .srt/.ass file saves alongside the video, named Video.en.srt</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" Margin="0,0,0,8">4. Free tier limit: 5 downloads/day. The app shows remaining downloads after each one</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,4">Trakt</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">5. Settings → Trakt.tv → Connect → authorise in your browser (device code flow)</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">6. The ♥ Watched toggle on each file syncs to Trakt in real time</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" Margin="0,0,0,8">7. Trakt → Sync Now pulls your full watch history in bulk. Token auto-refreshes before expiry</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,4">NFO export (Kodi / Jellyfin)</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">8. Select files → FILES panel → 📄 Export NFO generates Kodi-compatible .nfo sidecars</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">9. Sidecars include IMDB/TMDB IDs and MPAA rating — useful when the media server prefers sidecars over embedded tags</TextBlock>
+                                    </StackPanel>
+
+                                    <!-- ── 8: Recovery ──────────────────────────────────────────── -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=WorkflowTopicSelector}" Value="8">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Style="{StaticResource BaseText}">1. On every launch the app scans the last-used folder and Library folder for crash orphans</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">2. If orphans are found, the Recovery dialog opens automatically after the main window loads</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">3. INCOMPLETE WRITE (.vme_tmp_*): Resume applies pending tags; Delete discards the temp file</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">4. STALE BACKUP (.vme_bak_*): the write already succeeded — just Delete the redundant backup</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">5. Interrupted remux or faststart fix leaves .remux.* or .faststart.tmp.* files — the startup sweep offers to clean them up; your originals are always intact</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">6. Change behaviour in Settings → Temp File Handling: Ask / Auto-Delete / Ignore</TextBlock>
+                                    </StackPanel>
+
                                 </StackPanel>
-
-                                <Separator/>
 
                                 <!-- Revision history -->
                                 <TextBlock Text="Revision History" Style="{StaticResource SectionHeader}"/>
                                 <StackPanel>
 
-                                                                        <!-- ═══ Recent builds — v1.4.0 Builds 46–89 ═══════════════ -->
+                                                                        <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
+
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 90 — Quality pass: 9 improvements + thread safety + CI
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        IMPROVEMENTS: Fingerprint cache import now supports Merge vs Replace
+                                        and no longer requires restart (new Reload/MergeFrom methods). Quick
+                                        Scan now honours excluded patterns (was only respected in Deep Scan).
+                                        Cross-stage duplicate group deduplication — same file pair caught by
+                                        multiple stages now appears only once, highest-confidence kept. TMDB
+                                        popularity score used as tiebreaker in search ranking (common-title
+                                        disambiguation). Standard tag fallback in MetadataService reads IMDB
+                                        ID, rating, MPA from Apple tag atoms on files tagged by external tools
+                                        (TagScanner, tinyMediaManager, Plex). Health Check: new ✏ Fix Extension
+                                        option renames mislabeled files instantly (no remux, no re-encode).
+                                        TV batch now cross-references library gaps and logs which episodes
+                                        remain unmatched. Folder watcher completely rewritten: silent seed
+                                        pass on startup prevents re-reporting existing files; FSW buffer-overflow
+                                        recovery now does an immediate poll scan instead of waiting up to 3
+                                        minutes; prunes stale entries every 10 polls.
+                                        THREAD SAFETY: ConsoleLog.Insert routed through dispatcher-aware Log()
+                                        helper across all 122 call sites — eliminates NotSupportedException on
+                                        CollectionView from background threads (Trakt startup check, library
+                                        rebuild, orphan sweep). Library cache auto-prunes ghost entries on
+                                        every scan. VmeCommentCodec extracted as pure-logic class for testing.
+                                        TESTS: MetadataRoundTripTests (10) verify VME tag encode/decode
+                                        round-trips including TV episode fields, rating precision, locale-safe
+                                        decimal format, and token isolation. Total: 66 test methods.
+                                        CI: GitHub Actions updated to checkout@v4.2.2 / setup-dotnet@v4.3.1
+                                        (eliminates Node.js 20 deprecation warnings before June 2026 deadline).
+                                    </TextBlock>
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 89 — Media Health Check + Deep Scan polish

@@ -548,63 +548,20 @@ public class MetadataService
 
     // ── ID storage helpers ────────────────────────────────────────────────────
 
-    private static string BuildComment(
+    internal static string BuildComment(
         string description, string imdbId, string tmdbId,
         float rating = 0f, string mpaRating = "", bool isWatched = false,
-        // TV / Episode optional params
         bool isEpisode = false, string showTitle = "", int? season = null,
         int? episode = null, string episodeTitle = "", string airedDate = "",
         string tvdbId = "", string tmdbSeriesId = "")
-    {
-        var parts = new System.Text.StringBuilder();
-        if (!string.IsNullOrWhiteSpace(description))
-            parts.Append(description.Trim());
+        => VmeCommentCodec.Encode(description, imdbId, tmdbId, rating, mpaRating, isWatched,
+            isEpisode, showTitle, season, episode, episodeTitle, airedDate, tvdbId, tmdbSeriesId);
 
-        var ids = new System.Text.StringBuilder();
-        if (!string.IsNullOrWhiteSpace(imdbId))   ids.Append($"[VME:IMDB={imdbId.Trim()}]");
-        if (!string.IsNullOrWhiteSpace(tmdbId))   ids.Append($"[VME:TMDB={tmdbId.Trim()}]");
-        if (rating > 0f)
-            ids.Append($"[VME:RATING={rating.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}]");
-        if (!string.IsNullOrWhiteSpace(mpaRating))
-            ids.Append($"[VME:MPA={mpaRating}]");
-        if (isWatched)
-            ids.Append("[VME:WATCHED=1]");
-        // TV / Episode tags
-        if (isEpisode)
-        {
-            ids.Append("[VME:EP_MODE=1]");
-            if (!string.IsNullOrWhiteSpace(showTitle))    ids.Append($"[VME:SHOW={showTitle}]");
-            if (season.HasValue)                          ids.Append($"[VME:SEASON={season}]");
-            if (episode.HasValue)                         ids.Append($"[VME:EPISODE={episode}]");
-            if (!string.IsNullOrWhiteSpace(episodeTitle)) ids.Append($"[VME:ETITLE={episodeTitle}]");
-            if (!string.IsNullOrWhiteSpace(airedDate))    ids.Append($"[VME:AIRED={airedDate}]");
-            if (!string.IsNullOrWhiteSpace(tvdbId))       ids.Append($"[VME:TVDB={tvdbId}]");
-            if (!string.IsNullOrWhiteSpace(tmdbSeriesId)) ids.Append($"[VME:TMDB_SERIES={tmdbSeriesId}]");
-        }
+    internal static string ExtractDescription(string comment)
+        => VmeCommentCodec.GetDescription(comment);
 
-        if (ids.Length > 0)
-        {
-            if (parts.Length > 0) parts.Append('\n');
-            parts.Append(ids);
-        }
-        return parts.ToString();
-    }
-
-    private static string ExtractDescription(string comment)
-    {
-        if (string.IsNullOrWhiteSpace(comment)) return string.Empty;
-        var clean = System.Text.RegularExpressions.Regex.Replace(
-            comment, @"\[VME:[A-Z]+=([^\]]*)\]", string.Empty);
-        return clean.Trim('\n', '\r', ' ');
-    }
-
-    private static string ExtractTagValue(string comment, string key)
-    {
-        if (string.IsNullOrWhiteSpace(comment)) return string.Empty;
-        var match = System.Text.RegularExpressions.Regex.Match(
-            comment, $@"\[VME:{key}=([^\]]*)\]");
-        return match.Success ? match.Groups[1].Value.Trim() : string.Empty;
-    }
+    internal static string ExtractTagValue(string comment, string key)
+        => VmeCommentCodec.Get(comment, key);
 
     // ── Artwork Compression ───────────────────────────────────────────────────
 

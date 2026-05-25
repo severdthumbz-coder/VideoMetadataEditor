@@ -505,6 +505,21 @@ public partial class MainViewModel : INotifyPropertyChanged
 
     public ObservableCollection<string> ConsoleLog { get; } = [];
 
+    /// <summary>
+    /// Thread-safe ConsoleLog insert. Safe to call from any thread — dispatches
+    /// to the UI thread automatically if needed. Replaces direct Log(...)
+    /// calls from background tasks which throw NotSupportedException on WPF collection views.
+    /// </summary>
+    private void Log(string message)
+    {
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.CheckAccess())
+            ConsoleLog.Insert(0, message);
+        else
+            dispatcher.InvokeAsync(() => ConsoleLog.Insert(0, message),
+                System.Windows.Threading.DispatcherPriority.Background);
+    }
+
     // ── Copy / Move Tab ───────────────────────────────────────────────────────
 
     private string _copyDestination = string.Empty;
@@ -639,7 +654,7 @@ public partial class MainViewModel : INotifyPropertyChanged
         _libraryCts?.Cancel();  // also cancel any in-progress library scan
         IsCancelling = true;
         StatusText = "Cancelling… (completing current file safely)";
-        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] ✕ Cancel requested — waiting for safe stop point.");
+        Log( $"[{DateTime.Now:HH:mm:ss}] ✕ Cancel requested — waiting for safe stop point.");
     }
 
     private CancellationToken BeginOperation()
@@ -1028,16 +1043,30 @@ public partial class MainViewModel : INotifyPropertyChanged
         get
         {
             if (Services.MkvPropEditService.IsAvailable)
+            {
+                var ver = string.IsNullOrWhiteSpace(Services.MkvPropEditService.Version)
+                    ? string.Empty
+                    : System.Environment.NewLine + "    " + Services.MkvPropEditService.Version;
                 return "✓  mkvpropedit found:" + System.Environment.NewLine
-                     + "    " + Services.MkvPropEditService.ExePath + System.Environment.NewLine
-                     + "MKV artwork uses MKVPropEdit for proper Matroska cover.jpg embedding.";
+                     + "    " + Services.MkvPropEditService.ExePath
+                     + ver + System.Environment.NewLine
+                     + "MKV artwork uses mkvpropedit for proper Matroska cover.jpg embedding.";
+            }
 
+            var nativeDir = Services.NativeLibraryExtractor.NativeDir;
             return "✗  mkvpropedit not found." + System.Environment.NewLine
-                 + @"Searched: %ProgramFiles%\MKVToolNix\, Scoop, and next to this EXE (including MKVToolNix\ subfolder)." + System.Environment.NewLine
-                 + "Install MKVToolNix or place the MKVToolNix folder next to VideoMetadataEditor.exe." + System.Environment.NewLine
-                 + "Without it, TagLib# is used for MKV artwork (less reliable with some media servers).";
+                 + "Searched: native\\ folder, %ProgramFiles%\\MKVToolNix\\, Scoop, PATH." + System.Environment.NewLine
+                 + $"Quickest fix: drop mkvpropedit.exe into:{System.Environment.NewLine}    {nativeDir}" + System.Environment.NewLine
+                 + "Or install MKVToolNix and click 🔄 Re-detect." + System.Environment.NewLine
+                 + "Without it, TagLib# handles MKV artwork (less reliable with Plex/Jellyfin).";
         }
     }
+
+    public ICommand RedetectMkvPropEditCommand => new RelayCommand(_ =>
+    {
+        Services.MkvPropEditService.Redetect();
+        RaiseProperty(nameof(MkvPropEditStatus));
+    });
 
     // ── Language settings ─────────────────────────────────────────────────────
     public System.Collections.ObjectModel.ObservableCollection<string> SupportedLanguageDisplayNames =>
@@ -1420,13 +1449,13 @@ public partial class MainViewModel : INotifyPropertyChanged
         {
             App.ConfigService.Save();
             StatusText = $"✓ Move/Copy settings saved — Destination: {Settings.LastCopyDestination}  ·  Conflict: {Settings.LastConflictMode}";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] 💾 Move/Copy settings saved.");
+            Log( $"[{DateTime.Now:HH:mm:ss}] 💾 Move/Copy settings saved.");
         });
         SaveSettingsCommand      = new RelayCommand(_ =>
         {
             App.ConfigService.Save();
             StatusText = "✓ Settings saved — including Move/Copy destination and conflict mode.";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] 💾 Settings saved (Move/Copy: dest={Settings.LastCopyDestination}, conflict={Settings.LastConflictMode}).");
+            Log( $"[{DateTime.Now:HH:mm:ss}] 💾 Settings saved (Move/Copy: dest={Settings.LastCopyDestination}, conflict={Settings.LastConflictMode}).");
         });
         ValidateKeysCommand      = new AsyncRelayCommand(ValidateKeysAsync, _ => !IsBusy);
         SelectAllCommand         = new RelayCommand(_ => { foreach (var f in Files) if (!f.IsSeparator) f.IsSelected = true; });
@@ -1484,7 +1513,7 @@ public partial class MainViewModel : INotifyPropertyChanged
             StatusText = lockIt
                 ? $"🔒 Locked {count} file(s)."
                 : $"🔓 Unlocked {count} file(s).";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] {StatusText}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] {StatusText}");
         }, _ => Files.Any(f => f.IsSelected && !f.IsSeparator));
 
         // Detect copy engines at startup
@@ -1499,11 +1528,11 @@ public partial class MainViewModel : INotifyPropertyChanged
         // Duplicates tab ViewModel
         DuplicatesVM = new DuplicatesViewModel(_metadataService);
         DuplicatesVM.FileDeleted  += (_, msg) =>
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] 🗑 {msg}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] 🗑 {msg}");
         DuplicatesVM.ErrorOccurred += (_, err) =>
         {
             StatusText = $"Duplicates: {err}";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] ✕ Duplicates error: {err}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] ✕ Duplicates error: {err}");
         };
 
         // Wire WatchFolderService events
@@ -1513,10 +1542,10 @@ public partial class MainViewModel : INotifyPropertyChanged
             var added = Files.FirstOrDefault(f => !f.IsSeparator &&
                 f.FilePath.Equals(path, StringComparison.OrdinalIgnoreCase));
             if (added != null)
-                ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] 📁 Watch folder: {added.FileName}");
+                Log( $"[{DateTime.Now:HH:mm:ss}] 📁 Watch folder: {added.FileName}");
         };
         _watchFolderService.WatcherError += msg =>
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] ⚠ Watch folder: {msg}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] ⚠ Watch folder: {msg}");
 
         // Library commands
         // Auto-scan on startup if a library folder is configured.
@@ -1704,7 +1733,7 @@ public partial class MainViewModel : INotifyPropertyChanged
                         if (!LibraryEntries.Any(e => e.FilePath.Equals(path, StringComparison.OrdinalIgnoreCase)))
                         {
                             LibraryEntries.Add(entry);
-                            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] 📚 Library watch: {entry.FileName} added.");
+                            Log( $"[{DateTime.Now:HH:mm:ss}] 📚 Library watch: {entry.FileName} added.");
                             StatusText = $"Library: {entry.FileName} detected.";
                         }
                     }, System.Windows.Threading.DispatcherPriority.Background);
@@ -1716,7 +1745,7 @@ public partial class MainViewModel : INotifyPropertyChanged
             });
         };
         _libraryWatchService.WatcherError += msg =>
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] ⚠ Library watch: {msg}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] ⚠ Library watch: {msg}");
 
         // Apply library watch if enabled in previous session
         ApplyLibraryWatchSetting();
@@ -1777,7 +1806,7 @@ public partial class MainViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             StatusText = $"Add Folder error: {ex.Message}";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] ✕ AddFolder exception: {ex.Message}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] ✕ AddFolder exception: {ex.Message}");
             EndOperation();
         }
     }
@@ -1900,7 +1929,7 @@ public partial class MainViewModel : INotifyPropertyChanged
         // files appear quickly even on huge folders.
         int uiChunkSize = driveProfile.IsSsd ? 200 : 100;
 
-        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] {driveProfile.Description}");
+        Log( $"[{DateTime.Now:HH:mm:ss}] {driveProfile.Description}");
         StatusText = $"Loading {toLoad.Count} file(s) — {metaWorkers} parallel readers ({driveProfile.Description.Split('—')[0].Trim()})…";
 
         int processed = 0;
@@ -2150,10 +2179,10 @@ public partial class MainViewModel : INotifyPropertyChanged
         // Compute file hash for accurate matching (hash search >> title search)
         var (fileHash, fileSize) = Services.OpenSubtitlesService.ComputeHash(file.FilePath);
         if (!string.IsNullOrWhiteSpace(fileHash))
-            ConsoleLog.Insert(0,
+            Log(
                 $"[{DateTime.Now:HH:mm:ss}] OpenSubtitles: using file hash search ({fileHash[..8]}…)");
         else
-            ConsoleLog.Insert(0,
+            Log(
                 $"[{DateTime.Now:HH:mm:ss}] OpenSubtitles: using title/IMDb search (file too small for hash)");
 
         var (results, err) = await _openSubsService.SearchAsync(
@@ -2177,7 +2206,7 @@ public partial class MainViewModel : INotifyPropertyChanged
         foreach (var r in results) SubtitleSearchResults.Add(r);
         var titleLabel = meta?.Title ?? file.FileName;
         StatusText = $"Found {results.Count} subtitle(s). Select one and click Download.";
-        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] OpenSubtitles: {results.Count} result(s) for '{titleLabel}'");
+        Log( $"[{DateTime.Now:HH:mm:ss}] OpenSubtitles: {results.Count} result(s) for '{titleLabel}'");
     }
 
     private async Task DownloadSubtitleAsync()
@@ -2216,7 +2245,7 @@ public partial class MainViewModel : INotifyPropertyChanged
         var savedName = System.IO.Path.GetFileName(savedPath);
         SubtitleDownloadStatus = $"✓ Saved: {savedName}";
         StatusText = $"✓ Subtitle saved: {savedName}";
-        ConsoleLog.Insert(0,
+        Log(
             $"[{DateTime.Now:HH:mm:ss}] ✓ Subtitle downloaded: {savedName}");
 
         // Refresh detected subtitles on the current file
@@ -2407,20 +2436,20 @@ public partial class MainViewModel : INotifyPropertyChanged
         var maskedId = clientId.Length > 8
             ? clientId[..8] + "…" + $"({clientId.Length} chars)"
             : $"({clientId.Length} chars - too short)";
-        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] 🎯 Trakt: requesting device code (Client ID: {maskedId})");
+        Log( $"[{DateTime.Now:HH:mm:ss}] 🎯 Trakt: requesting device code (Client ID: {maskedId})");
 
         var (codeResult, codeErr) = await _traktService.RequestDeviceCodeAsync(clientId, ct);
         if (codeResult == null)
         {
             TraktConnecting = false;
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] 🎯 Trakt error: {codeErr}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] 🎯 Trakt error: {codeErr}");
             StatusText = $"Trakt error: {codeErr}";
             return;
         }
 
         TraktPinDisplay = codeResult.UserCode;
         StatusText = $"Trakt: go to {codeResult.VerificationUrl} and enter code {codeResult.UserCode}";
-        ConsoleLog.Insert(0,
+        Log(
             $"[{DateTime.Now:HH:mm:ss}] 🎯 Trakt: visit {codeResult.VerificationUrl} and enter {codeResult.UserCode}");
 
         var progress = new System.Progress<string>(msg => StatusText = $"Trakt: {msg}");
@@ -2458,7 +2487,7 @@ public partial class MainViewModel : INotifyPropertyChanged
         RaiseProperty(nameof(TraktStatusText));
         RaiseProperty(nameof(TraktLastSyncText));
         StatusText = $"✓ Trakt connected as @{Settings.TraktUsername}";
-        ConsoleLog.Insert(0,
+        Log(
             $"[{DateTime.Now:HH:mm:ss}] ✓ Trakt.tv connected as @{Settings.TraktUsername}");
     }
 
@@ -2477,10 +2506,7 @@ public partial class MainViewModel : INotifyPropertyChanged
 
         if (!isExpiring) return true;
 
-        var dispatcher = System.Windows.Application.Current?.Dispatcher;
-
-        dispatcher?.InvokeAsync(() => ConsoleLog.Insert(0,
-            $"[{DateTime.Now:HH:mm:ss}] 🎯 Trakt: access token expiring soon — refreshing…"));
+        Log($"[{DateTime.Now:HH:mm:ss}] 🎯 Trakt: access token expiring soon — refreshing…");
 
         var (newToken, err) = await _traktService.RefreshAccessTokenAsync(
             TraktClientId,
@@ -2490,8 +2516,7 @@ public partial class MainViewModel : INotifyPropertyChanged
 
         if (newToken == null)
         {
-            dispatcher?.InvokeAsync(() => ConsoleLog.Insert(0,
-                $"[{DateTime.Now:HH:mm:ss}] ⚠ Trakt token refresh failed: {err}. Please reconnect."));
+            Log($"[{DateTime.Now:HH:mm:ss}] ⚠ Trakt token refresh failed: {err}. Please reconnect.");
             StatusText = "Trakt: token expired — go to Settings → Trakt.tv and reconnect.";
             return false;
         }
@@ -2500,8 +2525,7 @@ public partial class MainViewModel : INotifyPropertyChanged
         Settings.TraktRefreshToken = newToken.RefreshToken;
         Settings.TraktTokenExpiry  = newToken.ExpiresAt;
         _ = App.ConfigService.SaveAsync();
-        dispatcher?.InvokeAsync(() => ConsoleLog.Insert(0,
-            $"[{DateTime.Now:HH:mm:ss}] ✓ Trakt token refreshed."));
+        Log($"[{DateTime.Now:HH:mm:ss}] ✓ Trakt token refreshed.");
         return true;
     }
 
@@ -2554,7 +2578,7 @@ public partial class MainViewModel : INotifyPropertyChanged
 
         IsBusy = false;
         StatusText = $"✓ Trakt sync complete — {matched} items marked watched";
-        ConsoleLog.Insert(0,
+        Log(
             $"[{DateTime.Now:HH:mm:ss}] ✓ Trakt sync: {matched} library items marked watched");
     }
 
@@ -2568,7 +2592,7 @@ public partial class MainViewModel : INotifyPropertyChanged
             entry.ImdbId, entry.TmdbId,
             entry.IsEpisode, entry.Season, entry.Episode);
         if (!ok)
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] ⚠ Trakt push failed: {err}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] ⚠ Trakt push failed: {err}");
     }
 
 

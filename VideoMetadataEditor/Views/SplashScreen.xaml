@@ -47,7 +47,7 @@
             <Border Grid.Row="2"
                     Background="{DynamicResource SurfaceAltBrush}"
                     CornerRadius="0,0,18,18">
-                <TextBlock Text="© 2026 VideoMetadataEditor  ·  v1.4.0 build 89  ·  Powered by TagLib# · TMDB · OMDB"
+                <TextBlock Text="© 2026 VideoMetadataEditor  ·  v1.4.0 build 90  ·  Powered by TagLib# · TMDB · OMDB"
                            FontSize="11"
                            Foreground="{DynamicResource ForegroundMutedBrush}"
                            HorizontalAlignment="Center" VerticalAlignment="Center"/>

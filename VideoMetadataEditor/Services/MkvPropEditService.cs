@@ -18,41 +18,52 @@ namespace VideoMetadataEditor.Services;
 public static class MkvPropEditService
 {
     private static string? _exePath;
+    private static string? _version;
     private static bool    _detected;
 
     // ── Detection ─────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Searches standard MKVToolNix install locations and PATH.
-    /// Called once by App.xaml.cs alongside FileCopyService.DetectEngines().
+    /// Searches standard MKVToolNix install locations, the app's native\ folder,
+    /// and PATH. Called once at startup; call Redetect() if the user installs
+    /// MKVToolNix after launch.
     /// </summary>
     public static void Detect()
     {
-        if (_detected) return;
         _detected = true;
+
+        var nativeDir = Services.NativeLibraryExtractor.NativeDir;
 
         var candidates = new List<string>
         {
-            // Standard Windows install paths
+            // ── Portable / native folder (highest priority) ──────────────────
+            // User drops mkvpropedit.exe directly into the native\ folder
+            Path.Combine(nativeDir, "mkvpropedit.exe"),
+            // User drops the full MKVToolNix folder into native\
+            Path.Combine(nativeDir, "MKVToolNix", "mkvpropedit.exe"),
+
+            // ── App folder variants ──────────────────────────────────────────
+            Path.Combine(AppContext.BaseDirectory, "mkvpropedit.exe"),
+            Path.Combine(AppContext.BaseDirectory, "MKVToolNix", "mkvpropedit.exe"),
+            Path.Combine(AppContext.BaseDirectory, "mkvtoolnix", "mkvpropedit.exe"),
+
+            // ── Standard Windows installs ────────────────────────────────────
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                 "MKVToolNix", "mkvpropedit.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
                 "MKVToolNix", "mkvpropedit.exe"),
-            // Scoop / Chocolatey / winget
+
+            // ── Package managers ─────────────────────────────────────────────
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 "scoop", "apps", "mkvtoolnix", "current", "mkvpropedit.exe"),
-            // Portable — same folder as this EXE
-            Path.Combine(AppContext.BaseDirectory, "mkvpropedit.exe"),
-            // Portable subfolder — MKVToolNix folder placed next to the EXE
-            Path.Combine(AppContext.BaseDirectory, "MKVToolNix", "mkvpropedit.exe"),
-            Path.Combine(AppContext.BaseDirectory, "mkvtoolnix", "mkvpropedit.exe"),
         };
 
         _exePath = candidates.FirstOrDefault(File.Exists);
+        _version = null;
 
         if (_exePath == null)
         {
-            // Try PATH
+            // Try PATH last
             try
             {
                 using var proc = Process.Start(new ProcessStartInfo("mkvpropedit", "--version")
@@ -68,6 +79,38 @@ public static class MkvPropEditService
             }
             catch { /* not on PATH */ }
         }
+
+        // Cache the version string for the Settings status display
+        if (_exePath != null)
+        {
+            try
+            {
+                using var proc = Process.Start(new ProcessStartInfo(_exePath, "--version")
+                {
+                    UseShellExecute        = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError  = true,
+                    CreateNoWindow         = true
+                });
+                proc?.WaitForExit(2000);
+                _version = proc?.StandardOutput.ReadToEnd()
+                    .Split('\n').FirstOrDefault(l => l.StartsWith("mkvpropedit"))
+                    ?.Trim() ?? string.Empty;
+            }
+            catch { _version = string.Empty; }
+        }
+    }
+
+    /// <summary>
+    /// Re-runs detection — call when the user installs MKVToolNix after launch
+    /// or drops mkvpropedit.exe into the native\ folder.
+    /// </summary>
+    public static void Redetect()
+    {
+        _exePath  = null;
+        _version  = null;
+        _detected = false;
+        Detect();
     }
 
     /// <summary>True if mkvpropedit was found during Detect().</summary>
@@ -75,6 +118,9 @@ public static class MkvPropEditService
 
     /// <summary>Full path or command name of mkvpropedit.</summary>
     public static string ExePath => _exePath ?? string.Empty;
+
+    /// <summary>Version string reported by mkvpropedit --version, or empty if not found.</summary>
+    public static string Version => _version ?? string.Empty;
 
     // ── Artwork write ─────────────────────────────────────────────────────────
 

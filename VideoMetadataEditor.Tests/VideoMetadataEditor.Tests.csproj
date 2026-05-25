@@ -25,6 +25,7 @@
     <Compile Include="../VideoMetadataEditor/Services/DriveCapabilityService.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/FfmpegService.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/NativeLibraryExtractor.cs"/>
+    <Compile Include="../VideoMetadataEditor/Services/VmeCommentCodec.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/Models.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/SubtitleModels.cs"/>
     <Compile Include="../VideoMetadataEditor/GlobalUsings.cs"/>

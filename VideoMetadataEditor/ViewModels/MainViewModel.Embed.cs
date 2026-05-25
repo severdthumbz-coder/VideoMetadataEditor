@@ -86,7 +86,7 @@ public partial class MainViewModel
         {
             var progress = new System.Progress<string>(msg =>
             {
-                ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] {msg}");
+                Log( $"[{DateTime.Now:HH:mm:ss}] {msg}");
                 StatusText = msg;
             });
 
@@ -97,17 +97,17 @@ public partial class MainViewModel
             // ── Step 2: Clear read-only attribute if set ─────────────────────
             if (targetFile.IsReadOnly)
             {
-                ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Read-only detected — attempting auto-clear…");
+                Log( $"[{DateTime.Now:HH:mm:ss}] Read-only detected — attempting auto-clear…");
                 bool cleared = await Services.FileLockService.TryClearReadOnlyAsync(targetFile.FilePath);
                 if (!cleared)
                 {
                     StatusText = $"🔒 Cannot clear read-only — check NTFS permissions.";
-                    ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] BLOCKED (read-only): {targetFile.FileName}");
+                    Log( $"[{DateTime.Now:HH:mm:ss}] BLOCKED (read-only): {targetFile.FileName}");
                     ReadOnlyFileBlocked?.Invoke(this, targetFile);
                     return;
                 }
                 RaiseProperty(nameof(SelectedFileIsReadOnly));
-                ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Read-only cleared automatically.");
+                Log( $"[{DateTime.Now:HH:mm:ss}] Read-only cleared automatically.");
             }
 
             // ── Step 3: Full writability diagnosis ────────────────────────────
@@ -117,13 +117,13 @@ public partial class MainViewModel
                 if (report.Issue == Services.WritabilityIssue.LockedByThisApp)
                 {
                     StatusText = "⏯ Waiting for preview player to release file…";
-                    ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Waiting for player release: {targetFile.FileName}");
+                    Log( $"[{DateTime.Now:HH:mm:ss}] Waiting for player release: {targetFile.FileName}");
                     bool released = await Services.FileLockService.WaitForWritableAsync(
                         targetFile.FilePath, maxWaitMs: 4000);
                     if (!released)
                     {
                         StatusText = $"⏯ Preview player still holds the file — stop playback and retry.";
-                        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] BLOCKED (player lock): {targetFile.FileName}");
+                        Log( $"[{DateTime.Now:HH:mm:ss}] BLOCKED (player lock): {targetFile.FileName}");
                         ReadOnlyFileBlocked?.Invoke(this, targetFile);
                         return;
                     }
@@ -132,9 +132,9 @@ public partial class MainViewModel
                 {
                     var friendly = Services.FileLockService.FriendlyError(report);
                     StatusText = friendly;
-                    ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] BLOCKED: {report.Message}");
+                    Log( $"[{DateTime.Now:HH:mm:ss}] BLOCKED: {report.Message}");
                     foreach (var p in report.LockingProcesses)
-                        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}]   Locking process: {p.Name} (PID {p.Pid})");
+                        Log( $"[{DateTime.Now:HH:mm:ss}]   Locking process: {p.Name} (PID {p.Pid})");
                     ReadOnlyFileBlocked?.Invoke(this, targetFile);
                     return;
                 }
@@ -163,7 +163,7 @@ public partial class MainViewModel
                 // AutoRenameEnabled only controls AUTOMATIC rename in Batch/Watch operations
                 (renamed, newPath, err) = await SafeRenameAsync(targetFile, metadataToWrite, ct);
                 if (!renamed && !string.IsNullOrWhiteSpace(err))
-                    ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Rename skipped: {err}");
+                    Log( $"[{DateTime.Now:HH:mm:ss}] Rename skipped: {err}");
 
                 if (renamed && File.Exists(newPath))
                 {
@@ -179,13 +179,13 @@ public partial class MainViewModel
                         // Update watch service knownPaths so the old name is forgotten
                         // and the new name is registered — prevents re-detection of old name
                         _watchFolderService.AddKnownPath(newPath);
-                        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Renamed: {oldName} → {newName}");
+                        Log( $"[{DateTime.Now:HH:mm:ss}] Renamed: {oldName} → {newName}");
                         RenameSucceeded?.Invoke(this, new RenameEventArgs(oldName, newName));
                     }
                 }
                 else if (!renamed && !string.IsNullOrWhiteSpace(err))
                 {
-                    ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Rename error: {err}");
+                    Log( $"[{DateTime.Now:HH:mm:ss}] Rename error: {err}");
                     RenameFailed?.Invoke(this, new RenameEventArgs(oldName, "", err));
                 }
 
@@ -207,8 +207,8 @@ public partial class MainViewModel
                     var diag   = writeResult.Diagnosis;
                     var detail = BuildDiagnosticMessage(targetFile.FileName, diag);
                     targetFile.WriteErrorDetail = detail;
-                    ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] WRITE FAILED — {targetFile.FileName}");
-                    ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}]   {diag.Reasons.FirstOrDefault()}");
+                    Log( $"[{DateTime.Now:HH:mm:ss}] WRITE FAILED — {targetFile.FileName}");
+                    Log( $"[{DateTime.Now:HH:mm:ss}]   {diag.Reasons.FirstOrDefault()}");
                     if (Settings.VerboseWriteErrors)
                         WriteFailedDetailed?.Invoke(this, (targetFile, detail));
                 }
@@ -217,11 +217,11 @@ public partial class MainViewModel
         catch (OperationCanceledException)
         {
             StatusText = "Cancelled.";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Apply cancelled by user.");
+            Log( $"[{DateTime.Now:HH:mm:ss}] Apply cancelled by user.");
         }
         catch (Exception ex)
         {
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Apply error: {ex.Message}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] Apply error: {ex.Message}");
             StatusText = $"Error: {ex.Message}";
         }
         finally
@@ -261,7 +261,7 @@ public partial class MainViewModel
             var newName = Path.GetFileName(newPath);
             targetFile.FilePath = newPath;
             StatusText = $"✓ Renamed: {oldName} → {newName}";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Renamed: {oldName} → {newName}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] Renamed: {oldName} → {newName}");
             RenameSucceeded?.Invoke(this, new RenameEventArgs(targetFile.FilePath, newPath));
 
             // Refresh the display name shown in the Files panel
@@ -270,7 +270,7 @@ public partial class MainViewModel
         else
         {
             StatusText = $"Rename failed: {error}";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Rename failed: {error}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] Rename failed: {error}");
         }
 
         EndOperation(resetProgress: false);
@@ -337,7 +337,7 @@ public partial class MainViewModel
         StatusText = failed == 0
             ? $"✓ Renamed {succeeded} file(s)."
             : $"Renamed {succeeded} file(s) — {failed} failed.";
-        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Batch rename: {succeeded} succeeded, {failed} failed.");
+        Log( $"[{DateTime.Now:HH:mm:ss}] Batch rename: {succeeded} succeeded, {failed} failed.");
         RaiseProperty(nameof(UndoLastEmbedCommand));
         EndOperation(resetProgress: false);
     }
@@ -390,7 +390,7 @@ public partial class MainViewModel
                 // Override IsEpisode to false — use the movie pattern instead
                 var corrected = meta.Clone();
                 corrected.IsEpisode = false;
-                ConsoleLog.Insert(0,
+                Log(
                     $"[{DateTime.Now:HH:mm:ss}] ⚠ Type mismatch: '{vf.FileName}' has no episode code " +
                     $"but TMDB returned a series result ('{meta.ShowTitle ?? meta.Title}'). " +
                     $"Using movie pattern instead. Check the metadata manually.");
@@ -403,7 +403,7 @@ public partial class MainViewModel
                 // TMDB returned a movie for what looks like a TV episode file.
                 // BLOCK the rename entirely — do not apply movie pattern to episode files.
                 // The file keeps its original name; the user should use 📺 TV Batch instead.
-                ConsoleLog.Insert(0,
+                Log(
                     $"[{DateTime.Now:HH:mm:ss}] ⛔ Rename blocked: '{vf.FileName}' has an episode " +
                     $"code (S##E##) but TMDB returned a movie result ('{meta.Title}'). " +
                     $"Metadata embedded but file NOT renamed. Use 📺 TV Batch for episode files.");
@@ -427,7 +427,7 @@ public partial class MainViewModel
 
         var progress = new System.Progress<string>(msg =>
         {
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] {msg}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] {msg}");
             StatusText = msg;
         });
 
@@ -500,13 +500,13 @@ public partial class MainViewModel
         {
             var samplePath = selected.First().FilePath;
             writeWorkers   = Services.WriteThreadService.RecommendedWorkers(samplePath);
-            ConsoleLog.Insert(0,
+            Log(
                 $"[{DateTime.Now:HH:mm:ss}] Auto concurrency: {Services.WriteThreadService.Describe(samplePath)}");
         }
         else
         {
             writeWorkers = Math.Max(1, Settings.MaxConcurrentProcessing);
-            ConsoleLog.Insert(0,
+            Log(
                 $"[{DateTime.Now:HH:mm:ss}] Manual concurrency: {writeWorkers} worker(s)");
         }
 
@@ -579,7 +579,7 @@ public partial class MainViewModel
                     if (writeResult.Diagnosis != null)
                     {
                         vf.WriteErrorDetail = BuildDiagnosticMessage(vf.FileName, writeResult.Diagnosis);
-                        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] WRITE FAILED — {vf.FileName}: {writeResult.Diagnosis.Reasons.FirstOrDefault()}");
+                        Log( $"[{DateTime.Now:HH:mm:ss}] WRITE FAILED — {vf.FileName}: {writeResult.Diagnosis.Reasons.FirstOrDefault()}");
                     }
                     Interlocked.Increment(ref failCount);
                 }
@@ -1169,7 +1169,7 @@ public partial class MainViewModel
         RaiseProperty(nameof(SavedConflictMode));
         RaiseProperty(nameof(ClearSavedCopyDestCommand));
         StatusText = $"✓ Move/Copy settings saved — destination: {(string.IsNullOrWhiteSpace(CopyDestination) ? "(none)" : CopyDestination)}, conflict mode: {ConflictMode}";
-        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] 💾 Move/Copy settings saved.");
+        Log( $"[{DateTime.Now:HH:mm:ss}] 💾 Move/Copy settings saved.");
     }
 
     private void ClearSavedCopyDest()
@@ -1201,13 +1201,13 @@ public partial class MainViewModel
                     { UseShellExecute = true };
 
             System.Diagnostics.Process.Start(psi);
-            ConsoleLog.Insert(0,
+            Log(
                 $"[{DateTime.Now:HH:mm:ss}] 🔧 Opened in {FallbackAppName}: {System.IO.Path.GetFileName(filePath)}");
         }
         catch (Exception ex)
         {
             StatusText = $"Could not launch {FallbackAppName}: {ex.Message}";
-            ConsoleLog.Insert(0,
+            Log(
                 $"[{DateTime.Now:HH:mm:ss}] ✕ Fallback app launch failed: {ex.Message}");
         }
     }
@@ -1317,7 +1317,7 @@ public partial class MainViewModel
             Settings.LibraryWatchPollMinutes);
 
         var folderList = string.Join(", ", allFolders.Select(System.IO.Path.GetFileName));
-        ConsoleLog.Insert(0,
+        Log(
             $"[{DateTime.Now:HH:mm:ss}] 📚 Library watch started: {folderList} ({allFolders.Count} folder(s))");
     }
 
@@ -1529,7 +1529,7 @@ public partial class MainViewModel
 
             if (skipped.Count > 0)
             {
-                ConsoleLog.Insert(0,
+                Log(
                     $"[{DateTime.Now:HH:mm:ss}] ⚠ TV Batch — {skipped.Count} file(s) skipped: " +
                     $"no S##E## code found. ({string.Join(", ", skipped.Take(3).Select(f => f.FileName))}" +
                     (skipped.Count > 3 ? $"… +{skipped.Count - 3} more" : "") + ")");
@@ -1540,7 +1540,7 @@ public partial class MainViewModel
                     .Select(p => p.showTitle).Distinct().ToList());
                 if (libraryGaps.Count > 0)
                 {
-                    ConsoleLog.Insert(0,
+                    Log(
                         $"[{DateTime.Now:HH:mm:ss}] 💡 Known library gaps that could not be auto-matched: " +
                         string.Join(", ", libraryGaps.Take(8)) +
                         (libraryGaps.Count > 8 ? $" (+{libraryGaps.Count - 8} more)" : "") +
@@ -1561,7 +1561,7 @@ public partial class MainViewModel
                          StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            ConsoleLog.Insert(0,
+            Log(
                 $"[{DateTime.Now:HH:mm:ss}] 📺 TV Batch — " +
                 $"{parseable.Count} file(s), {groups.Count} show(s): " +
                 string.Join(", ", groups.Select(g => g.Key)));
@@ -1584,7 +1584,7 @@ public partial class MainViewModel
 
                 if (tvResults == null || tvResults.Count == 0)
                 {
-                    ConsoleLog.Insert(0,
+                    Log(
                         $"[{DateTime.Now:HH:mm:ss}] ✗ '{showName}' — no TMDB results" +
                         (tvErr != null ? $": {tvErr}" : ""));
                     failed += group.Count();
@@ -1596,7 +1596,7 @@ public partial class MainViewModel
                 var best = PickBestTvResult(tvResults, showName);
                 if (best == null)
                 {
-                    ConsoleLog.Insert(0,
+                    Log(
                         $"[{DateTime.Now:HH:mm:ss}] ✗ '{showName}' — no confident match " +
                         $"(best: '{tvResults[0].Title}')");
                     failed += group.Count();
@@ -1605,7 +1605,7 @@ public partial class MainViewModel
                 }
 
                 var seriesId = best.TmdbId.ToString();
-                ConsoleLog.Insert(0,
+                Log(
                     $"[{DateTime.Now:HH:mm:ss}] ✓ '{showName}' → '{best.Title}' (TMDB {seriesId})");
 
                 // ── Step 4: Embed each episode in the group ───────────────────
@@ -1630,7 +1630,7 @@ public partial class MainViewModel
 
                         if (meta == null)
                         {
-                            ConsoleLog.Insert(0,
+                            Log(
                                 $"[{DateTime.Now:HH:mm:ss}] ✗ S{season:D2}E{episode:D2} — " +
                                 $"no metadata: {epErr ?? "unknown"}");
                             failed++;
@@ -1650,7 +1650,7 @@ public partial class MainViewModel
                     catch (OperationCanceledException) { break; }
                     catch (Exception ex)
                     {
-                        ConsoleLog.Insert(0,
+                        Log(
                             $"[{DateTime.Now:HH:mm:ss}] ✗ {file.FileName}: {ex.Message}");
                         failed++;
                     }
@@ -1670,7 +1670,7 @@ public partial class MainViewModel
                           (failed  > 0 ? $", {failed} failed"  : "") +
                           (skipped.Count > 0 ? $", {skipped.Count} skipped (no episode code)" : "");
             StatusText = summary;
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] {summary}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] {summary}");
 
             BatchCompleted?.Invoke(this, new BatchEventArgs(embedded, failed, 0));
         }
@@ -1682,7 +1682,7 @@ public partial class MainViewModel
         catch (Exception ex)
         {
             StatusText = $"📺 TV Batch error: {ex.Message}";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] TV BATCH ERROR: {ex.Message}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] TV BATCH ERROR: {ex.Message}");
         }
         finally
         {
@@ -1703,7 +1703,7 @@ public partial class MainViewModel
             bool cleared = await Services.FileLockService.TryClearReadOnlyAsync(file.FilePath);
             if (!cleared)
             {
-                ConsoleLog.Insert(0,
+                Log(
                     $"[{DateTime.Now:HH:mm:ss}] 🔒 Skipped (read-only): {file.FileName}");
                 return;
             }
@@ -1722,7 +1722,7 @@ public partial class MainViewModel
             // Write failed — clear snapshot so undo button stays greyed out
             file.UndoFilePath = null;
             file.UndoMetadata = null;
-            ConsoleLog.Insert(0,
+            Log(
                 $"[{DateTime.Now:HH:mm:ss}] ✗ Embed failed: {file.FileName} — {string.Join("; ", writeResult.AttemptErrors)}");
             file.WriteStatus = WriteStatus.Failed;
             return;
@@ -1749,18 +1749,18 @@ public partial class MainViewModel
                 if (renamed)
                 {
                     file.FilePath = newPath;
-                    ConsoleLog.Insert(0,
+                    Log(
                         $"[{DateTime.Now:HH:mm:ss}] ↗ Renamed: {System.IO.Path.GetFileName(newPath)}");
                 }
             }
             catch (Exception ex)
             {
-                ConsoleLog.Insert(0,
+                Log(
                     $"[{DateTime.Now:HH:mm:ss}] ⚠ Rename skipped: {ex.Message}");
             }
         }
 
-        ConsoleLog.Insert(0,
+        Log(
             $"[{DateTime.Now:HH:mm:ss}] ✓ {meta.ShowTitle} " +
             $"S{meta.Season:D2}E{meta.Episode:D2} — {meta.EpisodeTitle}");
     }
@@ -1843,7 +1843,7 @@ public partial class MainViewModel
             && (!string.IsNullOrWhiteSpace(vf.EmbeddedMetadata?.Year)
                 || vf.EmbeddedMetadata?.IsEpisode == true))
         {
-            ConsoleLog.Insert(0,
+            Log(
                 $"[{DateTime.Now:HH:mm:ss}] ⏭ Auto-embed skipped: '{vf.FileName}' already has metadata " +
                 $"(Title='{vf.EmbeddedMetadata.Title}', Year='{vf.EmbeddedMetadata.Year}')");
             return;
@@ -1851,7 +1851,7 @@ public partial class MainViewModel
 
         try
         {
-            ConsoleLog.Insert(0,
+            Log(
                 $"[{DateTime.Now:HH:mm:ss}] 🔍 Auto-embed: searching for '{vf.ParsedTitle ?? vf.FileName}'…");
 
             // Search TMDB
@@ -1871,7 +1871,7 @@ public partial class MainViewModel
                 // e.g. "Dr.Stone.S01E02.720p.x264-ESub..." → showTitle="Dr Stone"
                 var showQuery = epParsed.Value.showTitle;
 
-                ConsoleLog.Insert(0,
+                Log(
                     $"[{DateTime.Now:HH:mm:ss}] 🔍 Auto-embed TV: query='{showQuery}' " +
                     $"S{epParsed.Value.season:D2}E{epParsed.Value.episode:D2}");
 
@@ -1919,7 +1919,7 @@ public partial class MainViewModel
 
                     if (passesConfidence && yearOk)
                     {
-                        ConsoleLog.Insert(0,
+                        Log(
                             $"[{DateTime.Now:HH:mm:ss}] 🔍 Auto-embed: best match '{best.result.Title}' " +
                             $"({best.result.Year}) score={best.titleScore:F2} yearMatch={best.yearMatch}");
 
@@ -1929,7 +1929,7 @@ public partial class MainViewModel
                     }
                     else
                     {
-                        ConsoleLog.Insert(0,
+                        Log(
                             $"[{DateTime.Now:HH:mm:ss}] ⚠ Auto-embed: rejected '{best.result.Title}' " +
                             $"({best.result.Year}) for query '{query}' ({year}) — " +
                             $"score={best.titleScore:F2} yearMatch={best.yearMatch} confidence={passesConfidence}");
@@ -1939,7 +1939,7 @@ public partial class MainViewModel
 
             if (meta == null)
             {
-                ConsoleLog.Insert(0,
+                Log(
                     $"[{DateTime.Now:HH:mm:ss}] ⚠ Auto-embed: no confident match for '{query}' — " +
                     $"file queued for manual processing.");
                 vf.IsNewFile = true; // keep yellow highlight
@@ -1955,12 +1955,12 @@ public partial class MainViewModel
 
             vf.IsNewFile = false;
             StatusText = $"✓ Auto-embedded: {Path.GetFileName(vf.FilePath)}";
-            ConsoleLog.Insert(0,
+            Log(
                 $"[{DateTime.Now:HH:mm:ss}] ✓ Auto-embedded: {vf.FileName} → {meta.Title}");
         }
         catch (Exception ex)
         {
-            ConsoleLog.Insert(0,
+            Log(
                 $"[{DateTime.Now:HH:mm:ss}] ✗ Auto-embed failed for '{vf.FileName}': {ex.Message}");
         }
     }

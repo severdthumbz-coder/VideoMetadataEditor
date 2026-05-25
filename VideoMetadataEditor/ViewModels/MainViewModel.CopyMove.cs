@@ -74,7 +74,7 @@ public partial class MainViewModel
                     selected.Remove(s);
                     sources.Remove(s.FilePath);
                 }
-                ConsoleLog.Insert(0,
+                Log(
                     $"[{DateTime.Now:HH:mm:ss}] ⏭ Skipped {skippedUntagged.Count} untagged file(s) " +
                     "— no embedded metadata and filename doesn't match TV episode pattern. " +
                     "Tag them first, or change Settings → Untagged file handling.");
@@ -83,12 +83,12 @@ public partial class MainViewModel
                 int shown = Math.Min(10, skippedUntagged.Count);
                 for (int i = 0; i < shown; i++)
                 {
-                    ConsoleLog.Insert(0,
+                    Log(
                         $"[{DateTime.Now:HH:mm:ss}]   ⤷ skipped: {System.IO.Path.GetFileName(skippedUntagged[i].FilePath)}");
                 }
                 if (skippedUntagged.Count > shown)
                 {
-                    ConsoleLog.Insert(0,
+                    Log(
                         $"[{DateTime.Now:HH:mm:ss}]   ⤷ … and {skippedUntagged.Count - shown} more (full list in app logs)");
                 }
 
@@ -105,7 +105,7 @@ public partial class MainViewModel
         if (!analysis.HasSufficientSpace)
         {
             StatusText = $"⚠ Insufficient space — {analysis.Message}";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] ABORTED: {analysis.Message}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] ABORTED: {analysis.Message}");
             DiskSpaceStatus = analysis.Message;
             return;
         }
@@ -124,7 +124,7 @@ public partial class MainViewModel
             if (engine is CopyEngine.FastCopy)
             {
                 StatusText = $"{verb} {selected.Count} file(s) via {engine}…";
-                ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Launching {engine} for {selected.Count} file(s)");
+                Log( $"[{DateTime.Now:HH:mm:ss}] Launching {engine} for {selected.Count} file(s)");
 
                 // Parse ConflictMode for external engines
                 var extConflict = ConflictMode switch
@@ -175,7 +175,7 @@ public partial class MainViewModel
                     StatusText = $"✗  {engineName} — {opLabel} Operation Failed  ·  {reason}";
                 }
 
-                ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] {StatusText}");
+                Log( $"[{DateTime.Now:HH:mm:ss}] {StatusText}");
 
                 await Task.Delay(600);
 
@@ -212,7 +212,7 @@ public partial class MainViewModel
                 int retryDelay  = Settings.CopyRetryDelayMs;
 
                 StatusText = $"{verb} {selected.Count} file(s)  ·  {workerCount} thread(s)  ·  up to {maxRetries} retries";
-                ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Built-in engine  ·  {workerCount} threads  ·  retry ×{maxRetries} @ {retryDelay}ms");
+                Log( $"[{DateTime.Now:HH:mm:ss}] Built-in engine  ·  {workerCount} threads  ·  retry ×{maxRetries} @ {retryDelay}ms");
 
                 // Speed tracking
                 long lastBytes    = 0;
@@ -289,12 +289,12 @@ public partial class MainViewModel
                 foreach (var r in results)
                 {
                     if (r.Success)
-                        ConsoleLog.Insert(0,
+                        Log(
                             $"[{DateTime.Now:HH:mm:ss}] ✓ {Path.GetFileName(r.SourcePath)} " +
                             $"({Services.FileCopyService.FormatBytes(r.BytesCopied)})" +
                             (r.Verified ? " · size verified" : ""));
                     else
-                        ConsoleLog.Insert(0,
+                        Log(
                             $"[{DateTime.Now:HH:mm:ss}] ✕ {Path.GetFileName(r.SourcePath)} — {r.Error}");
                 }
 
@@ -329,7 +329,7 @@ public partial class MainViewModel
         catch (Exception ex)
         {
             StatusText = $"{verb} error: {ex.Message}";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] ERROR: {ex.Message}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] ERROR: {ex.Message}");
         }
         finally
         {

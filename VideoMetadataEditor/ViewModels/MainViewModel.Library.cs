@@ -129,7 +129,7 @@ public partial class MainViewModel
         if (_selectedSeriesTmdbId != seriesId) return;
 
         if (episodes.Count == 0 && err != null)
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] ⚠ Episodes load error S{season}: {err}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] ⚠ Episodes load error S{season}: {err}");
 
         foreach (var ep in episodes)
             TvEpisodeItems.Add(ep);
@@ -156,18 +156,18 @@ public partial class MainViewModel
         if (string.IsNullOrEmpty(seriesId))
         {
             StatusText = "TV load failed — series ID missing. Please select the show again.";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] PickTvEpisode: seriesId empty");
+            Log( $"[{DateTime.Now:HH:mm:ss}] PickTvEpisode: seriesId empty");
             return;
         }
         if (epItem == null)
         {
             StatusText = "TV load failed — no episode selected. Choose an episode first.";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] PickTvEpisode: no episode selected");
+            Log( $"[{DateTime.Now:HH:mm:ss}] PickTvEpisode: no episode selected");
             return;
         }
 
         StatusText = $"Loading {showTitle} S{season:D2}E{epNum:D2}…";
-        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] TV: fetching {showTitle} S{season}E{epNum}");
+        Log( $"[{DateTime.Now:HH:mm:ss}] TV: fetching {showTitle} S{season}E{epNum}");
 
         try
         {
@@ -175,7 +175,7 @@ public partial class MainViewModel
 
             if (meta == null && !string.IsNullOrWhiteSpace(OmdbKey))
             {
-                ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] TMDB miss ({err}) — trying OMDB");
+                Log( $"[{DateTime.Now:HH:mm:ss}] TMDB miss ({err}) — trying OMDB");
                 (meta, _) = await _apiService.GetOmdbEpisodeAsync(showTitle, season, epNum, OmdbKey);
             }
 
@@ -203,18 +203,18 @@ public partial class MainViewModel
                 IsTvPickerVisible = false;
 
                 StatusText = $"✓ {meta.ShowTitle} S{meta.Season:D2}E{meta.Episode:D2} loaded — click Apply to Raw Data Tab";
-                ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] ✓ Episode ready: {meta.ShowTitle} S{meta.Season:D2}E{meta.Episode:D2}");
+                Log( $"[{DateTime.Now:HH:mm:ss}] ✓ Episode ready: {meta.ShowTitle} S{meta.Season:D2}E{meta.Episode:D2}");
             }
             else
             {
                 StatusText = $"S{season:D2}E{epNum:D2} not found on TMDB or OMDB.";
-                ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Episode not found");
+                Log( $"[{DateTime.Now:HH:mm:ss}] Episode not found");
             }
         }
         catch (Exception ex)
         {
             StatusText = $"Load error: {ex.Message}";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] PickTvEpisode error: {ex}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] PickTvEpisode error: {ex}");
         }
     }
 
@@ -253,7 +253,7 @@ public partial class MainViewModel
 
         RaiseProperty(nameof(LibraryCacheInfo));
         StatusText = "Library cache cleared — next scan will rebuild it from disk.";
-        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] 🗑 Library cache cleared.");
+        Log( $"[{DateTime.Now:HH:mm:ss}] 🗑 Library cache cleared.");
     }
 
     /// <summary>
@@ -314,7 +314,7 @@ public partial class MainViewModel
         App.ConfigService.Save();
 
         StatusText = $"✓ {tabType} column layout saved ({visCount}/{totalCount} columns visible) — restored on next launch.";
-        ConsoleLog.Insert(0,
+        Log(
             $"[{DateTime.Now:HH:mm:ss}] 💾 {tabType} column layout saved " +
             $"({visCount} visible, {totalCount - visCount} hidden).");
     }
@@ -464,6 +464,12 @@ public partial class MainViewModel
             // Rebuild per-folder tabs for tabbed display
             RebuildLibraryTabs();
 
+            // Prune stale cache entries — files renamed/moved/deleted outside VME
+            // leave ghost entries that inflate the cache and cause stale library rows.
+            // SaveAsync evicts any path that's no longer in the live scan results.
+            var livePaths = LibraryEntries.Select(e => e.FilePath).ToList();
+            _ = _libraryCache.SaveAsync(livePaths);
+
             // Check for incomplete operations in the library folder
             CheckForRecovery(new[] { Settings.LibraryFolderPath });
 
@@ -595,7 +601,7 @@ public partial class MainViewModel
         });
 
         StatusText = $"Library exported: {Path.GetFileName(dlg.FileName)}";
-        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Library CSV exported → {dlg.FileName}");
+        Log( $"[{DateTime.Now:HH:mm:ss}] Library CSV exported → {dlg.FileName}");
     }
 
     private async Task ExportLibraryXlsxAsync()
@@ -624,7 +630,7 @@ public partial class MainViewModel
                 Services.XlsxWriterService.Write(dlg.FileName, entries, visibleCols), ct);
 
             StatusText = $"Exported {entries.Count} row(s) → {System.IO.Path.GetFileName(dlg.FileName)}";
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] XLSX export → {dlg.FileName}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] XLSX export → {dlg.FileName}");
         }
         catch (Exception ex)
         {
@@ -673,7 +679,7 @@ public partial class MainViewModel
         RequestSwitchToRawData?.Invoke(this, EventArgs.Empty);
 
         StatusText = $"Loaded from Library: {entry.Title}";
-        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Library → Files panel: {entry.FileName}");
+        Log( $"[{DateTime.Now:HH:mm:ss}] Library → Files panel: {entry.FileName}");
         // Recovery check removed from load-from-library — CheckForRecovery would find
         // .vme_tmp_ files that are actively being written, triggering false positives.
         // Recovery only runs at startup (TriggerStartupRecovery) and on explicit scans.
@@ -732,7 +738,7 @@ public partial class MainViewModel
         RequestSwitchToRawData?.Invoke(this, EventArgs.Empty);
 
         StatusText = $"Loaded {added} file(s) from Library into Files panel.";
-        ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Library → Files panel: {added} file(s) loaded.");
+        Log( $"[{DateTime.Now:HH:mm:ss}] Library → Files panel: {added} file(s) loaded.");
 
         // Register the newly-loaded Files panel paths with the FILES watch service
         // so the poll timer doesn't treat them as new arrivals
@@ -789,7 +795,7 @@ public partial class MainViewModel
 
             if (candidates.Count == 0) return;
 
-            ConsoleLog.Insert(0,
+            Log(
                 $"[{DateTime.Now:HH:mm:ss}] Startup: {candidates.Count} orphan temp file(s) found.");
 
             if (policy == "AutoDelete")
@@ -801,7 +807,7 @@ public partial class MainViewModel
                     var (ok, _) = Services.RecoveryService.Delete(c);
                     if (ok) deleted++;
                 }
-                ConsoleLog.Insert(0,
+                Log(
                     $"[{DateTime.Now:HH:mm:ss}] Startup: auto-deleted {deleted} orphan file(s).");
             }
             else if (policy == "Ask")
@@ -853,7 +859,7 @@ public partial class MainViewModel
                 .ToList();
             var remuxCandidates = orphans.Except(faststartTemps, StringComparer.OrdinalIgnoreCase).ToList();
 
-            ConsoleLog.Insert(0,
+            Log(
                 $"[{DateTime.Now:HH:mm:ss}] Startup: {remuxCandidates.Count} remux + " +
                 $"{faststartTemps.Count} faststart-temp orphan(s) found.");
 
@@ -898,7 +904,7 @@ public partial class MainViewModel
                         }
                         catch { /* skip locked */ }
                     }
-                    ConsoleLog.Insert(0,
+                    Log(
                         $"[{DateTime.Now:HH:mm:ss}] Startup: discarded {deleted} leftover file(s).");
                 }
             });
@@ -934,7 +940,7 @@ public partial class MainViewModel
             // ALL ObservableCollection mutations MUST be on the UI thread
             dispatcher?.InvokeAsync(() =>
             {
-                ConsoleLog.Insert(0,
+                Log(
                     $"[{DateTime.Now:HH:mm:ss}] ⚠ Recovery: {candidates.Count} orphan file(s) found " +
                     $"(policy: {policy}).");
 
@@ -957,7 +963,7 @@ public partial class MainViewModel
                         if (deleted > 0)
                         {
                             StatusText = $"Auto-deleted {deleted} orphan temp file(s).";
-                            ConsoleLog.Insert(0,
+                            Log(
                                 $"[{DateTime.Now:HH:mm:ss}] Auto-deleted {deleted} orphan temp file(s).");
                         }
                     }, System.Threading.CancellationToken.None,
@@ -986,7 +992,7 @@ public partial class MainViewModel
         foreach (var f in toRemove)
         {
             Files.Remove(f);
-            ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] Evicted temp row: {Path.GetFileName(f.FilePath)}");
+            Log( $"[{DateTime.Now:HH:mm:ss}] Evicted temp row: {Path.GetFileName(f.FilePath)}");
         }
     }
 

@@ -6,15 +6,15 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <AssemblyName>VideoMetadataEditor v1.4.0.89</AssemblyName>
+    <AssemblyName>VideoMetadataEditor v1.4.0.90</AssemblyName>
     <RootNamespace>VideoMetadataEditor</RootNamespace>
     <ApplicationIcon>Resources\app.ico</ApplicationIcon>
     <StartupObject>VideoMetadataEditor.App</StartupObject>
 
     <!-- Version shown in title bar, Help tab, status bar, and file properties -->
     <Version>1.4.0</Version>
-    <AssemblyVersion>1.4.0.89</AssemblyVersion>
-    <FileVersion>1.4.0.89</FileVersion>
+    <AssemblyVersion>1.4.0.90</AssemblyVersion>
+    <FileVersion>1.4.0.90</FileVersion>
 
     <!-- File properties (visible in Windows Explorer → Properties → Details) -->
     <Product>Video Metadata Editor</Product>
@@ -39,6 +39,13 @@
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+
+  <!-- Allow the test project to access internal methods (e.g. VME comment encode/decode) -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>VideoMetadataEditor.Tests</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
 
   <ItemGroup>
