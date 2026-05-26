@@ -1691,8 +1691,12 @@ public partial class MainViewModel : INotifyPropertyChanged
             p => LoadLibrarySelection(p as System.Collections.IList),
             p => (p as System.Collections.IList)?.Count > 0);
 
-        // Apply watch folder if it was enabled in a previous session
-        ApplyWatchFolderSetting();
+        // NOTE: Watch folder is NOT started here. The constructor runs before any files
+        // are loaded into the FILES panel, so starting the watcher here would seed an
+        // empty existingPaths and flood the user with every file in LastFolderPath on
+        // the first poll tick. The watcher is started by AddFolderAsync (when a folder
+        // is loaded) and by the WatchFolderEnabled property setter (when toggled in
+        // Settings). Both call ApplyWatchFolderSetting() after Files is populated.
 
         // Restore Move/Copy tab settings from last session
         if (!string.IsNullOrWhiteSpace(Settings.LastCopyDestination)

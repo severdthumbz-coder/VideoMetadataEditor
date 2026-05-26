@@ -57,31 +57,21 @@ public sealed class WatchFolderService : IDisposable
         _folder          = folder;
         _recursive       = recursive;
         _initialSeedDone = false;
-        foreach (var p in existingPaths) _knownPaths.TryAdd(p, 0);
+
+        // Seed only the files already loaded in the FILES panel.
+        // Files in the folder that are NOT in existingPaths are unknown to the
+        // user and should be reported as new arrivals — seeding them here would
+        // silently swallow them forever, which is the exact bug this fixes.
+        foreach (var p in existingPaths)
+            _knownPaths.TryAdd(p, 0);
 
         StartFsw(folder);
         StartPollTimer(pollMinutes);
         IsActive = true;
 
-        // Perform an immediate silent seed pass in the background: enumerate all
-        // existing files and add them to _knownPaths WITHOUT raising FileDetected.
-        // This prevents the first poll from re-reporting every file in the folder
-        // as "new", which is the main cause of the "files reported on first launch" bug.
-        _ = Task.Run(() =>
-        {
-            try
-            {
-                foreach (var path in Directory.EnumerateFiles(
-                    folder, "*.*",
-                    recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly)
-                    .Where(IsVideoFile))
-                {
-                    _knownPaths.TryAdd(path, 0);  // seed silently — no FileDetected
-                }
-            }
-            catch { }
-            finally { _initialSeedDone = true; }
-        });
+        // Mark seed done immediately — existingPaths is synchronous.
+        // The poll timer and FSW can now fire freely.
+        _initialSeedDone = true;
     }
 
     public void Stop()
