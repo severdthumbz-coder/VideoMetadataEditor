@@ -75,7 +75,7 @@ public class MetadataWriteTests : IDisposable
 
         var result = await svc.WriteMetadataDetailedAsync(path, meta, DefaultSettings());
 
-        Assert.True(result.Success, $"Write failed: {result.ErrorMessage}");
+        Assert.True(result.Success, $"Write failed: {result.Diagnosis?.Reasons.FirstOrDefault() ?? "unknown"}");
         var read = svc.ReadMetadataFast(path);
         Assert.Equal("Test Movie", read.Title);
     }
@@ -94,7 +94,7 @@ public class MetadataWriteTests : IDisposable
 
         var result = await svc.WriteMetadataDetailedAsync(path, meta, DefaultSettings());
 
-        Assert.True(result.Success, $"Write failed: {result.ErrorMessage}");
+        Assert.True(result.Success, $"Write failed: {result.Diagnosis?.Reasons.FirstOrDefault() ?? "unknown"}");
         var read = svc.ReadMetadataFast(path);
         Assert.Equal("Inception", read.Title);
         Assert.Equal("tt1375666", read.ImdbId);
@@ -115,7 +115,7 @@ public class MetadataWriteTests : IDisposable
 
         var result = await svc.WriteMetadataDetailedAsync(path, meta, DefaultSettings());
 
-        Assert.True(result.Success, $"Write failed: {result.ErrorMessage}");
+        Assert.True(result.Success, $"Write failed: {result.Diagnosis?.Reasons.FirstOrDefault() ?? "unknown"}");
         var read = svc.ReadMetadataFast(path);
         Assert.True(read.IsEpisode);
         Assert.Equal("Breaking Bad", read.ShowTitle);
