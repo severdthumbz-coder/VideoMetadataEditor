@@ -759,14 +759,14 @@ public class DuplicatesViewModel : ViewModelBase
                     if (isNetwork)
                     {
                         // Recycle Bin unavailable on network paths — confirm permanent delete
-                        var confirm = System.Windows.MessageBox.Show(
+                        var networkConfirm = System.Windows.MessageBox.Show(
                             $"'{System.IO.Path.GetFileName(path)}' is on a network path.\n\n" +
                             "Network files cannot be sent to the Recycle Bin — this will permanently delete the file.\n\n" +
                             "Delete permanently?",
                             "Network file — permanent delete",
                             System.Windows.MessageBoxButton.YesNo,
                             System.Windows.MessageBoxImage.Warning);
-                        if (confirm != System.Windows.MessageBoxResult.Yes)
+                        if (networkConfirm != System.Windows.MessageBoxResult.Yes)
                         {
                             failed++;
                             errors.Add($"{System.IO.Path.GetFileName(path)}: skipped (network path — permanent delete declined).");

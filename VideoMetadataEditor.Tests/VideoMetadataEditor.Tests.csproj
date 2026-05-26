@@ -30,6 +30,8 @@
     <Compile Include="../VideoMetadataEditor/Services/VmeCommentCodec.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/MetadataService.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/MkvPropEditService.cs"/>
+    <Compile Include="../VideoMetadataEditor/Services/WriteResult.cs"/>
+    <Compile Include="../VideoMetadataEditor/Services/FileLockService.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/Models.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/SubtitleModels.cs"/>
     <Compile Include="../VideoMetadataEditor/GlobalUsings.cs"/>
