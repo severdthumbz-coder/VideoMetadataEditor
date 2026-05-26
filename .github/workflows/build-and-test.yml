@@ -38,4 +38,4 @@ jobs:
       # Build + run the unit tests (RemuxCommit, MediaHealth, FingerprintCache,
       # FileCopy routing, orphan sweep, FilenameParser, FileRenameService).
       - name: Run tests
-        run: dotnet test "VideoMetadataEditor.Tests/VideoMetadataEditor.Tests.csproj" --configuration Release --verbosity normal
+        run: dotnet test "VideoMetadataEditor.Tests/VideoMetadataEditor.Tests.csproj" --configuration Release --verbosity normal --logger "console;verbosity=detailed"
