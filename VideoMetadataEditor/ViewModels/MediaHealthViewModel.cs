@@ -290,10 +290,12 @@ public class MediaHealthViewModel : ViewModelBase
         var succeededPaths = new System.Collections.Concurrent.ConcurrentDictionary<string, bool>(
             StringComparer.OrdinalIgnoreCase);
 
-        // Parallelise ffmpeg invocations — same approach as Deep Scan.
-        // ffmpeg stream-copy is light on CPU but IO-bound; cap at ProcessorCount-1
-        // so the UI thread stays responsive and we don't thrash the disk.
-        int workers = Math.Max(1, Environment.ProcessorCount - 1);
+        // Worker count based on drive type — faststart is I/O-bound (stream copy),
+        // not CPU-bound. Parallelising on HDD causes head-seek thrashing and is
+        // slower than sequential. DriveCapabilityService detects NVMe/SSD/HDD/Network
+        // and returns an appropriate concurrency level for each.
+        var driveProfile = Services.DriveCapabilityService.GetProfile(targets[0].FilePath);
+        int workers = driveProfile.RecommendedScanWorkers;
 
         await Parallel.ForEachAsync(targets,
             new ParallelOptions { MaxDegreeOfParallelism = workers, CancellationToken = ct },
