@@ -95,33 +95,31 @@ public static class VmeCommentCodec
     /// </summary>
     public static DecodedComment Decode(string comment)
     {
-        var r = new DecodedComment
+        // Parse conditionals before the object initialiser so init-only
+        // properties can be set in a single expression
+        float.TryParse(Get(comment, "RATING"),
+            System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out float rating);
+        int.TryParse(Get(comment, "SEASON"),  out int season);
+        int.TryParse(Get(comment, "EPISODE"), out int episode);
+
+        return new DecodedComment
         {
             Description  = GetDescription(comment),
             ImdbId       = Get(comment, "IMDB"),
             TmdbId       = Get(comment, "TMDB"),
+            Rating       = rating,
             MpaRating    = Get(comment, "MPA"),
-            IsWatched    = Get(comment, "WATCHED") == "1",
-            IsEpisode    = Get(comment, "EP_MODE") == "1",
+            IsWatched    = Get(comment, "WATCHED")  == "1",
+            IsEpisode    = Get(comment, "EP_MODE")  == "1",
             ShowTitle    = Get(comment, "SHOW"),
+            Season       = season  > 0 ? season  : null,
+            Episode      = episode > 0 ? episode : null,
             EpisodeTitle = Get(comment, "ETITLE"),
             AiredDate    = Get(comment, "AIRED"),
             TvdbId       = Get(comment, "TVDB"),
             TmdbSeriesId = Get(comment, "TMDB_SERIES"),
         };
-
-        var ratingStr = Get(comment, "RATING");
-        if (float.TryParse(ratingStr, System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out float rating))
-            r.Rating = rating;
-
-        var seasonStr = Get(comment, "SEASON");
-        if (int.TryParse(seasonStr, out int season))  r.Season = season;
-
-        var episodeStr = Get(comment, "EPISODE");
-        if (int.TryParse(episodeStr, out int episode)) r.Episode = episode;
-
-        return r;
     }
 
     public record DecodedComment
@@ -134,8 +132,8 @@ public static class VmeCommentCodec
         public bool   IsWatched    { get; init; }
         public bool   IsEpisode    { get; init; }
         public string ShowTitle    { get; init; } = "";
-        public int?   Season       { get; set;  }
-        public int?   Episode      { get; set;  }
+        public int?   Season       { get; init; }
+        public int?   Episode      { get; init; }
         public string EpisodeTitle { get; init; } = "";
         public string AiredDate    { get; init; } = "";
         public string TvdbId       { get; init; } = "";

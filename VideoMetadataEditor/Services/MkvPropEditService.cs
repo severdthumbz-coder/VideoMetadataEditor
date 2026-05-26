@@ -19,7 +19,6 @@ public static class MkvPropEditService
 {
     private static string? _exePath;
     private static string? _version;
-    private static bool    _detected;
 
     // ── Detection ─────────────────────────────────────────────────────────────
 
@@ -30,8 +29,6 @@ public static class MkvPropEditService
     /// </summary>
     public static void Detect()
     {
-        _detected = true;
-
         var nativeDir = Services.NativeLibraryExtractor.NativeDir;
 
         var candidates = new List<string>
@@ -107,9 +104,8 @@ public static class MkvPropEditService
     /// </summary>
     public static void Redetect()
     {
-        _exePath  = null;
-        _version  = null;
-        _detected = false;
+        _exePath = null;
+        _version = null;
         Detect();
     }
 

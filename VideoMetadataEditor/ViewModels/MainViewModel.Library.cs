@@ -468,7 +468,7 @@ public partial class MainViewModel
             // leave ghost entries that inflate the cache and cause stale library rows.
             // SaveAsync evicts any path that's no longer in the live scan results.
             var livePaths = LibraryEntries.Select(e => e.FilePath).ToList();
-            _ = _libraryCache.SaveAsync(livePaths);
+            _ = _libraryCacheService.SaveAsync(livePaths);
 
             // Check for incomplete operations in the library folder
             CheckForRecovery(new[] { Settings.LibraryFolderPath });
