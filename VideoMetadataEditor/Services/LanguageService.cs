@@ -26,23 +26,16 @@ public static class LanguageService
     [
         ("System",   "System default",     "System default"),
         ("en",       "English",            "English"),
+        // Partial translations (57% complete) — fall back to English for missing strings
+        ("de",       "Deutsch",            "German"),
         ("es",       "Español",            "Spanish"),
         ("fr",       "Français",           "French"),
-        ("de",       "Deutsch",            "German"),
         ("it",       "Italiano",           "Italian"),
-        ("pt",       "Português",          "Portuguese"),
+        // Partial translations (27–44% complete)
         ("ja",       "日本語",              "Japanese"),
         ("ko",       "한국어",              "Korean"),
-        ("zh-Hans",  "简体中文",            "Chinese (Simplified)"),
-        ("zh-Hant",  "繁體中文",            "Chinese (Traditional)"),
-        ("ar",       "عربي",               "Arabic"),
-        ("ru",       "Русский",            "Russian"),
-        ("tr",       "Türkçe",             "Turkish"),
-        ("sv",       "Svenska",            "Swedish"),
-        ("da",       "Dansk",              "Danish"),
-        ("fi",       "Suomi",              "Finnish"),
-        ("pl",       "Polski",             "Polish"),
-        ("cs",       "Čeština",            "Czech"),
+        // NOTE: ar, pt, ru, zh-Hans have 0 keys — not shown until translated.
+        // NOTE: zh-Hant, tr, sv, da, fi, pl, cs have no language file — not shown.
     ];
 
     private static string _currentCode = "System";

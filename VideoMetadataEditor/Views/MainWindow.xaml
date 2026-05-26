@@ -6846,6 +6846,40 @@ ative\ on first run. Registers
                                     </TextBlock>
 
                                 </StackPanel>
+
+                                <!-- ── Credits and Attribution ────────────────── -->
+                                <Separator Margin="0,16,0,16"/>
+                                <TextBlock Text="Credits &amp; Attribution" Style="{StaticResource SectionHeader}"/>
+                                <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap" Margin="0,0,0,8">
+                                    This product uses the TMDB API but is not endorsed or certified by TMDB.
+                                    Metadata, images and descriptions are sourced from
+                                    <Hyperlink NavigateUri="https://www.themoviedb.org" RequestNavigate="HelpLink_RequestNavigate">
+                                        The Movie Database (TMDB)
+                                    </Hyperlink>
+                                    under their API Terms of Use.
+                                </TextBlock>
+                                <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap" Margin="0,0,0,8">
+                                    Additional data provided by
+                                    <Hyperlink NavigateUri="https://www.omdbapi.com" RequestNavigate="HelpLink_RequestNavigate">OMDB API</Hyperlink>,
+                                    <Hyperlink NavigateUri="https://anilist.co" RequestNavigate="HelpLink_RequestNavigate">AniList</Hyperlink>,
+                                    <Hyperlink NavigateUri="https://trakt.tv" RequestNavigate="HelpLink_RequestNavigate">Trakt.tv</Hyperlink>, and
+                                    <Hyperlink NavigateUri="https://www.opensubtitles.com" RequestNavigate="HelpLink_RequestNavigate">OpenSubtitles</Hyperlink>.
+                                </TextBlock>
+                                <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap" Margin="0,0,0,8">
+                                    Tag writing powered by
+                                    <Hyperlink NavigateUri="https://github.com/mono/taglib-sharp" RequestNavigate="HelpLink_RequestNavigate">TagLib#</Hyperlink>
+                                    (LGPL v2.1).
+                                    Audio fingerprinting powered by
+                                    <Hyperlink NavigateUri="https://acoustid.org/chromaprint" RequestNavigate="HelpLink_RequestNavigate">Chromaprint / fpcalc</Hyperlink>
+                                    (LGPL v2.1).
+                                    MKV artwork embedding powered by
+                                    <Hyperlink NavigateUri="https://mkvtoolnix.download" RequestNavigate="HelpLink_RequestNavigate">MKVToolNix</Hyperlink>
+                                    (GPL v2).
+                                    Media remux and health repair powered by
+                                    <Hyperlink NavigateUri="https://ffmpeg.org" RequestNavigate="HelpLink_RequestNavigate">FFmpeg</Hyperlink>
+                                    (LGPL v2.1 or later).
+                                </TextBlock>
+
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>

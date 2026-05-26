@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Navigation;
 using System.Windows.Threading;
 
 namespace VideoMetadataEditor.Views;
@@ -28,5 +30,12 @@ public partial class SplashScreen : Window
             if (_tick >= 40) _progressTimer.Stop();
         };
         _progressTimer.Start();
+    }
+
+    private void Attribution_RequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true }); }
+        catch { /* browser unavailable — silently ignore */ }
+        e.Handled = true;
     }
 }

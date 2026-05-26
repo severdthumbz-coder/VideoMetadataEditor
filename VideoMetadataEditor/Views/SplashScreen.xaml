@@ -47,10 +47,32 @@
             <Border Grid.Row="2"
                     Background="{DynamicResource SurfaceAltBrush}"
                     CornerRadius="0,0,18,18">
-                <TextBlock Text="© 2026 VideoMetadataEditor  ·  v1.4.0 build 90  ·  Powered by TagLib# · TMDB · OMDB"
-                           FontSize="11"
-                           Foreground="{DynamicResource ForegroundMutedBrush}"
-                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Vertical">
+                    <TextBlock Text="© 2026 VideoMetadataEditor  ·  v1.4.0 build 90"
+                               FontSize="11"
+                               Foreground="{DynamicResource ForegroundMutedBrush}"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock FontSize="10"
+                               Foreground="{DynamicResource ForegroundMutedBrush}"
+                               HorizontalAlignment="Center" Margin="0,2,0,0">
+                        <Run>Powered by </Run>
+                        <Hyperlink NavigateUri="https://www.themoviedb.org"
+                                   RequestNavigate="Attribution_RequestNavigate">
+                            TMDB
+                        </Hyperlink>
+                        <Run> · </Run>
+                        <Hyperlink NavigateUri="https://www.omdbapi.com"
+                                   RequestNavigate="Attribution_RequestNavigate">
+                            OMDB
+                        </Hyperlink>
+                        <Run> · TagLib#</Run>
+                    </TextBlock>
+                    <TextBlock Text="This product uses the TMDB API but is not endorsed or certified by TMDB."
+                               FontSize="9"
+                               Foreground="{DynamicResource ForegroundMutedBrush}"
+                               HorizontalAlignment="Center" Margin="0,1,0,0"
+                               Opacity="0.7"/>
+                </StackPanel>
             </Border>
         </Grid>
     </Border>

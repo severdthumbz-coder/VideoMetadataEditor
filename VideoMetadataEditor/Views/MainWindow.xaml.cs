@@ -307,6 +307,14 @@ public partial class MainWindow : Window
             VM.MediaHealthVM.Folder = dlg.FolderName;
     }
 
+    /// <summary>Handles Hyperlink clicks in the Help tab's Credits section.</summary>
+    private void HelpLink_RequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true }); }
+        catch { /* browser unavailable — silently ignore */ }
+        e.Handled = true;
+    }
+
     private void DownloadFfmpeg_Click(object sender, RoutedEventArgs e)
     {
         try

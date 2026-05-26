@@ -57,18 +57,14 @@ public static class RemuxCommitService
 
             var finalPath = IntendedFinalPath(candidatePath);
 
-            // Remove the original (Recycle Bin) if it exists
+            // Remove the original (Recycle Bin, or permanent delete on network paths)
             if (File.Exists(originalPath))
-                Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(originalPath,
-                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                RecycleOrDelete(originalPath);
 
             // If the final path is occupied by something other than the candidate, recycle it too
             if (!finalPath.Equals(candidatePath, StringComparison.OrdinalIgnoreCase)
                 && File.Exists(finalPath))
-                Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(finalPath,
-                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                RecycleOrDelete(finalPath);
 
             File.Move(candidatePath, finalPath);
             return new CommitResult(true,
@@ -80,8 +76,28 @@ public static class RemuxCommitService
         }
     }
 
-    /// <summary>
-    /// Restore Original: discard the candidate, keep the original.
+    /// <summary>Sends a file to the Recycle Bin, or permanently deletes on network paths.</summary>
+    private static void RecycleOrDelete(string path)
+    {
+        bool isNetwork = path.StartsWith("\\\\", StringComparison.Ordinal);
+        if (!isNetwork)
+        {
+            try
+            {
+                var root = Path.GetPathRoot(path);
+                if (!string.IsNullOrWhiteSpace(root))
+                    isNetwork = new DriveInfo(root).DriveType == DriveType.Network;
+            }
+            catch { }
+        }
+
+        if (isNetwork)
+            File.Delete(path);
+        else
+            Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path,
+                Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+    }
     /// Deletes the candidate (Recycle Bin). Original is untouched.
     /// </summary>
     public static CommitResult RestoreOriginal(string candidatePath, string originalPath)
@@ -89,9 +105,7 @@ public static class RemuxCommitService
         try
         {
             if (File.Exists(candidatePath))
-                Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(candidatePath,
-                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                RecycleOrDelete(candidatePath);
 
             var keep = File.Exists(originalPath) ? originalPath : null;
             return new CommitResult(true,

@@ -737,10 +737,49 @@ public class DuplicatesViewModel : ViewModelBase
                 }
                 else
                 {
-                    // Recycle Bin via VisualBasic FileSystem — survives accidental clicks
-                    Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path,
-                        Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                        Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                    // Recycle Bin via VisualBasic FileSystem.
+                    // Network/UNC paths don't have a Recycle Bin — the VB method
+                    // throws silently or performs a permanent delete. Detect and
+                    // warn the user explicitly so they can confirm before data loss.
+                    bool isNetwork = path.StartsWith("\\\\", StringComparison.Ordinal);
+                    if (!isNetwork)
+                    {
+                        try
+                        {
+                            var root = System.IO.Path.GetPathRoot(path);
+                            if (!string.IsNullOrWhiteSpace(root))
+                            {
+                                var di = new System.IO.DriveInfo(root);
+                                isNetwork = di.DriveType == System.IO.DriveType.Network;
+                            }
+                        }
+                        catch { /* DriveInfo unavailable — treat as local */ }
+                    }
+
+                    if (isNetwork)
+                    {
+                        // Recycle Bin unavailable on network paths — confirm permanent delete
+                        var confirm = System.Windows.MessageBox.Show(
+                            $"'{System.IO.Path.GetFileName(path)}' is on a network path.\n\n" +
+                            "Network files cannot be sent to the Recycle Bin — this will permanently delete the file.\n\n" +
+                            "Delete permanently?",
+                            "Network file — permanent delete",
+                            System.Windows.MessageBoxButton.YesNo,
+                            System.Windows.MessageBoxImage.Warning);
+                        if (confirm != System.Windows.MessageBoxResult.Yes)
+                        {
+                            failed++;
+                            errors.Add($"{System.IO.Path.GetFileName(path)}: skipped (network path — permanent delete declined).");
+                            continue;
+                        }
+                        System.IO.File.Delete(path);
+                    }
+                    else
+                    {
+                        Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path,
+                            Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                            Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                    }
                 }
                 succeeded++;
                 processed.Add(path);

@@ -441,7 +441,11 @@ public partial class MainViewModel
             ((IProgress<string>)progress).Report($"Starting simultaneous metadata search for {needsSearch.Count} file(s)…");
 
             int searchDone = 0;
-            var searchSemaphore = new SemaphoreSlim(4);
+            // TMDB rate limit: 40 requests / 10 seconds per API key.
+            // 3 concurrent slots × ~350ms minimum gap = ~8.5 req/s — well inside the
+            // limit. The 350ms gap is enforced by a short Task.Delay before each
+            // semaphore release so slots don't immediately re-fire.
+            var searchSemaphore = new SemaphoreSlim(3);
             var searchTasks = needsSearch.Select(async vf =>
             {
                 await searchSemaphore.WaitAsync(ct);
@@ -481,6 +485,8 @@ public partial class MainViewModel
                 }
                 finally
                 {
+                    // Minimum gap between requests per slot — prevents TMDB 429
+                    await Task.Delay(350, ct).ConfigureAwait(false);
                     searchSemaphore.Release();
                     Interlocked.Increment(ref searchDone);
                     // Phase 1 uses 0-50% of the progress bar
