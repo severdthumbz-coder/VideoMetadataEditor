@@ -1008,12 +1008,18 @@ public partial class MainViewModel
     }
 
     /// <summary>Updates the corresponding LibraryEntry when a file is successfully embedded.</summary>
-    private void SyncLibraryEntry(string filePath, MovieMetadata meta)
+    private void SyncLibraryEntry(string lookupPath, string currentPath, MovieMetadata meta)
     {
+        // Look up by the path that was current BEFORE any rename — LibraryEntries
+        // still has the old path if the file was renamed during this embed operation.
         var entry = LibraryEntries.FirstOrDefault(e =>
-            e.FilePath.Equals(filePath, StringComparison.OrdinalIgnoreCase));
+            e.FilePath.Equals(lookupPath, StringComparison.OrdinalIgnoreCase));
 
         if (entry == null) return;   // file not in library — nothing to update or cache
+
+        // If the file was renamed, update the stored path so the library stays accurate.
+        if (!lookupPath.Equals(currentPath, StringComparison.OrdinalIgnoreCase))
+            entry.FilePath = currentPath;
 
         // Update in-memory grid entry
         entry.Title        = meta.Title;

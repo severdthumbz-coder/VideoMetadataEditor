@@ -192,8 +192,10 @@ public partial class MainViewModel
                 EmbedSucceeded?.Invoke(this, new EmbedEventArgs(targetFile.FileName, wasRenamed));
                 // Clear the yellow "new file" highlight after successful embed
                 targetFile.IsNewFile = false;
-                // Sync the Library entry if it exists
-                SyncLibraryEntry(targetFile.FilePath, metadataToWrite);
+                // Sync the Library entry — use the path BEFORE rename so the lookup
+                // matches the existing LibraryEntry (which still has the old path).
+                // SyncLibraryEntry also updates LibraryEntry.FilePath when renamed.
+                SyncLibraryEntry(currentPath, targetFile.FilePath, metadataToWrite);
                 // Remove any .vme_* temp rows the Watch Folder may have caught
                 EvictTempFileRows();
                 // Invalidate duplicate detector hash cache for the modified file
