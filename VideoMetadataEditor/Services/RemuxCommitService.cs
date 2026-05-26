@@ -76,7 +76,8 @@ public static class RemuxCommitService
         }
     }
 
-    /// <summary>Sends a file to the Recycle Bin, or permanently deletes on network paths.</summary>
+    /// <summary>Sends a file to the Recycle Bin, or permanently deletes on network paths
+    /// or when the Recycle Bin is unavailable (headless/CI environments).</summary>
     private static void RecycleOrDelete(string path)
     {
         bool isNetwork = path.StartsWith("\\\\", StringComparison.Ordinal);
@@ -91,12 +92,23 @@ public static class RemuxCommitService
             catch { }
         }
 
-        if (isNetwork)
-            File.Delete(path);
-        else
-            Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path,
-                Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+        if (!isNetwork)
+        {
+            try
+            {
+                Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path,
+                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                return; // success
+            }
+            catch
+            {
+                // Recycle Bin unavailable (headless/CI/network volume) — fall through
+            }
+        }
+
+        // Permanent delete: network path, or Recycle Bin failed
+        File.Delete(path);
     }
     /// Deletes the candidate (Recycle Bin). Original is untouched.
     /// </summary>
