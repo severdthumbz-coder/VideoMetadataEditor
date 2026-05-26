@@ -1016,18 +1016,32 @@ public partial class MainViewModel
         if (entry == null) return;   // file not in library — nothing to update or cache
 
         // Update in-memory grid entry
-        entry.Title       = meta.Title;
-        entry.Year        = meta.Year;
-        entry.Genre       = meta.Genre;
-        entry.Director    = meta.Director;
-        entry.Cast        = meta.Cast;
-        entry.Description = meta.Description;
-        entry.ImdbId      = meta.ImdbId;
-        entry.TmdbId      = meta.TmdbId;
-        entry.ImdbRating  = meta.Rating;
-        entry.MpaRating   = meta.MpaRating;
+        entry.Title        = meta.Title;
+        entry.Year         = meta.Year;
+        entry.Genre        = meta.Genre;
+        entry.Director     = meta.Director;
+        entry.Cast         = meta.Cast;
+        entry.Description  = meta.Description;
+        entry.ImdbId       = meta.ImdbId;
+        entry.TmdbId       = meta.TmdbId;
+        entry.ImdbRating   = meta.Rating;
+        entry.MpaRating    = meta.MpaRating;
         if (meta.ArtworkBytes is { Length: > 0 })
             entry.CoverArt = meta.ArtworkBytes;
+
+        // ── TV episode fields ──────────────────────────────────────────────────
+        // These were missing before — caused the "untagged" warning to persist in
+        // the TV tree after embedding, because the in-memory LibraryEntry still
+        // had stale/empty IsEpisode, Season, Episode values. A full rescan cleared
+        // it but the in-place sync after embed did not.
+        entry.IsEpisode    = meta.IsEpisode;
+        entry.ShowTitle    = meta.ShowTitle    ?? string.Empty;
+        entry.Season       = meta.Season;
+        entry.Episode      = meta.Episode;
+        entry.EpisodeTitle = meta.EpisodeTitle ?? string.Empty;
+        entry.AiredDate    = meta.AiredDate    ?? string.Empty;
+        // Raise TV tree immediately so the untagged warning clears without rescan
+        RaiseProperty(nameof(TvShowTree));
 
         // Refresh cache entry — file was just rewritten so mtime will change.
         // Use the updated LibraryEntry (not a stub) so the cache stays accurate.
@@ -1037,7 +1051,7 @@ public partial class MainViewModel
             if (info.Exists)
                 _libraryCacheService.Put(filePath, info.Length, info.LastWriteTimeUtc, entry);
         }
-        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[{System.IO.Path.GetFileNameWithoutExtension(System.Reflection.MethodBase.GetCurrentMethod()?.DeclaringType?.Name ?? "VM")}] {ex.GetType().Name}: {ex.Message}"); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[SyncLibraryEntry] {ex.GetType().Name}: {ex.Message}"); }
     }
 
     // ── INotifyPropertyChanged ────────────────────────────────────────────────
