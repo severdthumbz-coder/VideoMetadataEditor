@@ -1828,12 +1828,16 @@ public partial class MainViewModel : INotifyPropertyChanged
             dlg.InitialDirectory = Settings.LastFolderPath;
 
         if (dlg.ShowDialog() != true) return;
+        await LoadFolderDirectAsync(dlg.FolderName);
+    }
 
-        Settings.LastFolderPath = dlg.FolderName;
-        _ = App.ConfigService.SaveAsync();
-
-        // Restart watch folder monitor on the new path
-        ApplyWatchFolderSetting();
+    /// <summary>
+    /// Loads all video files from <paramref name="folderPath"/> into the FILES panel
+    /// without showing a folder picker dialog. Used for both user-triggered loads
+    /// (via AddFolderAsync) and automatic startup restore when Watch Folder is enabled.
+    /// </summary>
+    public async Task LoadFolderDirectAsync(string folderPath)
+    {
 
         var ct = BeginOperation();
         IsBusy = true;
@@ -1843,6 +1847,12 @@ public partial class MainViewModel : INotifyPropertyChanged
         var extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             { ".mp4", ".mkv", ".mov", ".wmv", ".m4v", ".webm" };
 
+            Settings.LastFolderPath = folderPath;
+        _ = App.ConfigService.SaveAsync();
+
+        // Restart watch folder monitor on the new path
+        ApplyWatchFolderSetting();
+
         // ── Phase 1: scan directory tree on background threads ─────────────────
         List<string> allFiles;
         try
@@ -1850,13 +1860,13 @@ public partial class MainViewModel : INotifyPropertyChanged
             allFiles = await Task.Run(() =>
             {
                 ct.ThrowIfCancellationRequested();
-                var subDirs = new List<string> { dlg.FolderName };
+                var subDirs = new List<string> { folderPath };
                 if (Settings.AddFolderRecursive)
                 {
                     try
                     {
                         subDirs.AddRange(Directory.EnumerateDirectories(
-                            dlg.FolderName, "*", SearchOption.AllDirectories));
+                            folderPath, "*", SearchOption.AllDirectories));
                     }
                     catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[FileLoad] {ex.GetType().Name}: {ex.Message}"); }
                 }
@@ -1925,7 +1935,7 @@ public partial class MainViewModel : INotifyPropertyChanged
         //
         // UI chunk size also scales: larger = fewer Task.Yield() context switches,
         // smaller = more frequent progress bar updates. Tuned per drive type.
-        var driveProfile = Services.DriveCapabilityService.GetProfile(dlg.FolderName);
+        var driveProfile = Services.DriveCapabilityService.GetProfile(folderPath);
         int metaWorkers  = driveProfile.RecommendedMetadataWorkers;
 
         // Chunk = how many VideoFile objects we buffer before pushing to UI list.
@@ -2017,7 +2027,7 @@ public partial class MainViewModel : INotifyPropertyChanged
 
         if (added > 0)
             FilesLoaded?.Invoke(this,
-                new FilesLoadedEventArgs(added, allFiles.Count, dlg.FolderName));
+                new FilesLoadedEventArgs(added, allFiles.Count, folderPath));
             RaiseProperty(nameof(WriteWorkerRecommendation));
 
         // Register all loaded files with the watch service so the poll timer
@@ -2029,7 +2039,7 @@ public partial class MainViewModel : INotifyPropertyChanged
         }
 
         // Check for incomplete operations in the loaded folder
-        CheckForRecovery(new[] { dlg.FolderName });
+        CheckForRecovery(new[] { folderPath });
     }
 
 

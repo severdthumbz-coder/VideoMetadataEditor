@@ -90,6 +90,17 @@ public partial class MainWindow : Window
             // Trigger startup recovery NOW (after subscribing, to avoid race condition)
             VM.TriggerStartupRecovery();
 
+            // Auto-load the previous folder when Watch Folder is enabled.
+            // This is the missing piece: without it the FILES panel is always empty
+            // on launch and the user has to manually re-add the folder every session.
+            // Only runs when WatchFolderEnabled is on — respects the user's intent.
+            if (VM.Settings.WatchFolderEnabled
+                && !string.IsNullOrWhiteSpace(VM.Settings.LastFolderPath)
+                && System.IO.Directory.Exists(VM.Settings.LastFolderPath))
+            {
+                _ = VM.LoadFolderDirectAsync(VM.Settings.LastFolderPath);
+            }
+
             // If library entries were pre-loaded from cache, rebuild tabs now
             if (VM.LibraryEntries.Count > 0)
                 VM.RebuildLibraryTabs();
