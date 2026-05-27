@@ -695,8 +695,8 @@ public partial class MainWindow : Window
         var win = new System.Windows.Window
         {
             Title           = $"Write Failed — {e.File.FileName}",
-            Width           = 560,
-            Height          = 400,
+            Width           = 720,
+            Height          = 420,
             WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner,
             Owner           = this,
             ResizeMode      = ResizeMode.NoResize,
@@ -769,6 +769,48 @@ public partial class MainWindow : Window
             };
             btnPanel.Children.Add(openInBtn);
         }
+
+        // Remux buttons — the most reliable fix for persistent write failures.
+        // Primary target is chosen by file type: MKV files get .mp4 first (wider
+        // tagger compatibility), everything else gets .mkv first (flexible container).
+        // Both options always shown — user may want the other format.
+        var ext            = System.IO.Path.GetExtension(e.File.FilePath).ToLowerInvariant();
+        var primaryExt     = ext == ".mkv" ? ".mp4" : ".mkv";
+        var primaryLabel   = ext == ".mkv" ? "🔧 Remux → .mp4 (fix + faststart)" : "🔧 Remux → .mkv";
+        var secondaryExt   = ext == ".mkv" ? ".mkv"  : ".mp4";
+        var secondaryLabel = ext == ".mkv" ? "🔧 Remux → .mkv" : "🔧 Remux → .mp4 (fix + faststart)";
+        const string remuxTip = "Losslessly rebuilds the container — fixes files that refuse embedding. " +
+                                "Original is kept until you choose Replace or Restore.";
+
+        var remuxPrimaryBtn = new Button
+        {
+            Content = primaryLabel,
+            Padding = new Thickness(14, 7, 14, 7),
+            Margin  = new Thickness(0, 0, 8, 0),
+            ToolTip = remuxTip
+        };
+        remuxPrimaryBtn.Click += async (_, _) =>
+        {
+            win.Close();
+            await VM.MediaHealthVM.RemuxSelectedAsync(
+                Services.MediaHealthService.Analyse(e.File.FilePath), primaryExt);
+        };
+        btnPanel.Children.Add(remuxPrimaryBtn);
+
+        var remuxSecondaryBtn = new Button
+        {
+            Content = secondaryLabel,
+            Padding = new Thickness(14, 7, 14, 7),
+            Margin  = new Thickness(0, 0, 8, 0),
+            ToolTip = remuxTip
+        };
+        remuxSecondaryBtn.Click += async (_, _) =>
+        {
+            win.Close();
+            await VM.MediaHealthVM.RemuxSelectedAsync(
+                Services.MediaHealthService.Analyse(e.File.FilePath), secondaryExt);
+        };
+        btnPanel.Children.Add(remuxSecondaryBtn);
 
         var closeBtn = new Button
         {
