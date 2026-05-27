@@ -1049,13 +1049,12 @@ public partial class MainViewModel
         // Raise TV tree immediately so the untagged warning clears without rescan
         RaiseProperty(nameof(TvShowTree));
 
-        // Refresh cache entry — file was just rewritten so mtime will change.
-        // Use the updated LibraryEntry (not a stub) so the cache stays accurate.
+        // Refresh cache entry using the current (post-rename) path.
         try
         {
-            var info = new FileInfo(filePath);
+            var info = new FileInfo(currentPath);
             if (info.Exists)
-                _libraryCacheService.Put(filePath, info.Length, info.LastWriteTimeUtc, entry);
+                _libraryCacheService.Put(currentPath, info.Length, info.LastWriteTimeUtc, entry);
         }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[SyncLibraryEntry] {ex.GetType().Name}: {ex.Message}"); }
     }
