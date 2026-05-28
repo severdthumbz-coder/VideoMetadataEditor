@@ -1531,7 +1531,7 @@
                                                 Style="{StaticResource SecondaryButton}"
                                                 Command="{Binding SearchSubtitlesCommand}"
                                                 Padding="12,6"
-                                                IsEnabled="{Binding IsSearchingSubtitles, Converter={StaticResource InverseBool}}"/>
+                                                IsEnabled="{Binding IsSearchingSubtitles, Converter={StaticResource InvBool}}"/>
                                         <Button Grid.Column="4"
                                                 Content="✕ Clear"
                                                 Style="{StaticResource SecondaryButton}"
