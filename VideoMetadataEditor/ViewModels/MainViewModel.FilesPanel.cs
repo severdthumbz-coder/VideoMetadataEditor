@@ -650,4 +650,63 @@ public partial class MainViewModel
         }
     }
 
+    /// <summary>
+    /// Undoes the last batch embed: restores original tags and filenames for
+    /// every file that succeeded in the most recent batch run.
+    /// </summary>
+    private async Task UndoBatchAsync()
+    {
+        if (_batchUndoFiles.Count == 0) return;
+
+        var files = _batchUndoFiles.ToList(); // snapshot — don't hold the list lock
+        var count  = files.Count;
+        IsBusy     = true;
+        StatusText = $"Undoing batch — reverting {count} file(s)…";
+
+        int reverted = 0, failed = 0;
+
+        foreach (var vf in files)
+        {
+            if (vf.UndoMetadata == null) continue;
+            try
+            {
+                var ok = await _metadataService.WriteMetadataAsync(
+                    vf.FilePath, vf.UndoMetadata, Settings, null);
+
+                if (vf.UndoFilePath != null &&
+                    !vf.UndoFilePath.Equals(vf.FilePath, StringComparison.OrdinalIgnoreCase) &&
+                    !File.Exists(vf.UndoFilePath))
+                {
+                    File.Move(vf.FilePath, vf.UndoFilePath);
+                    vf.FilePath = vf.UndoFilePath;
+                }
+
+                if (ok)
+                {
+                    vf.EmbeddedMetadata = vf.UndoMetadata.Clone();
+                    vf.PendingMetadata  = vf.UndoMetadata.Clone();
+                    vf.UndoFilePath     = null;
+                    vf.UndoMetadata     = null;
+                    vf.WriteStatus      = Models.WriteStatus.None;
+                    vf.IsDone           = false;
+                    vf.HasError         = false;
+                    reverted++;
+                }
+                else failed++;
+            }
+            catch { failed++; }
+        }
+
+        _batchUndoFiles.Clear();
+        RaiseProperty(nameof(CanUndoBatch));
+        RaiseProperty(nameof(UndoBatchCommand));
+
+        EndOperation(resetProgress: false);
+        StatusText = failed == 0
+            ? $"Batch undo complete — {reverted} file(s) reverted."
+            : $"Batch undo: {reverted} reverted, {failed} failed.";
+
+        Log($"[{DateTime.Now:HH:mm:ss}] ↩ Batch undo: {reverted} reverted, {failed} failed.");
+    }
+
 }

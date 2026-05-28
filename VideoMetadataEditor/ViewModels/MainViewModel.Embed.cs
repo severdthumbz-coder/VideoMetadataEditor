@@ -427,6 +427,10 @@ public partial class MainViewModel
         IsBusy = true;
         int done = 0, successCount = 0, failCount = 0, renamedCount = 0;
 
+        // Clear previous batch undo state so the new batch replaces it
+        _batchUndoFiles.Clear();
+        RaiseProperty(nameof(CanUndoBatch));
+
         var progress = new System.Progress<string>(msg =>
         {
             Log( $"[{DateTime.Now:HH:mm:ss}] {msg}");
@@ -563,6 +567,8 @@ public partial class MainViewModel
                     // ── Snapshot BEFORE rename so undo can restore both path and tags ──
                     vf.UndoFilePath = vf.FilePath;
                     vf.UndoMetadata = vf.EmbeddedMetadata.Clone();
+                    // Add to batch undo list so all successes can be reverted together
+                    lock (_batchUndoFiles) _batchUndoFiles.Add(vf);
 
                     vf.WriteStatus = Models.WriteStatus.Success;
                     vf.IsNewFile   = false; // clear yellow highlight on successful embed
@@ -619,6 +625,8 @@ public partial class MainViewModel
 
         RaiseProperty(nameof(HasAnyFailure));
         BatchCompleted?.Invoke(this, new BatchEventArgs(successCount, failCount, renamedCount));
+        RaiseProperty(nameof(CanUndoBatch));
+        RaiseProperty(nameof(UndoBatchCommand));
 
         // Evict any .vme_tmp_* or .vme_bak_* files that the Watch Folder may have
         // picked up during the write cycle — they no longer exist on disk after
@@ -1373,6 +1381,19 @@ public partial class MainViewModel
             justAdded.IsNewFile = true;
             _watchFolderService.AddKnownPath(path);
             StatusText = $"Watch folder: {justAdded.FileName} added.";
+
+            // Auto-search in the background so results are ready when the user
+            // clicks the file — they don't have to wait for the search to start.
+            if (!string.IsNullOrWhiteSpace(justAdded.EmbeddedMetadata.Title))
+            {
+                var title = justAdded.ParsedTitle.Length > 0
+                    ? justAdded.ParsedTitle : justAdded.EmbeddedMetadata.Title;
+                var year  = justAdded.ParsedYear.Length > 0
+                    ? justAdded.ParsedYear  : justAdded.EmbeddedMetadata.Year;
+                _ = Task.Run(() =>
+                    System.Windows.Application.Current?.Dispatcher.InvokeAsync(
+                        () => ScheduleAutoSearch(justAdded, title, year)));
+            }
         }
     }
 

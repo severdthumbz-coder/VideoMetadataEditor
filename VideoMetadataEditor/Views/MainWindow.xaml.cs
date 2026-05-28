@@ -214,6 +214,14 @@ public partial class MainWindow : Window
                 { new() { Icon = "✓", Label = $"{e.SuccessCount} processed" } };
             if (e.RenamedCount > 0)
                 chips.Add(new() { Icon = "↗", Label = $"{e.RenamedCount} renamed" });
+            if (e.SuccessCount > 0)
+                chips.Add(new BannerChip
+                {
+                    Icon    = "↩",
+                    Label   = "Undo Batch",
+                    Command = VM.UndoBatchCommand,
+                    ToolTip = $"Restore all {e.SuccessCount} files to their state before this batch"
+                });
 
             _banner?.ShowRich(
                 $"Batch Complete  ·  {e.SuccessCount} file{(e.SuccessCount != 1 ? "s" : "")} processed",
@@ -224,12 +232,24 @@ public partial class MainWindow : Window
         }
         else
         {
+            var chips = new List<BannerChip>
+            {
+                new() { Icon = "✓", Label = $"{e.SuccessCount} ok" },
+                new() { Icon = "✕", Label = $"{e.FailCount} failed" }
+            };
+            if (e.SuccessCount > 0)
+                chips.Add(new BannerChip
+                {
+                    Icon    = "↩",
+                    Label   = "Undo Batch",
+                    Command = VM.UndoBatchCommand,
+                    ToolTip = $"Revert the {e.SuccessCount} files that succeeded"
+                });
+
             _banner?.ShowRich(
                 $"Batch Finished  ·  {e.FailCount} error{(e.FailCount != 1 ? "s" : "")}",
                 $"{e.SuccessCount} succeeded · {e.FailCount} failed",
-                BannerType.Warning, 8,
-                new BannerChip { Icon = "✓", Label = $"{e.SuccessCount} ok" },
-                new BannerChip { Icon = "✕", Label = $"{e.FailCount} failed" });
+                BannerType.Warning, 8, chips.ToArray());
         }
     }
 

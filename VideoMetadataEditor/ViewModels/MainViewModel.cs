@@ -358,6 +358,13 @@ public partial class MainViewModel : INotifyPropertyChanged
     public event EventHandler<TransferEventArgs>?  MoveCompleted;
     public event EventHandler<EmbedEventArgs>?  EmbedSucceeded;
     public event EventHandler<BatchEventArgs>?  BatchCompleted;
+
+    // ── Batch undo state ──────────────────────────────────────────────────────
+    // Stores the files that succeeded in the last batch so they can all be
+    // reverted together. Cleared at the start of every new batch run.
+    private readonly List<VideoFile> _batchUndoFiles = new();
+    public bool CanUndoBatch => _batchUndoFiles.Count > 0 && !IsBusy;
+    public ICommand UndoBatchCommand { get; }
     public event EventHandler<FilesLoadedEventArgs>? FilesLoaded;
     /// <summary>Fires when a write fails AND VerboseWriteErrors is enabled. Arg: (file, detail message).</summary>
     public event EventHandler<(VideoFile File, string Detail)>? WriteFailedDetailed;
@@ -1423,6 +1430,7 @@ public partial class MainViewModel : INotifyPropertyChanged
         ApplyRetrievedCommand    = new RelayCommand(_ => ApplyRetrievedToEditing(), _ => RetrievedMetadata != null);
         ApplyMetadataCommand     = new AsyncRelayCommand(ApplyToFileAsync, _ => SelectedFile != null && !IsBusy);
         UndoLastEmbedCommand     = new AsyncRelayCommand(UndoLastEmbedAsync, _ => SelectedFile?.CanUndo == true && !IsBusy);
+        UndoBatchCommand         = new AsyncRelayCommand(UndoBatchAsync, _ => CanUndoBatch);
         InitTreeCommands();
         InitOpenSubsCommands();
         InitTraktCommands();
@@ -2588,6 +2596,20 @@ public partial class MainViewModel : INotifyPropertyChanged
         Settings.TraktLastSync = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
         _ = App.ConfigService.SaveAsync();
         RaiseProperty(nameof(TraktLastSyncText));
+
+        // Also update watched state on any matching files currently in the FILES panel
+        // so the ♥ icon reflects Trakt history without requiring a library rescan.
+        foreach (var vf in Files.Where(f => !f.IsSeparator))
+        {
+            var match = items.FirstOrDefault(i =>
+                (!string.IsNullOrWhiteSpace(vf.EmbeddedMetadata.ImdbId) && vf.EmbeddedMetadata.ImdbId == i.ImdbId) ||
+                (!string.IsNullOrWhiteSpace(vf.EmbeddedMetadata.TmdbId) && vf.EmbeddedMetadata.TmdbId == i.TmdbId));
+            if (match == null) continue;
+            bool matches = match.IsEpisode && vf.EmbeddedMetadata.IsEpisode
+                ? match.Season == vf.EmbeddedMetadata.Season && match.Episode == vf.EmbeddedMetadata.Episode
+                : !match.IsEpisode && !vf.EmbeddedMetadata.IsEpisode;
+            if (matches) vf.IsWatched = true;
+        }
         RaiseProperty(nameof(TvShowTree));
 
         IsBusy = false;

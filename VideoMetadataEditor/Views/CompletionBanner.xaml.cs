@@ -10,8 +10,12 @@ public enum BannerType { Success, Error, Warning, Info, Copy, Move }
 
 public class BannerChip
 {
-    public string Icon  { get; init; } = "";
-    public string Label { get; init; } = "";
+    public string   Icon    { get; init; } = "";
+    public string   Label   { get; init; } = "";
+    /// <summary>Optional command executed when the chip is clicked.</summary>
+    public System.Windows.Input.ICommand? Command { get; init; }
+    /// <summary>Optional tooltip shown on hover.</summary>
+    public string?  ToolTip { get; init; }
 }
 
 public partial class CompletionBanner : UserControl
@@ -96,9 +100,31 @@ public partial class CompletionBanner : UserControl
         for (int i = 0; i < Math.Min(chips.Length, 3); i++)
         {
             var (b, icon, text) = chipControls[i];
-            icon.Text = chips[i].Icon;
-            text.Text = chips[i].Label;
+            var chip = chips[i];
+            icon.Text = chip.Icon;
+            text.Text = chip.Label;
             b.Visibility = Visibility.Visible;
+
+            // Wire command if provided — clicking the chip executes it and hides the banner
+            b.MouseLeftButtonUp -= OnChipClick;  // remove stale handler from previous show
+            if (chip.Command != null)
+            {
+                b.Cursor  = System.Windows.Input.Cursors.Hand;
+                b.ToolTip = chip.ToolTip ?? chip.Label;
+                var cmd = chip.Command;
+                void OnChipClick(object s, System.Windows.Input.MouseButtonEventArgs e)
+                {
+                    if (cmd.CanExecute(null)) cmd.Execute(null);
+                    Hide();
+                    b.MouseLeftButtonUp -= OnChipClick;
+                }
+                b.MouseLeftButtonUp += OnChipClick;
+            }
+            else
+            {
+                b.Cursor  = null;
+                b.ToolTip = chip.ToolTip;
+            }
         }
 
         // Reset countdown bar
