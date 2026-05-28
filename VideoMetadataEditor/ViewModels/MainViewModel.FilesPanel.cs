@@ -687,7 +687,7 @@ public partial class MainViewModel
                     vf.PendingMetadata  = vf.UndoMetadata.Clone();
                     vf.UndoFilePath     = null;
                     vf.UndoMetadata     = null;
-                    vf.WriteStatus      = Models.WriteStatus.None;
+                    vf.WriteStatus      = Models.WriteStatus.Untouched;
                     vf.IsDone           = false;
                     vf.HasError         = false;
                     reverted++;

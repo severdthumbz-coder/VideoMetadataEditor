@@ -105,20 +105,15 @@ public partial class CompletionBanner : UserControl
             text.Text = chip.Label;
             b.Visibility = Visibility.Visible;
 
-            // Wire command if provided — clicking the chip executes it and hides the banner
-            b.MouseLeftButtonUp -= OnChipClick;  // remove stale handler from previous show
+            // Clear any previously wired command handler, then wire new one if provided
+            b.MouseLeftButtonUp -= ChipClickHandler;
+            b.Tag = null;
             if (chip.Command != null)
             {
                 b.Cursor  = System.Windows.Input.Cursors.Hand;
                 b.ToolTip = chip.ToolTip ?? chip.Label;
-                var cmd = chip.Command;
-                void OnChipClick(object s, System.Windows.Input.MouseButtonEventArgs e)
-                {
-                    if (cmd.CanExecute(null)) cmd.Execute(null);
-                    Hide();
-                    b.MouseLeftButtonUp -= OnChipClick;
-                }
-                b.MouseLeftButtonUp += OnChipClick;
+                b.Tag     = chip.Command;
+                b.MouseLeftButtonUp += ChipClickHandler;
             }
             else
             {
@@ -139,6 +134,18 @@ public partial class CompletionBanner : UserControl
         AnimateIn();
 
         if (autoHideSeconds > 0) _countdown.Start();
+    }
+
+    private void ChipClickHandler(object sender,
+        System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Border b &&
+            b.Tag is System.Windows.Input.ICommand cmd &&
+            cmd.CanExecute(null))
+        {
+            cmd.Execute(null);
+            Hide();
+        }
     }
 
     public void Hide()
