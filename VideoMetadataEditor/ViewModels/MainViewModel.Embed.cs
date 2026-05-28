@@ -260,6 +260,11 @@ public partial class MainViewModel
         if (success)
         {
             var oldName = Path.GetFileName(targetFile.FilePath);
+            // Snapshot BEFORE updating FilePath so undo can restore the old name
+            targetFile.UndoFilePath = targetFile.FilePath;
+            targetFile.UndoMetadata = targetFile.EmbeddedMetadata.Clone();
+            RaiseProperty(nameof(UndoLastEmbedCommand));
+
             var newName = Path.GetFileName(newPath);
             targetFile.FilePath = newPath;
             StatusText = $"✓ Renamed: {oldName} → {newName}";

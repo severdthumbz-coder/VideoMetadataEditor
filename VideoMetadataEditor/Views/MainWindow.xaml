@@ -479,13 +479,13 @@
                                 Style="{StaticResource SecondaryButton}"
                                 Command="{Binding UndoLastEmbedCommand}"
                                 Padding="10,7"
-                                ToolTip="Restore file to pre-embed state"/>
+                                ToolTip="Restore this file to its state before the last embed or rename"/>
                         <Button Grid.Column="2"
                                 Content="{Binding SelectedFile.IsWatched, Converter={StaticResource BoolToStringDetected}, ConverterParameter=Watched}"
                                 Style="{StaticResource SecondaryButton}"
                                 Command="{Binding ToggleWatchedCommand}"
                                 Padding="10,7"
-                                ToolTip="Toggle watched/unwatched"/>
+                                ToolTip="Toggle ♥ Watched / Unwatched — syncs to Trakt if connected"/>
                     </Grid>
                     <!-- Row 5: Rename Only -->
                     <Button Grid.Row="5"
@@ -495,17 +495,32 @@
                             Padding="10,7"
                             HorizontalAlignment="Stretch"
                             ToolTip="Rename using the current pattern without embedding any metadata tags"/>
-                    <!-- Row 6: Filter by watched -->
-                    <StackPanel Grid.Row="6" Orientation="Horizontal">
-                        <Button Content="🎬 Select Unwatched"
+                    <!-- Row 6: Undo Batch + watched selectors -->
+                    <Grid Grid.Row="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0"
+                                Content="↩ Undo Batch"
+                                Style="{StaticResource SecondaryButton}"
+                                Command="{Binding UndoBatchCommand}"
+                                Padding="8,5" FontSize="11"
+                                ToolTip="Revert all files that succeeded in the last Batch Process to their pre-batch state"/>
+                        <Button Grid.Column="2"
+                                Content="🎬 Select Unwatched"
                                 Style="{StaticResource SecondaryButton}"
                                 Command="{Binding SelectUnwatchedCommand}"
-                                Padding="8,5" FontSize="11" Margin="0,0,4,0"/>
-                        <Button Content="✓ Select Watched"
+                                Padding="8,5" FontSize="11"/>
+                        <Button Grid.Column="4"
+                                Content="✓ Select Watched"
                                 Style="{StaticResource SecondaryButton}"
                                 Command="{Binding SelectWatchedCommand}"
                                 Padding="8,5" FontSize="11"/>
-                    </StackPanel>
+                    </Grid>
                 </Grid>
             </Grid>
 
@@ -1153,6 +1168,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <!-- Search controls -->
@@ -1489,6 +1505,98 @@
                                          FontSize="11"
                                          Background="{DynamicResource InputBackgroundBrush}"
                                          Foreground="{DynamicResource AccentBrush}"/>
+                            </Expander>
+
+                            <!-- ── Subtitles ──────────────────────────────────── -->
+                            <Expander Grid.Row="3"
+                                      Header="🗒 Subtitles"
+                                      Margin="0,12,0,0"
+                                      IsExpanded="False">
+                                <StackPanel Margin="0,8,0,0">
+                                    <!-- Language filter + search -->
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 Text="{Binding SubtitleSearchLanguages, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="12"
+                                                 ToolTip="Language codes, comma-separated (e.g. en, fr, de). Leave blank for all languages."/>
+                                        <Button Grid.Column="2"
+                                                Content="🔍 Search"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Command="{Binding SearchSubtitlesCommand}"
+                                                Padding="12,6"
+                                                IsEnabled="{Binding IsSearchingSubtitles, Converter={StaticResource InverseBool}}"/>
+                                        <Button Grid.Column="4"
+                                                Content="✕ Clear"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Command="{Binding ClearSubtitleResultsCommand}"
+                                                Padding="10,6"/>
+                                    </Grid>
+
+                                    <!-- Results list -->
+                                    <ListBox ItemsSource="{Binding SubtitleResults}"
+                                             SelectedItem="{Binding SelectedSubtitleResult}"
+                                             Height="160"
+                                             Margin="0,0,0,8"
+                                             BorderThickness="1"
+                                             Background="{DynamicResource InputBackgroundBrush}">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="4,2">
+                                                    <TextBlock FontSize="12" FontWeight="SemiBold"
+                                                               Text="{Binding FileName}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Foreground="{DynamicResource ForegroundBrush}"/>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding LanguageName}"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource AccentBrush}"
+                                                                   Margin="0,0,8,0"/>
+                                                        <TextBlock Text="{Binding Format}"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                                   Margin="0,0,8,0"/>
+                                                        <TextBlock Text="{Binding DownloadCount, StringFormat='{}{0} downloads'}"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                                                        <TextBlock Text=" · HI"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                                   Visibility="{Binding HearingImpaired, Converter={StaticResource BoolVis}}"/>
+                                                        <TextBlock Text=" · Forced"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                                   Visibility="{Binding ForeignPartsOnly, Converter={StaticResource BoolVis}}"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+
+                                    <!-- Download + status -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <Button Content="⬇ Download Selected"
+                                                Style="{StaticResource PrimaryButton}"
+                                                Command="{Binding DownloadSubtitleCommand}"
+                                                Padding="12,6"
+                                                Margin="0,0,8,0"
+                                                ToolTip="Download the selected subtitle and save it alongside the video file"/>
+                                        <TextBlock Text="{Binding SubtitleDownloadStatus}"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource AccentBrush}"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Requires OpenSubtitles API key in Settings → Metadata &amp; APIs"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource ForegroundMutedBrush}"
+                                               Margin="0,2,0,0"/>
+                                </StackPanel>
                             </Expander>
                         </Grid>
                     </TabItem>
@@ -4629,9 +4737,12 @@
                                         <TextBlock Style="{StaticResource BaseText}">1. Add files via Add Files / Add Folder / drag-and-drop</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}">2. Click a file in the FILES panel to select it — RAW DATA tab shows embedded tags</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}">3. Go to RETRIEVED DATA tab — search auto-runs; or type a title and press Search</TextBlock>
-                                        <TextBlock Style="{StaticResource BaseText}">4. Click the correct result → click "Use Retrieved" to copy into the editor fields</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">4. Click the correct result → click "⬇ Apply to Raw Data Tab" to copy into the editor fields</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}">5. Review fields in RAW DATA, adjust if needed, then click "Apply + Embed + Rename"</TextBlock>
-                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">6. ✅ row = success. ❌ row = hover for the error message; enable Verbose Write Errors in Settings for full diagnosis including suggested fixes</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">6. ✅ row = success. ❌ row (pink) = write failed — hover for reason, then use the write failure popup to Remux → .mp4 or .mkv, which fixes most persistent write failures</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">7. After a successful embed, "↺ Undo Last Embed" becomes active — click it to restore the file's previous tags and filename in one step</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">8. To download subtitles: RETRIEVED DATA tab → expand 🗒 Subtitles → Search → select result → ⬇ Download Selected. Requires OpenSubtitles API key in Settings</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">9. To mark as watched: click the "Watched / Unwatched" toggle in RAW DATA. If Trakt is connected, this syncs automatically</TextBlock>
                                     </StackPanel>
 
                                     <!-- ── 1: Batch workflow ────────────────────────────────────── -->
@@ -4652,6 +4763,8 @@
                                         <TextBlock Style="{StaticResource BaseText}">4. Progress bar: 0–50% = search phase, 50–100% = write phase</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}">5. Cancel stops at the next safe point — never mid-write</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}">6. Review failures in the completion banner; retry individually if needed</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">7. After batch completes, click "↩ Undo Batch" (in the completion banner chip OR the permanent button in the RAW DATA tab) to revert ALL files that succeeded — restores tags and renames. Only available until the next batch run</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">8. For files that failed to write (pink rows): click the pink row to select it, then right-click or use the write failure popup to Remux → .mp4 or .mkv — this fixes most container-related write failures without re-encoding</TextBlock>
                                     </StackPanel>
 
                                     <!-- ── 2: Library workflow ──────────────────────────────────── -->
