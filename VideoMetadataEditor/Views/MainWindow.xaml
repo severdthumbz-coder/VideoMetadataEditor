@@ -30,7 +30,8 @@
         <conv:ZeroToCollapsedConverter x:Key="ZeroToCollapsedConverter"/>
         <conv:BoolToStringConverter x:Key="ThemeIcon" TrueValue="🌙" FalseValue="☀️"/>
         <conv:NullableBoolToVisibilityConverter x:Key="NullableBoolVis"/>
-        <conv:BoolToStringConverter x:Key="BoolToStringDetected" TrueValue="✓ Found" FalseValue="Not found"/>
+        <conv:BoolToStringConverter x:Key="BoolToStringDetected" TrueValue="✓ Found"   FalseValue="Not found"/>
+        <conv:BoolToStringConverter x:Key="BoolToWatchedLabel"   TrueValue="♥ Watched" FalseValue="Unwatched"/>
         <conv:StringEqualsBoolConverter x:Key="StringEqualsBool"/>
     </Window.Resources>
 
@@ -481,7 +482,7 @@
                                 Padding="10,7"
                                 ToolTip="Restore this file to its state before the last embed or rename"/>
                         <Button Grid.Column="2"
-                                Content="{Binding SelectedFile.IsWatched, Converter={StaticResource BoolToStringDetected}, ConverterParameter=Watched}"
+                                Content="{Binding SelectedFile.IsWatched, Converter={StaticResource BoolToWatchedLabel}}"
                                 Style="{StaticResource SecondaryButton}"
                                 Command="{Binding ToggleWatchedCommand}"
                                 Padding="10,7"
@@ -1540,7 +1541,7 @@
                                     </Grid>
 
                                     <!-- Results list -->
-                                    <ListBox ItemsSource="{Binding SubtitleResults}"
+                                    <ListBox ItemsSource="{Binding SubtitleSearchResults}"
                                              SelectedItem="{Binding SelectedSubtitleResult}"
                                              Height="160"
                                              Margin="0,0,0,8"
