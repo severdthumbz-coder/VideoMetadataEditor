@@ -347,6 +347,8 @@ public partial class MainViewModel : INotifyPropertyChanged
     public ICommand SetTabAsTvCommand             { get; private set; } = null!;
     public ICommand ResetTabTypeCommand           { get; private set; } = null!;
     public ICommand SaveLibraryColumnLayoutCommand { get; private set; } = null!;
+    /// <summary>Set by MainWindow code-behind to sync DataGrid widths before save.</summary>
+    public Action? SyncLibraryGridBeforeSave { get; set; }
     public ICommand SelectLibraryTabCommand { get; private set; } = null!;
 
 
@@ -1583,7 +1585,13 @@ public partial class MainViewModel : INotifyPropertyChanged
         ExportLibraryXlsxCommand   = new AsyncRelayCommand(ExportLibraryXlsxAsync,
             _ => LibraryEntries.Any());
         ClearLibraryCacheCommand          = new RelayCommand(_ => ClearLibraryCache());
-        SaveLibraryColumnLayoutCommand    = new RelayCommand(_ => SaveLibraryColumnLayoutWithConfirmation());
+        SaveLibraryColumnLayoutCommand    = new RelayCommand(_ =>
+        {
+            // Sync live DataGrid widths/order into LibraryColumns before saving
+            // so a column resize without a reorder is also captured correctly.
+            SyncLibraryGridBeforeSave?.Invoke();
+            SaveLibraryColumnLayoutWithConfirmation();
+        });
         PickTvEpisodeCommand              = new AsyncRelayCommand(PickTvEpisodeAsync);
         RenameCurrentFileCommand          = new AsyncRelayCommand(RenameCurrentFileAsync,
             _ => SelectedFile != null && !IsBusy);

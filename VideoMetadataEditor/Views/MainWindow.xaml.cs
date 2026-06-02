@@ -87,6 +87,10 @@ public partial class MainWindow : Window
 
             VM.RecoveryCandidatesFound += OnRecoveryCandidatesFound;
 
+            // Wire sync delegate so Save Layout captures live column widths even
+            // when the user resized columns without reordering them.
+            VM.SyncLibraryGridBeforeSave = SyncColumnOrderFromDataGrid;
+
             // Trigger startup recovery NOW (after subscribing, to avoid race condition)
             VM.TriggerStartupRecovery();
 
