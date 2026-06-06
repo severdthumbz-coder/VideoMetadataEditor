@@ -105,6 +105,17 @@ public class LibraryCacheService
     }
 
     /// <summary>
+    /// Removes a path from the in-memory cache index so the next scan performs
+    /// a fresh TagLib# read. Used after remux Replace Original to prevent stale
+    /// metadata for the old path or a tagless new file showing up on rescan.
+    /// </summary>
+    public void Evict(string path)
+    {
+        if (!string.IsNullOrWhiteSpace(path))
+            _index.Remove(path);
+    }
+
+    /// <summary>
     /// Upserts <paramref name="entry"/> into the in-memory index.
     /// Call after every successful TagLib# read so the next scan can use it.
     /// </summary>

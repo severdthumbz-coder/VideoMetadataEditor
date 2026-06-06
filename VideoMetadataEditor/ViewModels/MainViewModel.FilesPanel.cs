@@ -635,6 +635,17 @@ public partial class MainViewModel
         // Remove the candidate row from the panel
         Files.Remove(candidate);
 
+        // On Replace: evict the old library cache entry for both the original
+        // and candidate paths. The remuxed file has no tags — the next Scan
+        // Library would otherwise serve stale cached metadata (showing old info
+        // for the now-deleted original path, or missing info for the new path).
+        // Evicting forces a fresh TagLib# read on the next scan.
+        if (replace)
+        {
+            _libraryCacheService.Evict(candidate.OriginalPath ?? string.Empty);
+            _libraryCacheService.Evict(candidate.FilePath);
+        }
+
         // On Replace, optionally surface the adopted file; on Restore, the original stays on disk
         StatusText = result.Message;
 
