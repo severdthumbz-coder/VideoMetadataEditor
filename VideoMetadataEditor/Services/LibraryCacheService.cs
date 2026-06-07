@@ -62,6 +62,24 @@ public class LibraryCacheService
     /// Loads the cache file for <paramref name="libraryFolder"/> into memory.
     /// Call once before a scan. Silently rebuilds from scratch on any error.
     /// </summary>
+    /// <summary>
+    /// Loads the cache from disk only on the first scan of a folder in this
+    /// session, or when the folder changes. Subsequent calls for the same folder
+    /// are no-ops, preserving any in-memory updates (e.g. from SyncLibraryEntry
+    /// after an embed) that haven't been persisted yet or were saved async.
+    /// </summary>
+    public void LoadIfNeeded(string libraryFolder)
+    {
+        var expectedPath = CacheFilePath(libraryFolder);
+        // Already loaded for this folder — skip the disk reload
+        if (_currentCachePath != null &&
+            string.Equals(_currentCachePath, expectedPath, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        // Different folder or first call — load from disk
+        Load(libraryFolder);
+    }
+
     public void Load(string libraryFolder)
     {
         _currentCachePath = CacheFilePath(libraryFolder);

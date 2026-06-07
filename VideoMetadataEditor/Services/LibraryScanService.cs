@@ -74,7 +74,11 @@ public class LibraryScanService
         int total = fileInfos.Count;
 
         // ── Phase 2: load cache for this folder ───────────────────────────────────
-        await Task.Run(() => _cache.Load(folder), ct);
+        // Only reload from disk on the FIRST scan of a folder in this session,
+        // or when switching to a different folder. Subsequent scans use the
+        // already-loaded in-memory index so SyncLibraryEntry updates (from embeds
+        // made since the last scan) are preserved rather than wiped by a disk reload.
+        await Task.Run(() => _cache.LoadIfNeeded(folder), ct);
 
         // ── Phase 3: parallel scan — cache hits skip TagLib#, misses do full read ─
         int workers = Math.Min(Environment.ProcessorCount, 8);
