@@ -40,6 +40,14 @@ public class LibraryScanService
     }
 
     /// <summary>Last scan stats — exposed for status bar display.</summary>
+    // Paths that were embedded this session — always re-read from TagLib# on next scan,
+    // bypassing the cache entirely. This is the definitive fix for stale data after embed+scan.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _recentlyEmbedded
+        = new(StringComparer.OrdinalIgnoreCase);
+
+    public void MarkAsEmbedded(string filePath)    => _recentlyEmbedded.TryAdd(filePath, 0);
+    public void ClearEmbeddedMark(string filePath) => _recentlyEmbedded.TryRemove(filePath, out _);
+
     public int LastScanCacheHits   { get; private set; }
     public int LastScanCacheMisses { get; private set; }
 
@@ -81,6 +89,12 @@ public class LibraryScanService
         await Task.Run(() => _cache.LoadIfNeeded(folder), ct);
 
         // ── Phase 3: parallel scan — cache hits skip TagLib#, misses do full read ─
+        // A file is a cache HIT only if: path, size AND mtime all match the stored entry.
+        // After any embed, MetadataService sets the file mtime to DateTime.UtcNow, and
+        // SyncLibraryEntry stores the new mtime in the cache via Put(). So a successfully
+        // embedded file always produces a cache hit with the UPDATED metadata on the next scan.
+        // Files that were never embedded (or where Put() wasn't called) produce a miss and
+        // are re-read from disk via TagLib# — which returns the current embedded tags.
         int workers = Math.Min(Environment.ProcessorCount, 8);
         using var sem = new SemaphoreSlim(workers);
 
@@ -99,7 +113,10 @@ public class LibraryScanService
                 LibraryEntry entry;
 
                 var cached = _cache.TryGet(fi.Path, fi.Size, fi.Mtime);
-                if (cached != null)
+                // Force a fresh TagLib# read if this file was embedded this session.
+                // This bypasses all cache logic and guarantees the updated tags are shown.
+                bool forceRead = _recentlyEmbedded.ContainsKey(fi.Path);
+                if (cached != null && !forceRead)
                 {
                     // ── Cache HIT — no TagLib# call needed ────────────────────────
                     entry = cached;
@@ -107,9 +124,11 @@ public class LibraryScanService
                 }
                 else
                 {
-                    // ── Cache MISS — full read, then store in cache ───────────────
+                    // ── Cache MISS or forced fresh read ───────────────────────────
                     entry = await Task.Run(() => BuildEntry(fi.Path), ct);
                     _cache.Put(fi.Path, fi.Size, fi.Mtime, entry);
+                    // Clear the embedded mark now that we've done a fresh read
+                    if (forceRead) ClearEmbeddedMark(fi.Path);
                     System.Threading.Interlocked.Increment(ref cacheMisses);
                 }
 

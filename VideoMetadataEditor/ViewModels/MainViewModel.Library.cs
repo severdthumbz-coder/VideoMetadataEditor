@@ -1057,18 +1057,16 @@ public partial class MainViewModel
         RaiseProperty(nameof(TvShowTree));
 
         // Refresh cache entry using the current (post-rename) path.
-        // Also triggers an async save to disk so the cache file reflects the new
-        // metadata before the next Scan Library call. Without this, a scan run
-        // immediately after an embed would reload the stale on-disk cache, miss
-        // on the changed mtime, re-read from TagLib# correctly — but if the file
-        // was remuxed (new path/extension), the tagless remux would produce empty rows.
         try
         {
             var info = new FileInfo(currentPath);
             if (info.Exists)
             {
                 _libraryCacheService.Put(currentPath, info.Length, info.LastWriteTimeUtc, entry);
-                // Save the in-memory cache to disk so the next scan starts fresh
+                // Mark as recently embedded so the next Scan Library forces a fresh
+                // TagLib# read for this file, bypassing any cache inconsistency entirely.
+                _libraryScanService.MarkAsEmbedded(currentPath);
+                // Save the in-memory cache to disk
                 var livePaths = LibraryEntries.Select(e => e.FilePath).ToList();
                 _ = _libraryCacheService.SaveAsync(livePaths);
             }
