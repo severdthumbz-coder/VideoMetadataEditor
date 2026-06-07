@@ -190,6 +190,7 @@ public class LibraryScanService
             ImdbRating    = meta.Rating,
             MpaRating     = meta.MpaRating,
             IsEpisode     = meta.IsEpisode,
+            IsWatched     = meta.IsWatched,
             ShowTitle     = meta.ShowTitle,
             Season        = meta.Season,
             Episode       = meta.Episode,

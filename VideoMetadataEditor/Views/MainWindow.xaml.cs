@@ -1242,5 +1242,19 @@ public partial class MainWindow : Window
         // Cancel any in-flight search detail load
         VM._searchDetailCts?.Cancel();
         VM._searchDetailCts?.Dispose();
+
+        // Flush the library cache synchronously on close so any embeds made
+        // this session are persisted to disk. Without this, fire-and-forget
+        // SaveAsync calls from SyncLibraryEntry might not have finished, and
+        // the next session's scan would get a cache miss and re-read from TagLib#
+        // (which is still correct for metadata, but loses IsWatched state and
+        // causes a slower scan).
+        try
+        {
+            var livePaths = VM.LibraryEntries.Select(e => e.FilePath).ToList();
+            if (livePaths.Count > 0)
+                VM.FlushLibraryCacheSync(livePaths);
+        }
+        catch { /* non-fatal — cache will rebuild on next scan */ }
     }
 }

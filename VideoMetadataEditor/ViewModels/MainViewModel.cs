@@ -349,6 +349,17 @@ public partial class MainViewModel : INotifyPropertyChanged
     public ICommand SaveLibraryColumnLayoutCommand { get; private set; } = null!;
     /// <summary>Set by MainWindow code-behind to sync DataGrid widths before save.</summary>
     public Action? SyncLibraryGridBeforeSave { get; set; }
+
+    /// <summary>
+    /// Synchronously saves the library cache on app close so embeds made
+    /// this session survive a restart. Called from MainWindow_Closing.
+    /// </summary>
+    public void FlushLibraryCacheSync(IReadOnlyList<string> livePaths)
+    {
+        // SaveAsync is async — run it synchronously via GetAwaiter().GetResult()
+        // only safe here because we're in the Closing handler (UI thread shutting down).
+        _libraryCacheService.SaveAsync(livePaths).GetAwaiter().GetResult();
+    }
     public ICommand SelectLibraryTabCommand { get; private set; } = null!;
 
 
