@@ -1063,10 +1063,6 @@ public partial class MainViewModel
             if (info.Exists)
             {
                 _libraryCacheService.Put(currentPath, info.Length, info.LastWriteTimeUtc, entry);
-                // Mark as recently embedded so the next Scan Library forces a fresh
-                // TagLib# read for this file, bypassing any cache inconsistency entirely.
-                _libraryScanService.MarkAsEmbedded(currentPath);
-                // Save the in-memory cache to disk
                 var livePaths = LibraryEntries.Select(e => e.FilePath).ToList();
                 _ = _libraryCacheService.SaveAsync(livePaths);
             }

@@ -192,6 +192,10 @@ public partial class MainViewModel
                 EmbedSucceeded?.Invoke(this, new EmbedEventArgs(targetFile.FileName, wasRenamed));
                 // Clear the yellow "new file" highlight after successful embed
                 targetFile.IsNewFile = false;
+                // Always mark this path as recently embedded so the next Scan Library
+                // forces a fresh TagLib# read — regardless of whether the file is
+                // currently in LibraryEntries. This is the unconditional guarantee.
+                _libraryScanService?.MarkAsEmbedded(targetFile.FilePath);
                 // Sync the Library entry — use the path BEFORE rename so the lookup
                 // matches the existing LibraryEntry (which still has the old path).
                 // SyncLibraryEntry also updates LibraryEntry.FilePath when renamed.
@@ -599,6 +603,8 @@ public partial class MainViewModel
 
                     vf.WriteStatus = Models.WriteStatus.Success;
                     vf.IsNewFile   = false; // clear yellow highlight on successful embed
+                    // Mark for forced fresh read on next Scan Library
+                    _libraryScanService?.MarkAsEmbedded(vf.FilePath);
                     var oldName = Path.GetFileName(vf.FilePath);
                     var (renamed, newPath, err) = await SafeRenameAsync(
                         vf, meta, ct, isFromBatch: true);
@@ -606,6 +612,8 @@ public partial class MainViewModel
                     if (renamed && File.Exists(newPath))
                     {
                         vf.FilePath = newPath;
+                        // Update the embedded mark to the new path after rename
+                        _libraryScanService?.MarkAsEmbedded(newPath);
                         // Register renamed path so Watch Folder poll doesn't re-detect it
                         _watchFolderService.AddKnownPath(newPath);
                         if (!Path.GetFileName(newPath).Equals(oldName, StringComparison.OrdinalIgnoreCase))
