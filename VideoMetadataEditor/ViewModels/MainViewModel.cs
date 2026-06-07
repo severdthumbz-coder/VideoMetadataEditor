@@ -172,7 +172,7 @@ public partial class MainViewModel : INotifyPropertyChanged
         set => Set(ref _libraryScanStatus, value);
     }
 
-    public bool CanScanLibrary => !IsLibraryScanning &&
+    public bool CanScanLibrary => !IsLibraryScanning && !IsBusy &&
                                    !string.IsNullOrWhiteSpace(Settings.LibraryFolderPath);
 
     // ── Extra library folders (multi-folder support) ──────────────────────────
@@ -2281,6 +2281,17 @@ public partial class MainViewModel : INotifyPropertyChanged
         // Refresh detected subtitles on the current file
         file.Subtitles = Services.SubtitleDetector.Detect(file.FilePath).ToList();
         RaiseProperty(nameof(SelectedFile));
+
+        // Also update the matching LibraryEntry so the Subtitles column in the
+        // Library tab reflects the download without requiring a full rescan.
+        var entry = LibraryEntries.FirstOrDefault(e =>
+            e.FilePath.Equals(file.FilePath, StringComparison.OrdinalIgnoreCase));
+        if (entry != null)
+        {
+            entry.Subtitles = Services.SubtitleDetector.Detect(file.FilePath).ToList();
+            // Evict the stale cache entry so the next scan reads fresh from disk
+            _libraryCacheService.Evict(file.FilePath);
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -2525,6 +2536,9 @@ public partial class MainViewModel : INotifyPropertyChanged
     /// Checks token expiry and silently refreshes if within 7 days or expired.
     /// Returns false if refresh failed and the caller should abort.
     /// </summary>
+    /// <summary>Prevents two concurrent Trakt token refreshes from consuming the refresh token.</summary>
+    private readonly SemaphoreSlim _traktRefreshLock = new(1, 1);
+
     public async Task<bool> EnsureTraktTokenValidAsync()
     {
         if (!Settings.TraktConnected) return false;
@@ -2536,27 +2550,44 @@ public partial class MainViewModel : INotifyPropertyChanged
 
         if (!isExpiring) return true;
 
-        Log($"[{DateTime.Now:HH:mm:ss}] 🎯 Trakt: access token expiring soon — refreshing…");
-
-        var (newToken, err) = await _traktService.RefreshAccessTokenAsync(
-            TraktClientId,
-            Services.SecureKeyService.Decrypt(Settings.TraktClientSecret),
-            Settings.TraktRefreshToken
-        );
-
-        if (newToken == null)
+        // Semaphore prevents two concurrent calls from both attempting a refresh.
+        // The second caller waits for the first, then re-checks isExpiring —
+        // if the first already refreshed successfully, the second returns true immediately.
+        await _traktRefreshLock.WaitAsync();
+        try
         {
-            Log($"[{DateTime.Now:HH:mm:ss}] ⚠ Trakt token refresh failed: {err}. Please reconnect.");
-            StatusText = "Trakt: token expired — go to Settings → Trakt.tv and reconnect.";
-            return false;
-        }
+            // Re-check inside the lock — another caller may have already refreshed
+            var nowInner       = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var isExpiringStill = Settings.TraktTokenExpiry > 0
+                               && Settings.TraktTokenExpiry - nowInner < sevenDays;
+            if (!isExpiringStill) return true;
 
-        Settings.TraktAccessToken  = newToken.AccessToken;
-        Settings.TraktRefreshToken = newToken.RefreshToken;
-        Settings.TraktTokenExpiry  = newToken.ExpiresAt;
-        _ = App.ConfigService.SaveAsync();
-        Log($"[{DateTime.Now:HH:mm:ss}] ✓ Trakt token refreshed.");
-        return true;
+            Log($"[{DateTime.Now:HH:mm:ss}] 🎯 Trakt: access token expiring soon — refreshing…");
+
+            var (newToken, err) = await _traktService.RefreshAccessTokenAsync(
+                TraktClientId,
+                Services.SecureKeyService.Decrypt(Settings.TraktClientSecret),
+                Settings.TraktRefreshToken
+            );
+
+            if (newToken == null)
+            {
+                Log($"[{DateTime.Now:HH:mm:ss}] ⚠ Trakt token refresh failed: {err}. Please reconnect.");
+                StatusText = "Trakt: token expired — go to Settings → Trakt.tv and reconnect.";
+                return false;
+            }
+
+            Settings.TraktAccessToken  = newToken.AccessToken;
+            Settings.TraktRefreshToken = newToken.RefreshToken;
+            Settings.TraktTokenExpiry  = newToken.ExpiresAt;
+            _ = App.ConfigService.SaveAsync();
+            Log($"[{DateTime.Now:HH:mm:ss}] ✓ Trakt token refreshed.");
+            return true;
+        }
+        finally
+        {
+            _traktRefreshLock.Release();
+        }
     }
 
     public async Task TraktSyncNowAsync()

@@ -432,6 +432,28 @@ public partial class MainViewModel
         IsBusy = true;
         int done = 0, successCount = 0, failCount = 0, renamedCount = 0;
 
+        // If a previous batch undo snapshot exists, warn before discarding it.
+        // A new batch start clears the snapshot — Undo Batch would no longer apply to
+        // the previous run. This is a one-time prompt; if the user proceeds they accept
+        // losing the previous undo window.
+        if (_batchUndoFiles.Count > 0)
+        {
+            var proceed = System.Windows.MessageBox.Show(
+                $"Starting a new batch will clear the Undo Batch snapshot for the previous {_batchUndoFiles.Count} file(s).\n\n" +
+                "If you want to undo the previous batch first, click No and use the ↩ Undo Batch button.\n\n" +
+                "Continue with the new batch?",
+                "Previous Undo Batch will be cleared",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning,
+                System.Windows.MessageBoxResult.Yes);
+            if (proceed != System.Windows.MessageBoxResult.Yes)
+            {
+                EndOperation();
+                IsBusy = false;
+                return;
+            }
+        }
+
         // Clear previous batch undo state so the new batch replaces it
         _batchUndoFiles.Clear();
         RaiseProperty(nameof(CanUndoBatch));

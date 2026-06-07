@@ -36,7 +36,11 @@ public class LibraryCacheService
 
     // ── In-memory index rebuilt from the cache file on Load ───────────────────
     // Key: normalised file path (lower-invariant on Windows)
-    private Dictionary<string, CacheEntry> _index = new(StringComparer.OrdinalIgnoreCase);
+    // ConcurrentDictionary — scan writes Put() from parallel tasks simultaneously.
+    // A plain Dictionary would be unsafe here even though Load() replaces it before scan
+    // starts, because the Put() calls in the parallel scan phase are concurrent.
+    private System.Collections.Concurrent.ConcurrentDictionary<string, CacheEntry> _index
+        = new(StringComparer.OrdinalIgnoreCase);
 
     // ── Cache file path ───────────────────────────────────────────────────────
     private string? _currentCachePath;
@@ -77,9 +81,9 @@ public class LibraryCacheService
                 return;
             }
 
-            _index = file.Entries.ToDictionary(
-                e => e.FilePath,
-                e => e,
+            _index = new System.Collections.Concurrent.ConcurrentDictionary<string, CacheEntry>(
+                file.Entries.ToDictionary(e => e.FilePath, e => e,
+                    StringComparer.OrdinalIgnoreCase),
                 StringComparer.OrdinalIgnoreCase);
         }
         catch
@@ -112,7 +116,7 @@ public class LibraryCacheService
     public void Evict(string path)
     {
         if (!string.IsNullOrWhiteSpace(path))
-            _index.Remove(path);
+            _index.TryRemove(path, out _);
     }
 
     /// <summary>
@@ -146,7 +150,7 @@ public class LibraryCacheService
             // Evict ghosts — paths that no longer exist on disk
             var live = new HashSet<string>(liveFilePaths, StringComparer.OrdinalIgnoreCase);
             var stale = _index.Keys.Where(k => !live.Contains(k)).ToList();
-            foreach (var k in stale) _index.Remove(k);
+            foreach (var k in stale) _index.TryRemove(k, out _);
 
             var file = new CacheFile
             {
