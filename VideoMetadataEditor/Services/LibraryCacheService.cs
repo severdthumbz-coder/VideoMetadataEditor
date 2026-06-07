@@ -97,6 +97,19 @@ public class LibraryCacheService
     /// Tries to retrieve a cached <see cref="LibraryEntry"/> for <paramref name="path"/>.
     /// Returns null (cache miss) if the file is new, modified, or not previously cached.
     /// </summary>
+    /// <summary>
+    /// Waits until any in-progress SaveAsync has completed.
+    /// Call this before Load() to ensure fire-and-forget saves from SyncLibraryEntry
+    /// have flushed to disk before the scan reloads the cache file.
+    /// </summary>
+    public async Task FlushAsync()
+    {
+        // Acquire and immediately release the save lock.
+        // If SaveAsync is in progress, this waits until it finishes.
+        await _saveLock.WaitAsync().ConfigureAwait(false);
+        _saveLock.Release();
+    }
+
     public LibraryEntry? TryGet(string path, long fileSizeBytes, DateTime lastWriteUtc)
     {
         if (!_index.TryGetValue(path, out var cached)) return null;
@@ -227,6 +240,7 @@ public class LibraryCacheService
         public float    ImdbRating     { get; set; }
         public string   MpaRating      { get; set; } = string.Empty;
         public bool     IsEpisode      { get; set; }
+        public bool     IsWatched      { get; set; }
         public string   ShowTitle      { get; set; } = string.Empty;
         public int?     Season         { get; set; }
         public int?     Episode        { get; set; }
@@ -255,6 +269,7 @@ public class LibraryCacheService
             ImdbRating    = ImdbRating,
             MpaRating     = MpaRating,
             IsEpisode     = IsEpisode,
+            IsWatched     = IsWatched,
             ShowTitle     = ShowTitle,
             Season        = Season,
             Episode       = Episode,
@@ -287,6 +302,7 @@ public class LibraryCacheService
             ImdbRating    = e.ImdbRating,
             MpaRating     = e.MpaRating,
             IsEpisode     = e.IsEpisode,
+            IsWatched     = e.IsWatched,
             ShowTitle     = e.ShowTitle,
             Season        = e.Season,
             Episode       = e.Episode,

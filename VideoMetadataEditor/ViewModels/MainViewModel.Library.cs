@@ -385,6 +385,13 @@ public partial class MainViewModel
         LibraryScanProgress = 0;
         LibraryScanStatus   = "Starting scan…";
 
+        // Flush any pending cache writes BEFORE the scan calls Load().
+        // SyncLibraryEntry fires SaveAsync as fire-and-forget after each embed.
+        // If the save hasn't finished when the scan starts, Load() would reload
+        // the old cache file from disk and wipe the in-memory updates, causing
+        // the post-embed metadata to vanish after a rescan.
+        await _libraryCacheService.FlushAsync();
+
         var progress = new System.Progress<(int done, int total, string current)>(p =>
         {
             LibraryScanProgress = p.total > 0 ? (int)(p.done * 100.0 / p.total) : 0;
