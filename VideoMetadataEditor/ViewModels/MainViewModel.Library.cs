@@ -381,16 +381,22 @@ public partial class MainViewModel
         bool watchWasActive = _libraryWatchService.IsActive;
         if (watchWasActive) _libraryWatchService.Stop();
 
-        LibraryEntries.Clear();
+        // ── In-place update instead of clear-and-rebuild ──────────────────────
+        // Previously: LibraryEntries.Clear() + scan + re-add all entries.
+        // Problem: Clear() destroys all in-memory updates from SyncLibraryEntry
+        //          (metadata embedded since last scan), forcing a cache lookup that
+        //          could return stale data or an old disk read.
+        // Solution: update LibraryEntries in place —
+        //   • Files already in the collection that haven't changed on disk → keep as-is
+        //     (preserves SyncLibraryEntry updates without any cache involvement)
+        //   • Files whose mtime changed → re-read from TagLib# and update the entry
+        //   • New files not yet in the collection → add
+        //   • Files removed from disk → remove from collection
+        // This means embedded metadata is ALWAYS reflected — the in-memory LibraryEntry
+        // is the source of truth for the current session.
+
         LibraryScanProgress = 0;
         LibraryScanStatus   = "Starting scan…";
-
-        // Flush any pending cache writes BEFORE the scan calls Load().
-        // SyncLibraryEntry fires SaveAsync as fire-and-forget after each embed.
-        // If the save hasn't finished when the scan starts, Load() would reload
-        // the old cache file from disk and wipe the in-memory updates, causing
-        // the post-embed metadata to vanish after a rescan.
-        await _libraryCacheService.FlushAsync();
 
         var progress = new System.Progress<(int done, int total, string current)>(p =>
         {
@@ -408,23 +414,83 @@ public partial class MainViewModel
                 !string.IsNullOrWhiteSpace(f) && Directory.Exists(f)));
 
             var seen    = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var entries = new List<Models.LibraryEntry>();
+            var scanned = new List<Models.LibraryEntry>();
             foreach (var scanFolder in allFolders)
             {
                 var folderEntries = await _libraryScanService.ScanFolderAsync(
                     scanFolder, Settings.LibraryRecursive, progress, ct);
                 foreach (var e in folderEntries)
-                    if (seen.Add(e.FilePath)) entries.Add(e);
+                    if (seen.Add(e.FilePath)) scanned.Add(e);
             }
 
-            foreach (var e in entries)
-                LibraryEntries.Add(e);
+            // ── In-place merge: update LibraryEntries without clearing ─────────
+            // Build a lookup of what we have in memory right now.
+            var existing = LibraryEntries
+                .ToDictionary(e => e.FilePath, e => e, StringComparer.OrdinalIgnoreCase);
+
+            // Build a lookup of what the scan found.
+            var scannedMap = scanned
+                .ToDictionary(e => e.FilePath, e => e, StringComparer.OrdinalIgnoreCase);
+
+            // 1. Update or add entries.
+            //    For files already in LibraryEntries: the in-memory entry already has
+            //    any SyncLibraryEntry updates — KEEP it, just update technical fields
+            //    (size, codec, duration) from the scan result so they stay fresh.
+            //    For new files: add the scan result directly.
+            var toAdd = new List<Models.LibraryEntry>();
+            foreach (var se in scanned)
+            {
+                if (existing.TryGetValue(se.FilePath, out var current))
+                {
+                    // File already in collection — update only technical/non-metadata fields.
+                    // Metadata fields (Title, Year, ImdbId etc.) come from SyncLibraryEntry
+                    // and must NOT be overwritten by the scan result which may be cache-stale.
+                    current.Duration   = se.Duration;
+                    current.VideoCodec = se.VideoCodec;
+                    current.AudioCodec = se.AudioCodec;
+                    current.Resolution = se.Resolution;
+                    current.Format     = se.Format;
+                    // If the scan did a fresh TagLib# read (cache miss or forced read),
+                    // the scan result has correct metadata — update those fields too.
+                    if (!string.IsNullOrWhiteSpace(se.Title) && se.Title != se.FilePath)
+                    {
+                        current.Title       = se.Title;
+                        current.Year        = se.Year;
+                        current.Genre       = se.Genre;
+                        current.Director    = se.Director;
+                        current.ImdbId      = se.ImdbId;
+                        current.TmdbId      = se.TmdbId;
+                        current.ImdbRating  = se.ImdbRating;
+                        current.MpaRating   = se.MpaRating;
+                        current.IsEpisode   = se.IsEpisode;
+                        current.ShowTitle   = se.ShowTitle;
+                        current.Season      = se.Season;
+                        current.Episode     = se.Episode;
+                        current.EpisodeTitle = se.EpisodeTitle;
+                        current.AiredDate   = se.AiredDate;
+                        current.IsWatched   = se.IsWatched || current.IsWatched;
+                    }
+                }
+                else
+                {
+                    toAdd.Add(se);
+                }
+            }
+
+            // 2. Remove entries for files no longer on disk.
+            var toRemove = LibraryEntries
+                .Where(e => !scannedMap.ContainsKey(e.FilePath))
+                .ToList();
+            foreach (var e in toRemove) LibraryEntries.Remove(e);
+
+            // 3. Add new entries.
+            foreach (var e in toAdd) LibraryEntries.Add(e);
 
             // ── Load cover art for entries missing it — background, UI-safe ────────
             // Only fires for cache-miss entries (from-disk reads). Cache hits already
             // have artwork. Processes in small batches with a yield between each so
             // the dispatcher thread is never flooded with InvokeAsync calls.
-            var missingArt = entries.Where(e => e.CoverArt is not { Length: > 0 }).ToList();
+            var missingArt = scanned.Where(e => e.CoverArt is not { Length: > 0 }).ToList();
             if (missingArt.Count > 0)
             {
                 _ = Task.Run(async () =>
