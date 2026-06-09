@@ -4954,6 +4954,20 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 91 — Audit pass: all Step 6/7/8 items implemented
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Build/Version: bumped to v1.4.0.91; all version markers updated consistently.
+                                        Step 6 — Feature completeness: remux auto-embeds original metadata on Replace Original; TV Batch skips already-tagged files with Yes/No/Cancel prompt.
+                                        Step 7 — Improvements: library scan workers now drive-aware (DriveCapabilityService); all 16 event handlers unsubscribed on close; WatchFolderService + LibraryWatchService disposed; TraktApiService HttpClient static singleton; ApiService User-Agent reads AssemblyVersion; full changelog updated.
+                                        Step 8.4 — Export All NFO: ExportLibraryNfoCommand wired; 📄 NFO button added to Library toolbar; ToMovieMetadata() added to LibraryEntry; exports Kodi/Jellyfin/Plex-compatible sidecar files for entire library.
+                                        Step 8.5 — Search confidence: MatchLabel badge already wired in search results (✓ Exact / ≈ Good / ~ Partial / ? Weak).
+                                        Step 8.6 — Watched progress: WatchedProgress + ProgressLabel fields on VideoFile; teal progress badge appears in FILES panel item alongside watched badge when Trakt reports in-progress playback.
+                                        Step 8.7 — Auto update check: CheckForUpdateAsync fires at ApplicationIdle; compares AssemblyVersion to latest GitHub release tag; shows status bar notification if newer version available — non-blocking, non-intrusive.
+                                        Fix: ToMovieMetadata used ImdbRating (wrong) → Rating (correct MovieMetadata field name).
+                                        Fix: WatchedProgress setter used if(Set(...)) → VideoFile.Set returns void; rewritten as explicit equality check.
+                                        Fix: GetCorrectExtension called with r.FilePath (string) → r (HealthResult) in FixAllIssuesAsync.
+                                        Fix: Unused done variable removed from ExportLibraryNfoAsync.
+
                                         v1.4.0  ·  Build 90 — Major quality pass: library persistence, audit fixes, new features
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         Library: in-place scan update (no more clear-and-rebuild), metadata persists across Scan Library clicks.
