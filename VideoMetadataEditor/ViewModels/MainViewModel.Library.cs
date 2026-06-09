@@ -1184,7 +1184,6 @@ public partial class MainViewModel
             .Select(e => (filePath: e.FilePath, meta: e.ToMovieMetadata()))
             .ToList<(string filePath, Models.MovieMetadata meta)>();
 
-        int done = 0;
         var progress = new System.Progress<(int done, int total)>(p =>
             LibraryScanStatus = $"Exporting NFO… {p.done}/{p.total}");
 

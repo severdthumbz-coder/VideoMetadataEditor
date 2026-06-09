@@ -98,7 +98,7 @@ public class LibraryEntry : INotifyPropertyChanged
         Description  = Description,
         ImdbId       = ImdbId,
         TmdbId       = TmdbId,
-        ImdbRating   = ImdbRating,
+        Rating       = ImdbRating,
         MpaRating    = MpaRating,
         IsEpisode    = IsEpisode,
         ShowTitle    = ShowTitle,
