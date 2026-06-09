@@ -75,6 +75,14 @@ public class LibraryEntry : INotifyPropertyChanged
     public List<SubtitleFile> Subtitles     { get; set; } = new();
     public bool               HasSubtitles  => Subtitles.Count > 0;
     public string             SubtitleSummary => Services.SubtitleDetector.BuildSummary(Subtitles);
+
+    /// <summary>
+    /// True when this entry was built by a fresh TagLib# read (cache miss or forced read).
+    /// Used by the in-place scan merge to know when it's safe to overwrite in-memory
+    /// metadata with the scan result. Not persisted — transient per-scan flag.
+    /// </summary>
+    [Newtonsoft.Json.JsonIgnore]
+    public bool IsFreshRead { get; set; }
     public string ShowTitle     { get; set; } = string.Empty;
     public int?   Season        { get; set; }
     public int?   Episode       { get; set; }

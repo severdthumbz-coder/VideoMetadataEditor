@@ -442,33 +442,41 @@ public partial class MainViewModel
             {
                 if (existing.TryGetValue(se.FilePath, out var current))
                 {
-                    // File already in collection — update only technical/non-metadata fields.
-                    // Metadata fields (Title, Year, ImdbId etc.) come from SyncLibraryEntry
-                    // and must NOT be overwritten by the scan result which may be cache-stale.
-                    current.Duration   = se.Duration;
-                    current.VideoCodec = se.VideoCodec;
-                    current.AudioCodec = se.AudioCodec;
-                    current.Resolution = se.Resolution;
-                    current.Format     = se.Format;
-                    // If the scan did a fresh TagLib# read (cache miss or forced read),
-                    // the scan result has correct metadata — update those fields too.
-                    if (!string.IsNullOrWhiteSpace(se.Title) && se.Title != se.FilePath)
+                    // File already in collection.
+                    // Always update technical fields — these don't come from embed.
+                    current.Duration      = se.Duration;
+                    current.VideoCodec    = se.VideoCodec;
+                    current.AudioCodec    = se.AudioCodec;
+                    current.Resolution    = se.Resolution;
+                    current.Format        = se.Format;
+                    current.FileSizeBytes = se.FileSizeBytes;
+                    current.Subtitles     = se.Subtitles;
+
+                    // Only overwrite metadata if the scan did a FRESH TagLib# read
+                    // (cache miss or MarkAsEmbedded forced read). Cache hits may be
+                    // stale — the in-memory entry from SyncLibraryEntry is more current.
+                    if (se.IsFreshRead)
                     {
-                        current.Title       = se.Title;
-                        current.Year        = se.Year;
-                        current.Genre       = se.Genre;
-                        current.Director    = se.Director;
-                        current.ImdbId      = se.ImdbId;
-                        current.TmdbId      = se.TmdbId;
-                        current.ImdbRating  = se.ImdbRating;
-                        current.MpaRating   = se.MpaRating;
-                        current.IsEpisode   = se.IsEpisode;
-                        current.ShowTitle   = se.ShowTitle;
-                        current.Season      = se.Season;
-                        current.Episode     = se.Episode;
-                        current.EpisodeTitle = se.EpisodeTitle;
-                        current.AiredDate   = se.AiredDate;
-                        current.IsWatched   = se.IsWatched || current.IsWatched;
+                        current.Title         = se.Title;
+                        current.Year          = se.Year;
+                        current.Genre         = se.Genre;
+                        current.Director      = se.Director;
+                        current.Cast          = se.Cast;
+                        current.Description   = se.Description;
+                        current.ImdbId        = se.ImdbId;
+                        current.TmdbId        = se.TmdbId;
+                        current.ImdbRating    = se.ImdbRating;
+                        current.MpaRating     = se.MpaRating;
+                        current.IsEpisode     = se.IsEpisode;
+                        current.ShowTitle     = se.ShowTitle;
+                        current.Season        = se.Season;
+                        current.Episode       = se.Episode;
+                        current.EpisodeTitle  = se.EpisodeTitle;
+                        current.AiredDate     = se.AiredDate;
+                        current.TmdbSeriesId  = se.TmdbSeriesId;
+                        current.IsWatched     = se.IsWatched || current.IsWatched;
+                        if (se.CoverArt is { Length: > 0 })
+                            current.CoverArt  = se.CoverArt;
                     }
                 }
                 else

@@ -120,14 +120,15 @@ public class LibraryScanService
                 {
                     // ── Cache HIT — no TagLib# call needed ────────────────────────
                     entry = cached;
+                    entry.IsFreshRead = false;
                     System.Threading.Interlocked.Increment(ref cacheHits);
                 }
                 else
                 {
-                    // ── Cache MISS or forced fresh read ───────────────────────────
+                    // ── Cache MISS or forced fresh read ── always correct from TagLib# ─
                     entry = await Task.Run(() => BuildEntry(fi.Path), ct);
+                    entry.IsFreshRead = true;
                     _cache.Put(fi.Path, fi.Size, fi.Mtime, entry);
-                    // Clear the embedded mark now that we've done a fresh read
                     if (forceRead) ClearEmbeddedMark(fi.Path);
                     System.Threading.Interlocked.Increment(ref cacheMisses);
                 }
