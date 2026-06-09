@@ -1181,15 +1181,16 @@ public partial class MainViewModel
         // Build (filePath, metadata) pairs from LibraryEntries
         var pairs = entries
             .Where(e => File.Exists(e.FilePath))
-            .Select(e => (e.FilePath, e.ToMovieMetadata()))
-            .ToList();
+            .Select(e => (filePath: e.FilePath, meta: e.ToMovieMetadata()))
+            .ToList<(string filePath, Models.MovieMetadata meta)>();
 
         int done = 0;
         var progress = new System.Progress<(int done, int total)>(p =>
             LibraryScanStatus = $"Exporting NFO… {p.done}/{p.total}");
 
-        var (ok, failed) = await Services.NfoExportService.ExportAsync(
-            pairs, progress);
+        var result = await Services.NfoExportService.ExportAsync(pairs, progress);
+        int ok     = result.ok;
+        int failed = result.failed;
 
         EndOperation();
         IsBusy = false;

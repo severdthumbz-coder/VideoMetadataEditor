@@ -475,7 +475,7 @@ public class MediaHealthViewModel : ViewModelBase
             .ToList();
         foreach (var r in mismatches)
         {
-            var correctExt = MediaHealthService.GetCorrectExtension(r.FilePath);
+            var correctExt = MediaHealthService.GetCorrectExtension(r);
             if (correctExt == null) { failed++; continue; }
             var newPath = System.IO.Path.ChangeExtension(r.FilePath, correctExt);
             try

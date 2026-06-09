@@ -487,7 +487,11 @@ public class VideoFile : INotifyPropertyChanged
     public int WatchedProgress
     {
         get => _watchedProgress;
-        set { Set(ref _watchedProgress, value); RaiseProperty(nameof(ProgressLabel)); }
+        set
+        {
+            if (Set(ref _watchedProgress, value))
+                PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(ProgressLabel)));
+        }
     }
     private int _watchedProgress;
     public string ProgressLabel => WatchedProgress switch

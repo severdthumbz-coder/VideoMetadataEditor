@@ -83,6 +83,32 @@ public class LibraryEntry : INotifyPropertyChanged
     /// </summary>
     [Newtonsoft.Json.JsonIgnore]
     public bool IsFreshRead { get; set; }
+
+    /// <summary>
+    /// Converts this library entry to a <see cref="Models.MovieMetadata"/> for NFO export
+    /// or other metadata write operations.
+    /// </summary>
+    public Models.MovieMetadata ToMovieMetadata() => new()
+    {
+        Title        = Title,
+        Year         = Year,
+        Genre        = Genre,
+        Director     = Director,
+        Cast         = Cast,
+        Description  = Description,
+        ImdbId       = ImdbId,
+        TmdbId       = TmdbId,
+        ImdbRating   = ImdbRating,
+        MpaRating    = MpaRating,
+        IsEpisode    = IsEpisode,
+        ShowTitle    = ShowTitle,
+        Season       = Season,
+        Episode      = Episode,
+        EpisodeTitle = EpisodeTitle,
+        AiredDate    = AiredDate,
+        IsWatched    = IsWatched,
+        ArtworkBytes = CoverArt,
+    };
     public string ShowTitle     { get; set; } = string.Empty;
     public int?   Season        { get; set; }
     public int?   Episode       { get; set; }
