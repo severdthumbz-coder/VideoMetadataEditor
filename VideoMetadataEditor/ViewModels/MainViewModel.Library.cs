@@ -1155,6 +1155,49 @@ public partial class MainViewModel
     }
     protected void RaiseProperty([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    /// <summary>
+    /// Exports NFO sidecar files for every entry currently in the Library.
+    /// Each .nfo is saved alongside the video file (same folder, same base name).
+    /// </summary>
+    private async Task ExportLibraryNfoAsync()
+    {
+        var entries = LibraryEntries.ToList();
+        if (entries.Count == 0) return;
+
+        var answer = System.Windows.MessageBox.Show(
+            $"Export NFO sidecar files for all {entries.Count} library entries?\n\n" +
+            "Each .nfo file will be saved alongside its video file and can be used " +
+            "by Kodi, Jellyfin, and Plex.",
+            "Export Library NFO",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Question,
+            System.Windows.MessageBoxResult.Yes);
+        if (answer != System.Windows.MessageBoxResult.Yes) return;
+
+        IsBusy = true;
+        StatusText = $"Exporting NFO for {entries.Count} files…";
+
+        // Build (filePath, metadata) pairs from LibraryEntries
+        var pairs = entries
+            .Where(e => File.Exists(e.FilePath))
+            .Select(e => (e.FilePath, e.ToMovieMetadata()))
+            .ToList();
+
+        int done = 0;
+        var progress = new System.Progress<(int done, int total)>(p =>
+            LibraryScanStatus = $"Exporting NFO… {p.done}/{p.total}");
+
+        var (ok, failed) = await Services.NfoExportService.ExportAsync(
+            pairs, progress);
+
+        EndOperation();
+        IsBusy = false;
+        StatusText = failed == 0
+            ? $"✓ Exported {ok} NFO file(s)."
+            : $"Exported {ok} NFO file(s), {failed} failed.";
+        Log($"[{DateTime.Now:HH:mm:ss}] Library NFO export: {ok} ok, {failed} failed.");
+    }
 }
 
 // ── Commands ──────────────────────────────────────────────────────────────────

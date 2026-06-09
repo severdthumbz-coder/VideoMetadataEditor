@@ -16,6 +16,7 @@ public class MediaHealthViewModel : ViewModelBase
     public ICommand CopyReportCommand  { get; }
     public ICommand ClearFolderCommand { get; }
     public ICommand FixAllFaststartCommand { get; }
+    public ICommand FixAllIssuesCommand    { get; }
     public ICommand DetectFfmpegCommand    { get; }
 
     public MediaHealthViewModel()
@@ -33,6 +34,11 @@ public class MediaHealthViewModel : ViewModelBase
         });
         FixAllFaststartCommand = new AsyncRelayCommand(FixAllFaststartAsync,
             _ => !IsScanning && FfmpegAvailable && FaststartFixableCount > 0);
+        FixAllIssuesCommand = new AsyncRelayCommand(FixAllIssuesAsync,
+            _ => !IsScanning && Results.Any(r =>
+                r.Issue != MediaHealthService.IssueType.None &&
+                r.Issue != MediaHealthService.IssueType.ZeroBytes &&
+                r.Issue != MediaHealthService.IssueType.UnreadableHeader));
         DetectFfmpegCommand = new AsyncRelayCommand(RefreshFfmpegAsync);
 
         // Restore the last-used folder + recurse preference (display in the textbox).
@@ -439,5 +445,74 @@ public class MediaHealthViewModel : ViewModelBase
         }
         try { System.Windows.Clipboard.SetText(sb.ToString()); Status = "Report copied to clipboard."; }
         catch { Status = "Couldn't access clipboard."; }
+    }
+
+    /// <summary>
+    /// Sequences auto-fixable issues in order of safety:
+    ///   1. Extension mismatches  — rename only, lossless, instant
+    ///   2. No-faststart MP4s    — lossless container rewrite
+    /// ZeroBytes and UnreadableHeader are skipped — not auto-fixable.
+    /// </summary>
+    private async Task FixAllIssuesAsync()
+    {
+        var fixable = Results
+            .Where(r => r.Issue == MediaHealthService.IssueType.ExtensionMismatch ||
+                        r.Issue == MediaHealthService.IssueType.NoFaststart)
+            .ToList();
+
+        if (fixable.Count == 0)
+        {
+            Status = "No auto-fixable issues found.";
+            return;
+        }
+
+        int fixed1 = 0, fixed2 = 0, failed = 0;
+        IsScanning = true;
+
+        // ── Phase 1: rename extension mismatches ───────────────────────────────
+        var mismatches = fixable
+            .Where(r => r.Issue == MediaHealthService.IssueType.ExtensionMismatch)
+            .ToList();
+        foreach (var r in mismatches)
+        {
+            var correctExt = MediaHealthService.GetCorrectExtension(r.FilePath);
+            if (correctExt == null) { failed++; continue; }
+            var newPath = System.IO.Path.ChangeExtension(r.FilePath, correctExt);
+            try
+            {
+                System.IO.File.Move(r.FilePath, newPath);
+                ReplaceResult(r, newPath);
+                fixed1++;
+            }
+            catch { failed++; }
+        }
+
+        // ── Phase 2: fix faststart ─────────────────────────────────────────────
+        var noFaststart = fixable
+            .Where(r => r.Issue == MediaHealthService.IssueType.NoFaststart)
+            .ToList();
+        if (noFaststart.Count > 0 && FfmpegAvailable)
+        {
+            using var cts = new System.Threading.CancellationTokenSource();
+            var profile = Services.DriveCapabilityService.GetProfile(noFaststart[0].FilePath);
+            await System.Threading.Tasks.Parallel.ForEachAsync(noFaststart,
+                new System.Threading.Tasks.ParallelOptions
+                {
+                    MaxDegreeOfParallelism = profile.RecommendedScanWorkers,
+                    CancellationToken = cts.Token
+                },
+                async (r, ct) =>
+                {
+                    var res = await FfmpegService.AddFaststartAsync(r.FilePath, ct);
+                    if (res.Success) System.Threading.Interlocked.Increment(ref fixed2);
+                    else            System.Threading.Interlocked.Increment(ref failed);
+                });
+        }
+
+        IsScanning = false;
+        Status = $"Fix All: {fixed1} extension(s) renamed, {fixed2} faststart(s) fixed" +
+                 (failed > 0 ? $", {failed} failed." : ".");
+        RaiseProperty(nameof(FixAllFaststartCommand));
+        RaiseProperty(nameof(FixAllIssuesCommand));
     }
 }

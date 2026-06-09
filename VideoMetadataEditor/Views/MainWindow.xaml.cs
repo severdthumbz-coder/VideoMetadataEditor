@@ -1234,27 +1234,33 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
     {
-        // Cancel any in-flight Trakt device-flow poll so background threads
-        // don't linger after the window closes.
+        // Unsubscribe all VM events to prevent memory leaks
+        VM.WriteFailedDetailed      -= OnWriteFailedDetailed;
+        VM.RecoveryCandidatesFound  -= OnRecoveryCandidatesFound;
+        VM.BatchCompleted           -= OnBatchCompleted;
+        VM.EmbedSucceeded           -= OnEmbedSucceeded;
+        VM.RenameFailed             -= OnRenameFailed;
+        VM.RenameSucceeded          -= OnRenameSucceeded;
+        VM.FilesLoaded              -= OnFilesLoaded;
+        VM.CopyCompleted            -= OnCopyCompleted;
+        VM.MoveCompleted            -= OnMoveCompleted;
+        VM.DeleteFileRequested      -= OnDeleteFileRequested;
+
+        // Cancel in-flight operations
         VM._traktDeviceCts?.Cancel();
         VM._traktDeviceCts?.Dispose();
-
-        // Cancel any in-flight search detail load
         VM._searchDetailCts?.Cancel();
         VM._searchDetailCts?.Dispose();
 
-        // Flush the library cache synchronously on close so any embeds made
-        // this session are persisted to disk. Without this, fire-and-forget
-        // SaveAsync calls from SyncLibraryEntry might not have finished, and
-        // the next session's scan would get a cache miss and re-read from TagLib#
-        // (which is still correct for metadata, but loses IsWatched state and
-        // causes a slower scan).
+        // Dispose watch services (own FileSystemWatcher — unmanaged resource)
+        VM.DisposeWatchServices();
+
+        // Flush library cache synchronously before exit
         try
         {
             var livePaths = VM.LibraryEntries.Select(e => e.FilePath).ToList();
-            if (livePaths.Count > 0)
-                VM.FlushLibraryCacheSync(livePaths);
+            if (livePaths.Count > 0) VM.FlushLibraryCacheSync(livePaths);
         }
-        catch { /* non-fatal — cache will rebuild on next scan */ }
+        catch { /* non-fatal — rebuilds on next scan */ }
     }
 }

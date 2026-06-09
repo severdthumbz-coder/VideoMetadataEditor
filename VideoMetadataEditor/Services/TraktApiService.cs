@@ -27,11 +27,14 @@ public class TraktApiService
     private const string BaseUrl    = "https://api.trakt.tv";
     private const string ApiVersion = "2";
 
-    private readonly HttpClient _http;
-
-    public TraktApiService()
+    private static readonly HttpClient _http = new()
     {
-        _http = new HttpClient();
+        Timeout = TimeSpan.FromSeconds(30),
+        DefaultRequestHeaders = { }
+    };
+
+    static TraktApiService()
+    {
         _http.DefaultRequestHeaders.Add("trakt-api-version", ApiVersion);
         // Required — Cloudflare blocks requests without a User-Agent as potential bots
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("VideoMetadataEditor/1.4 (Windows; compatible)");

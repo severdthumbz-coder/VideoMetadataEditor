@@ -351,6 +351,44 @@ public partial class MainViewModel : INotifyPropertyChanged
     public Action? SyncLibraryGridBeforeSave { get; set; }
 
     /// <summary>
+    /// Checks GitHub releases for a newer version and surfaces a notification
+    /// banner if one is available. Fires once per session on startup.
+    /// Non-fatal — any failure is silently swallowed.
+    /// </summary>
+    private async Task CheckForUpdateAsync()
+    {
+        try
+        {
+            const string api = "https://api.github.com/repos/severdthumbz-coder/VideoMetadataEditor/releases/latest";
+            using var http = new System.Net.Http.HttpClient();
+            http.DefaultRequestHeaders.Add("User-Agent", "VideoMetadataEditor-UpdateCheck");
+            http.Timeout = TimeSpan.FromSeconds(6);
+
+            var json = await http.GetStringAsync(api).ConfigureAwait(false);
+            // Parse "tag_name": "v1.4.0.91" cheaply without a full JSON dependency
+            var tagMatch = System.Text.RegularExpressions.Regex.Match(json, @"""tag_name""\s*:\s*""([^""]+)""");
+            if (!tagMatch.Success) return;
+
+            var remoteTag  = tagMatch.Groups[1].Value.TrimStart('v');
+            var localVer   = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            if (localVer == null) return;
+            if (!Version.TryParse(remoteTag, out var remoteVer)) return;
+            if (remoteVer <= localVer) return;
+
+            // Newer version available — show a non-intrusive banner
+            var urlMatch = System.Text.RegularExpressions.Regex.Match(json, @"""html_url""\s*:\s*""([^""]+)""");
+            string releaseUrl = urlMatch.Success ? urlMatch.Groups[1].Value : "https://github.com/severdthumbz-coder/VideoMetadataEditor/releases";
+
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                StatusText = $"🆕 Update available: v{remoteVer} — see Help → Changelog or visit GitHub";
+                Log($"[{DateTime.Now:HH:mm:ss}] Update available: v{remoteVer} (current: v{localVer})");
+            });
+        }
+        catch { /* non-fatal — no internet, private repo, etc */ }
+    }
+
+    /// <summary>
     /// Synchronously saves the library cache on app close so embeds made
     /// this session survive a restart. Called from MainWindow_Closing.
     /// </summary>
@@ -360,6 +398,14 @@ public partial class MainViewModel : INotifyPropertyChanged
         // only safe here because we're in the Closing handler (UI thread shutting down).
         _libraryCacheService.SaveAsync(livePaths).GetAwaiter().GetResult();
     }
+
+    /// <summary>Disposes FileSystemWatcher resources on app close to release OS handles.</summary>
+    public void DisposeWatchServices()
+    {
+        try { _watchFolderService.Dispose(); }   catch { }
+        try { _libraryWatchService.Dispose(); }  catch { }
+    }
+
     public ICommand SelectLibraryTabCommand { get; private set; } = null!;
 
 
@@ -1338,6 +1384,7 @@ public partial class MainViewModel : INotifyPropertyChanged
     // ── Library commands ──────────────────────────────────────────────────────
     public ICommand ScanLibraryCommand         { get; private set; } = null!;
     public ICommand BrowseLibraryFolderCommand { get; private set; } = null!;
+    public ICommand ExportLibraryNfoCommand    { get; private set; } = null!;
     public ICommand ExportLibraryCsvCommand    { get; private set; } = null!;
     public ICommand ExportLibraryXlsxCommand   { get; private set; } = null!;
     public ICommand ClearLibraryCacheCommand   { get; private set; } = null!;
@@ -1586,11 +1633,15 @@ public partial class MainViewModel : INotifyPropertyChanged
                     // Entries exist from a previous session cache — just build tabs
                     RebuildLibraryTabs();
                 }
+                // Fire update check after startup work completes — low priority, non-blocking
+                _ = CheckForUpdateAsync();
             }));
 
         ScanLibraryCommand         = new AsyncRelayCommand(ScanLibraryAsync,
             _ => CanScanLibrary);
         BrowseLibraryFolderCommand = new RelayCommand(_ => BrowseLibraryFolder());
+        ExportLibraryNfoCommand    = new AsyncRelayCommand(ExportLibraryNfoAsync,
+            _ => LibraryEntries.Count > 0 && !IsBusy);
         ExportLibraryCsvCommand    = new AsyncRelayCommand(ExportLibraryCsvAsync,
             _ => LibraryEntries.Any());
         ExportLibraryXlsxCommand   = new AsyncRelayCommand(ExportLibraryXlsxAsync,

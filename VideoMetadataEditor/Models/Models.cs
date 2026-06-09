@@ -482,6 +482,21 @@ public class VideoFile : INotifyPropertyChanged
     public MovieMetadata? UndoMetadata { get; set; }
     public bool CanUndo => UndoFilePath != null || UndoMetadata != null;
 
+    /// <summary>Trakt watch progress 0–100. 0 = not started, 100 = complete.
+    /// Populated after a Trakt sync; displayed as a thin progress bar in the Files panel.</summary>
+    public int WatchedProgress
+    {
+        get => _watchedProgress;
+        set { Set(ref _watchedProgress, value); RaiseProperty(nameof(ProgressLabel)); }
+    }
+    private int _watchedProgress;
+    public string ProgressLabel => WatchedProgress switch
+    {
+        0   => string.Empty,
+        100 => "✓ Complete",
+        _   => $"{WatchedProgress}%"
+    };
+
     private static string FormatSize(long bytes)
     {
         if (bytes < 1024) return $"{bytes} B";

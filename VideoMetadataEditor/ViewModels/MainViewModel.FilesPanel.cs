@@ -620,6 +620,15 @@ public partial class MainViewModel
     {
         if (candidate is not { IsRemuxCandidate: true }) return;
 
+        // Read original metadata BEFORE ReplaceOriginal deletes the source file
+        MovieMetadata? originalMeta = null;
+        if (replace && !string.IsNullOrWhiteSpace(candidate.OriginalPath) &&
+            File.Exists(candidate.OriginalPath))
+        {
+            try { originalMeta = _metadataService.ReadMetadataFast(candidate.OriginalPath); }
+            catch { /* non-fatal — user can embed manually */ }
+        }
+
         var result = replace
             ? Services.RemuxCommitService.ReplaceOriginal(candidate.FilePath, candidate.OriginalPath)
             : Services.RemuxCommitService.RestoreOriginal(candidate.FilePath, candidate.OriginalPath);
@@ -658,6 +667,39 @@ public partial class MainViewModel
                 TryAddFile(result.FinalPath);
             else
                 SelectedFile = existing;
+
+            // Auto-embed the original metadata into the remuxed file.
+            // The remux creates a clean container with no tags — without this step
+            // the user would have to manually re-embed every time. We do it silently
+            // in the background; if it fails the file is still usable (just needs
+            // a manual embed) and the status bar shows the result.
+            if (originalMeta != null && !string.IsNullOrWhiteSpace(originalMeta.Title))
+            {
+                _ = Task.Run(async () =>
+                {
+                    var writeOk = await _metadataService.WriteMetadataAsync(
+                        result.FinalPath, originalMeta, Settings);
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        if (writeOk)
+                        {
+                            StatusText = $"✓ Metadata restored to {Path.GetFileName(result.FinalPath)}";
+                            // Update the loaded file's displayed metadata
+                            var loaded = Files.FirstOrDefault(f =>
+                                f.FilePath.Equals(result.FinalPath, StringComparison.OrdinalIgnoreCase));
+                            if (loaded != null)
+                            {
+                                loaded.EmbeddedMetadata = originalMeta;
+                                loaded.PendingMetadata  = originalMeta.Clone();
+                            }
+                            _libraryScanService?.MarkAsEmbedded(result.FinalPath);
+                            SyncLibraryEntry(result.FinalPath, result.FinalPath, originalMeta);
+                        }
+                        else
+                            StatusText = $"⚠ Metadata restore failed — embed manually.";
+                    });
+                });
+            }
         }
     }
 

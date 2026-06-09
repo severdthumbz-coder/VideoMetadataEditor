@@ -95,7 +95,10 @@ public class LibraryScanService
         // embedded file always produces a cache hit with the UPDATED metadata on the next scan.
         // Files that were never embedded (or where Put() wasn't called) produce a miss and
         // are re-read from disk via TagLib# — which returns the current embedded tags.
-        int workers = Math.Min(Environment.ProcessorCount, 8);
+        // Worker count based on drive type — library scan is I/O-bound (TagLib# file reads).
+        // Parallelising on HDD causes head-seek thrashing and is slower than sequential.
+        var driveProfile = DriveCapabilityService.GetProfile(folder);
+        int workers = driveProfile.RecommendedScanWorkers;
         using var sem = new SemaphoreSlim(workers);
 
         var results    = new System.Collections.Concurrent.ConcurrentBag<(int idx, LibraryEntry entry)>();

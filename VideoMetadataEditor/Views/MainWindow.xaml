@@ -330,6 +330,14 @@
                                                             Opacity="0.7">
                                                         <TextBlock Text="watched" FontSize="10" Foreground="White"/>
                                                     </Border>
+                                                    <!-- Progress badge — shows % when in-progress (Trakt playback progress) -->
+                                                    <Border Background="{DynamicResource AccentBrush}"
+                                                            CornerRadius="3" Padding="4,1" Margin="4,0,0,0"
+                                                            Opacity="0.75"
+                                                            Visibility="{Binding ProgressLabel, Converter={StaticResource NullVis}}">
+                                                        <TextBlock Text="{Binding ProgressLabel}"
+                                                                   FontSize="10" Foreground="White"/>
+                                                    </Border>
                                                     <!-- Remux candidate badge -->
                                                     <Border Background="{DynamicResource AccentBrush}"
                                                             CornerRadius="3" Padding="4,1" Margin="6,0,0,0"
@@ -3161,11 +3169,13 @@
                                     <ColumnDefinition Width="8"/>
                                     <ColumnDefinition Width="Auto"/><!-- 11: Export XLSX -->
                                     <ColumnDefinition Width="8"/>
-                                    <ColumnDefinition Width="Auto"/><!-- 13: Load Selected -->
+                                    <ColumnDefinition Width="Auto"/><!-- 13: Export NFO -->
                                     <ColumnDefinition Width="8"/>
-                                    <ColumnDefinition Width="Auto"/><!-- 15: Columns -->
+                                    <ColumnDefinition Width="Auto"/><!-- 15: Load Selected -->
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="Auto"/><!-- 17: Columns -->
                                     <ColumnDefinition Width="6"/>
-                                    <ColumnDefinition Width="Auto"/><!-- 17: Save Layout -->
+                                    <ColumnDefinition Width="Auto"/><!-- 19: Save Layout -->
                                 </Grid.ColumnDefinitions>
 
                                 <!-- Folder path + extra folders pill list -->
@@ -3263,8 +3273,17 @@
                                         Padding="10,5" FontSize="12"
                                         ToolTip="Export library to Excel (.xlsx) — opens in Excel, LibreOffice Calc, or Google Sheets"/>
 
+                                <!-- Export all NFO sidecars for Kodi/Jellyfin/Plex -->
+                                <Button Grid.Column="13" Content="📄 NFO"
+                                        Height="{Binding ActualHeight, ElementName=LibraryFolderBox}"
+                                        VerticalAlignment="Top"
+                                        Command="{Binding ExportLibraryNfoCommand}"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Padding="10,5" FontSize="12"
+                                        ToolTip="Export .nfo sidecar files for all library entries — compatible with Kodi, Jellyfin, and Plex"/>
+
                                 <!-- Load selected rows into Files panel (multi-select) -->
-                                <Button Grid.Column="13"
+                                <Button Grid.Column="15"
                                         Height="{Binding ActualHeight, ElementName=LibraryFolderBox}"
                                         VerticalAlignment="Top"
                                         Content="{DynamicResource Lib.LoadSelected}"
@@ -3273,14 +3292,14 @@
                                         Style="{StaticResource SecondaryButton}"
                                         ToolTip="Load all selected rows into the Files panel (Ctrl+Click or Shift+Click to select multiple)"/>
 
-                                <Button Grid.Column="15" Content="⚙ Columns"
+                                <Button Grid.Column="17" Content="⚙ Columns"
                                         Height="{Binding ActualHeight, ElementName=LibraryFolderBox}"
                                         VerticalAlignment="Top"
                                         Style="{StaticResource SecondaryButton}"
                                         x:Name="ColChooserBtn"
                                         Click="ColChooserBtn_Click"
                                         ToolTip="Show/hide columns"/>
-                                <Button Grid.Column="17"
+                                <Button Grid.Column="19"
                                         Height="{Binding ActualHeight, ElementName=LibraryFolderBox}"
                                         VerticalAlignment="Top"
                                         Content="{DynamicResource Lib.SaveLayout}"
@@ -4457,6 +4476,13 @@
                                         </TextBlock>
                                     </Button.Content>
                                 </Button>
+
+                                <!-- Fix all auto-fixable issues in sequence -->
+                                <Button Content="🔧 Fix All Issues"
+                                        Style="{StaticResource PrimaryButton}"
+                                        Padding="12,6"
+                                        Command="{Binding MediaHealthVM.FixAllIssuesCommand}"
+                                        ToolTip="Auto-fix all fixable issues in sequence: rename extension mismatches, then fix faststart. ZeroBytes and unreadable files are skipped — they require manual intervention."/>
                             </StackPanel>
 
                             <!-- Progress + summary + ffmpeg status -->
@@ -4928,7 +4954,34 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
-                                        v1.4.0  ·  Build 90 — Quality pass: 9 improvements + thread safety + CI
+                                        v1.4.0  ·  Build 90 — Major quality pass: library persistence, audit fixes, new features
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Library: in-place scan update (no more clear-and-rebuild), metadata persists across Scan Library clicks.
+                                        Library: MarkAsEmbedded ensures fresh TagLib# read on next scan for any embedded file.
+                                        Library: cache now saved on app close; IsWatched preserved across restarts.
+                                        Library: ExportLibraryNfoCommand now wired — 📄 NFO button in toolbar exports Kodi/Plex sidecars.
+                                        Library: scan workers now drive-aware (DriveCapabilityService) — HDD no longer thrashes.
+                                        UI: Subtitle panel added to RETRIEVED DATA tab (🗒 Subtitles expander, Search + Download Selected).
+                                        UI: Undo Batch permanent button in RAW DATA tab (no longer only in transient banner chip).
+                                        UI: Mark Watched button now shows ♥ Watched / Unwatched (was showing ✓ Found / Not found).
+                                        UI: Progress badge added to FILES panel items showing Trakt watch progress %.
+                                        UI: Save Layout now syncs column widths before save (resize-without-reorder now captured).
+                                        Embed: Rename Current File now snapshots undo state correctly.
+                                        Embed: Remux Replace Original auto-embeds original metadata into remuxed file.
+                                        Embed: TV Batch now prompts to skip already-tagged files (Yes/No/Cancel).
+                                        Embed: Batch undo warns before clearing snapshot when new batch starts.
+                                        Stability: CanScanLibrary now checks IsBusy — scan blocked during embed.
+                                        Stability: LibraryCacheService _index changed to ConcurrentDictionary (parallel scan safety).
+                                        Stability: Trakt token refresh now uses SemaphoreSlim — no double-refresh race.
+                                        Stability: TraktApiService.HttpClient changed to static readonly singleton.
+                                        Stability: ApiService User-Agent now reads from AssemblyVersion (was hardcoded 1.3.4).
+                                        Stability: MainWindow_Closing now unsubscribes all 16 event handlers + disposes FSW services.
+                                        Stability: WatchFolderService and LibraryWatchService now disposed on app close.
+                                        Bindings: SubtitleSearchResults binding corrected (was SubtitleResults — silent failure).
+                                        Bindings: InverseBool → InvBool (correct converter key, was causing startup crash).
+                                        Bindings: ChipClickHandler moved to class-level (was local function — CS0103 error).
+                                        Startup: Auto update check fires at ApplicationIdle — notifies via status bar if newer version available.
+                                        Build: WriteStatus.None → WriteStatus.Untouched (CS0117 CI error fixed).
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         IMPROVEMENTS: Fingerprint cache import now supports Merge vs Replace

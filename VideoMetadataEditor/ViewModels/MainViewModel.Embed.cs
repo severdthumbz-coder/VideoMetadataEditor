@@ -28,14 +28,17 @@ public partial class MainViewModel
     private void ApplyRetrievedToEditing()
     {
         if (RetrievedMetadata == null) return;
+        // Snapshot SelectedFile — it can become null between the UI action and
+        // this synchronous method if the user deselects a file very quickly.
+        var file = SelectedFile;
         CopyMetadataTo(RetrievedMetadata, EditingMetadata);
         // Block auto-search debounce from overwriting what the user just applied
         _tvEpisodeManuallyLoaded = RetrievedMetadata.IsEpisode;
 
-        if (SelectedFile != null)
+        if (file != null)
         {
             // Update PendingMetadata so data survives re-selection and is ready to embed
-            CopyMetadataTo(RetrievedMetadata, SelectedFile.PendingMetadata);
+            CopyMetadataTo(RetrievedMetadata, file.PendingMetadata);
 
             // Update EmbeddedMetadata TV fields so the ground-truth reset in
             // OnSelectedFileChanged doesn't clobber IsEpisode back to false
@@ -43,16 +46,16 @@ public partial class MainViewModel
             // here — the actual on-disk tags are unchanged until explicit embed.
             if (RetrievedMetadata.IsEpisode)
             {
-                SelectedFile.EmbeddedMetadata.IsEpisode    = true;
-                SelectedFile.EmbeddedMetadata.ShowTitle    = RetrievedMetadata.ShowTitle;
-                SelectedFile.EmbeddedMetadata.Season       = RetrievedMetadata.Season;
-                SelectedFile.EmbeddedMetadata.Episode      = RetrievedMetadata.Episode;
-                SelectedFile.EmbeddedMetadata.EpisodeTitle = RetrievedMetadata.EpisodeTitle;
-                SelectedFile.EmbeddedMetadata.AiredDate    = RetrievedMetadata.AiredDate;
-                SelectedFile.EmbeddedMetadata.TmdbSeriesId = RetrievedMetadata.TmdbSeriesId;
+                file.EmbeddedMetadata.IsEpisode    = true;
+                file.EmbeddedMetadata.ShowTitle    = RetrievedMetadata.ShowTitle;
+                file.EmbeddedMetadata.Season       = RetrievedMetadata.Season;
+                file.EmbeddedMetadata.Episode      = RetrievedMetadata.Episode;
+                file.EmbeddedMetadata.EpisodeTitle = RetrievedMetadata.EpisodeTitle;
+                file.EmbeddedMetadata.AiredDate    = RetrievedMetadata.AiredDate;
+                file.EmbeddedMetadata.TmdbSeriesId = RetrievedMetadata.TmdbSeriesId;
                 // Also patch IDs so ground-truth reset doesn't lose them
                 if (!string.IsNullOrWhiteSpace(RetrievedMetadata.TmdbId))
-                    SelectedFile.EmbeddedMetadata.TmdbId = RetrievedMetadata.TmdbId;
+                    file.EmbeddedMetadata.TmdbId = RetrievedMetadata.TmdbId;
                 if (!string.IsNullOrWhiteSpace(RetrievedMetadata.ImdbId))
                     SelectedFile.EmbeddedMetadata.ImdbId = RetrievedMetadata.ImdbId;
                 if (!string.IsNullOrWhiteSpace(RetrievedMetadata.TvdbId))
@@ -1568,6 +1571,37 @@ public partial class MainViewModel
             .ToList();
 
         if (selected.Count == 0) return;
+
+        // Count already-tagged files (have IsEpisode=true with ShowTitle embedded)
+        var alreadyTagged = selected
+            .Where(f => f.EmbeddedMetadata.IsEpisode &&
+                        !string.IsNullOrWhiteSpace(f.EmbeddedMetadata.ShowTitle))
+            .ToList();
+
+        // If any are already tagged, ask whether to skip them
+        bool skipTagged = false;
+        if (alreadyTagged.Count > 0)
+        {
+            var answer = System.Windows.MessageBox.Show(
+                $"{alreadyTagged.Count} of {selected.Count} selected file(s) already have TV episode metadata embedded.\n\n" +
+                "Skip already-tagged files and only process untagged ones?",
+                "TV Batch — Already Tagged Files",
+                System.Windows.MessageBoxButton.YesNoCancel,
+                System.Windows.MessageBoxImage.Question,
+                System.Windows.MessageBoxResult.Yes);
+
+            if (answer == System.Windows.MessageBoxResult.Cancel) return;
+            skipTagged = answer == System.Windows.MessageBoxResult.Yes;
+        }
+
+        if (skipTagged)
+            selected = selected.Except(alreadyTagged).ToList();
+
+        if (selected.Count == 0)
+        {
+            StatusText = "TV Batch — all selected files are already tagged.";
+            return;
+        }
 
         IsBusy        = true;
         ProgressValue = 0;
