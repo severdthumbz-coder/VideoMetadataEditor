@@ -623,6 +623,14 @@ public partial class MainViewModel
                             Interlocked.Increment(ref renamedCount);
                     }
 
+                    // Sync library grid + cache with the embedded metadata.
+                    // lookupPath = old path (before rename) so the existing LibraryEntry
+                    // is found; currentPath = new path (after rename) for cache Put().
+                    // This is the same call the single-file embed makes — without it
+                    // the cache is never updated and the next scan reverts to stale data.
+                    var preBatchPath = vf.UndoFilePath ?? vf.FilePath;
+                    SyncLibraryEntry(preBatchPath, vf.FilePath, meta);
+
                     Interlocked.Increment(ref successCount);
                 }
                 else
@@ -983,7 +991,7 @@ public partial class MainViewModel
                                     knownPhysical.Add(epNum);
                             }
                         }
-                        var withGaps = InsertMissingEpisodes(orderedEps, knownPhysical);
+                        var withGaps = InsertMissingEpisodes(orderedEps, knownPhysical, orderedEps.Select(e => e.Episode ?? 0).ToHashSet());
                         return new VideoMetadataEditor.Models.TvSeasonNode
                         {
                             SeasonNumber = ss.Key,
@@ -1027,7 +1035,8 @@ public partial class MainViewModel
     /// </summary>
     private static List<Models.LibraryEntry> InsertMissingEpisodes(
         List<Models.LibraryEntry> ordered,
-        HashSet<int>? knownPhysicalEpisodes = null)
+        HashSet<int>? knownPhysicalEpisodes = null,
+        HashSet<int>? alreadyTaggedEpisodes = null)
     {
         if (ordered.Count < 2) return ordered;
 
@@ -1054,8 +1063,12 @@ public partial class MainViewModel
             }
             for (int ep = prev + 1; ep < cur && cur - prev <= 10; ep++)
             {
-                // Check if a physical file exists with this episode number
-                bool physicalExists = knownPhysicalEpisodes?.Contains(ep) == true;
+                // A file is "untagged" only if it physically exists on disk AND
+                // is NOT already represented by a real LibraryEntry in this season.
+                // Without the second check, files that ARE properly tagged still
+                // appear as "(untagged)" because the directory scanner also finds them.
+                bool physicalExists = knownPhysicalEpisodes?.Contains(ep) == true
+                                   && alreadyTaggedEpisodes?.Contains(ep) != true;
                 result.Add(new Models.LibraryEntry
                 {
                     IsEpisode        = true,
@@ -1807,6 +1820,10 @@ public partial class MainViewModel
             }
         }
 
+        // Snapshot the pre-write path so SyncLibraryEntry can look up the existing
+        // LibraryEntry by old path, even if the file gets renamed after the write.
+        var preWritePath = file.FilePath;
+
         // Snapshot BEFORE write so TV Batch and Watch Folder auto-embed support undo
         file.UndoFilePath = file.FilePath;
         file.UndoMetadata = file.EmbeddedMetadata.Clone();
@@ -1857,6 +1874,14 @@ public partial class MainViewModel
                     $"[{DateTime.Now:HH:mm:ss}] ⚠ Rename skipped: {ex.Message}");
             }
         }
+
+        // Always mark embedded so next Scan Library forces a fresh TagLib# read.
+        _libraryScanService?.MarkAsEmbedded(file.FilePath);
+
+        // Sync the in-memory LibraryEntry + cache so the Library grid reflects the
+        // embedded TV metadata immediately and survives the next scan without reverting.
+        // lookupPath = path before rename; currentPath = final path after rename.
+        SyncLibraryEntry(preWritePath, file.FilePath, meta);
 
         Log(
             $"[{DateTime.Now:HH:mm:ss}] ✓ {meta.ShowTitle} " +
