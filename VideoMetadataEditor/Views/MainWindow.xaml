@@ -4954,6 +4954,15 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 92 — Library persistence root-cause fix
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Fix: library metadata no longer reverts to pre-embed values after a Library scan or after closing and reopening the app.
+                                        Root cause: SyncLibraryEntry trusted the in-memory metadata object and returned early before updating the persistent cache whenever a file was not yet in LibraryEntries (added via Add Files/Add Folder, not scanned), leaving the cache stale; the in-memory forced-read set masked this within a session but is wiped on restart.
+                                        Fix: SyncLibraryEntry now re-reads the file from disk after every embed and writes that authoritative result into both the grid entry and the persistent cache — unconditionally, even when the file is not yet in the library. Stale old-path cache entries are evicted on rename.
+                                        Fix: all three embed paths (single-file, batch, TV batch) now call SyncLibraryEntry; previously only the single-file path did.
+                                        Fix: FILES panel snapshot refreshed from disk after single-file embed; TV-tree refresh marshalled to UI dispatcher for background batch embeds.
+                                        Fix: TV tree no longer shows correctly-tagged episodes (e.g. Dr. Stone S02E04) as "untagged" — the gap-scanner now excludes episode numbers already represented by a real library entry.
+
                                         v1.4.0  ·  Build 91 — Audit pass: all Step 6/7/8 items implemented
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         Build/Version: bumped to v1.4.0.91; all version markers updated consistently.

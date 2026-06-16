@@ -1091,57 +1091,135 @@ public partial class MainViewModel
     /// <summary>Updates the corresponding LibraryEntry when a file is successfully embedded.</summary>
     private void SyncLibraryEntry(string lookupPath, string currentPath, MovieMetadata meta)
     {
+        // ── Authoritative re-read from disk ────────────────────────────────────
+        // CRITICAL: do NOT trust the in-memory `meta` object as the source of truth
+        // for the cache. The cache freshness key is (path, size, mtime); if we store
+        // the in-memory metadata against a mtime that later fails to invalidate the
+        // OLD cache entry, a subsequent scan/restart silently returns the pre-embed
+        // values. Re-reading the file we just wrote guarantees the cache + grid hold
+        // exactly what is physically embedded, and pins the correct post-write stat.
+        MovieMetadata disk;
+        long   diskSize;
+        DateTime diskMtime;
+        try
+        {
+            var info = new FileInfo(currentPath);
+            if (!info.Exists) return;   // file vanished (e.g. failed rename) — nothing to sync
+            disk      = _metadataService.ReadMetadata(currentPath);  // includes artwork
+            diskSize  = info.Length;
+            diskMtime = info.LastWriteTimeUtc;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SyncLibraryEntry] disk re-read failed: {ex.Message}");
+            // Fall back to the in-memory metadata so the grid still updates.
+            disk = meta; diskSize = 0; diskMtime = DateTime.UtcNow;
+        }
+
+        // Carry over the filename-derived title/year fallbacks the scan would apply,
+        // so an embed that left Title empty still shows a sensible value.
+        var (parsedTitle, parsedYear) = FilenameParser.Parse(
+            Path.GetFileNameWithoutExtension(currentPath));
+        var resolvedTitle = !string.IsNullOrWhiteSpace(disk.Title) ? disk.Title
+                          : !string.IsNullOrWhiteSpace(parsedTitle) ? parsedTitle
+                          : Path.GetFileNameWithoutExtension(currentPath);
+        var resolvedYear  = !string.IsNullOrWhiteSpace(disk.Year) ? disk.Year
+                          : !string.IsNullOrWhiteSpace(parsedYear) ? parsedYear
+                          : string.Empty;
+
         // Look up by the path that was current BEFORE any rename — LibraryEntries
         // still has the old path if the file was renamed during this embed operation.
         var entry = LibraryEntries.FirstOrDefault(e =>
             e.FilePath.Equals(lookupPath, StringComparison.OrdinalIgnoreCase));
 
-        if (entry == null) return;   // file not in library — nothing to update or cache
-
-        // If the file was renamed, update the stored path so the library stays accurate.
-        if (!lookupPath.Equals(currentPath, StringComparison.OrdinalIgnoreCase))
-            entry.FilePath = currentPath;
-
-        // Update in-memory grid entry
-        entry.Title        = meta.Title;
-        entry.Year         = meta.Year;
-        entry.Genre        = meta.Genre;
-        entry.Director     = meta.Director;
-        entry.Cast         = meta.Cast;
-        entry.Description  = meta.Description;
-        entry.ImdbId       = meta.ImdbId;
-        entry.TmdbId       = meta.TmdbId;
-        entry.ImdbRating   = meta.Rating;
-        entry.MpaRating    = meta.MpaRating;
-        if (meta.ArtworkBytes is { Length: > 0 })
-            entry.CoverArt = meta.ArtworkBytes;
-
-        // ── TV episode fields ──────────────────────────────────────────────────
-        // These were missing before — caused the "untagged" warning to persist in
-        // the TV tree after embedding, because the in-memory LibraryEntry still
-        // had stale/empty IsEpisode, Season, Episode values. A full rescan cleared
-        // it but the in-place sync after embed did not.
-        entry.IsEpisode    = meta.IsEpisode;
-        entry.ShowTitle    = meta.ShowTitle    ?? string.Empty;
-        entry.Season       = meta.Season;
-        entry.Episode      = meta.Episode;
-        entry.EpisodeTitle = meta.EpisodeTitle ?? string.Empty;
-        entry.AiredDate    = meta.AiredDate    ?? string.Empty;
-        // Raise TV tree immediately so the untagged warning clears without rescan
-        RaiseProperty(nameof(TvShowTree));
-
-        // Refresh cache entry using the current (post-rename) path.
-        try
+        // If the file is not yet in LibraryEntries (added via Add Files / Add Folder
+        // and never scanned into the library), we still MUST update the cache so the
+        // next scan or restart reflects the embed. Previously this method returned
+        // early in that case, leaving the cache holding stale (or no) data — the core
+        // cause of values reverting after a scan / restart.
+        if (entry != null)
         {
-            var info = new FileInfo(currentPath);
-            if (info.Exists)
+            if (!lookupPath.Equals(currentPath, StringComparison.OrdinalIgnoreCase))
+                entry.FilePath = currentPath;
+
+            entry.Title        = resolvedTitle;
+            entry.Year         = resolvedYear;
+            entry.Genre        = disk.Genre;
+            entry.Director     = disk.Director;
+            entry.Cast         = disk.Cast;
+            entry.Description  = disk.Description;
+            entry.ImdbId       = disk.ImdbId;
+            entry.TmdbId       = disk.TmdbId;
+            entry.ImdbRating   = disk.Rating;
+            entry.MpaRating    = disk.MpaRating;
+            entry.IsWatched    = disk.IsWatched || entry.IsWatched;
+            if (disk.ArtworkBytes is { Length: > 0 })
+                entry.CoverArt = disk.ArtworkBytes;
+
+            // ── TV episode fields ──────────────────────────────────────────────
+            entry.IsEpisode    = disk.IsEpisode;
+            entry.ShowTitle    = disk.ShowTitle    ?? string.Empty;
+            entry.Season       = disk.Season;
+            entry.Episode      = disk.Episode;
+            entry.EpisodeTitle = disk.EpisodeTitle ?? string.Empty;
+            entry.AiredDate    = disk.AiredDate    ?? string.Empty;
+            entry.TmdbSeriesId = disk.TmdbSeriesId ?? string.Empty;
+
+            // Raise TV tree immediately so the untagged warning clears without rescan.
+            // May be called from a background batch task — marshal to the UI dispatcher
+            // since the TvShowTree getter rebuilds collections the UI binds to.
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+                dispatcher.InvokeAsync(() => RaiseProperty(nameof(TvShowTree)));
+            else
+                RaiseProperty(nameof(TvShowTree));
+        }
+
+        // ── Update the persistent cache (always, regardless of grid membership) ──
+        if (diskSize > 0)
+        {
+            try
             {
-                _libraryCacheService.Put(currentPath, info.Length, info.LastWriteTimeUtc, entry);
+                // Build a cache-ready entry from the authoritative disk read.
+                var cacheEntry = entry ?? new Models.LibraryEntry
+                {
+                    FilePath      = currentPath,
+                    FileSizeBytes = diskSize,
+                    Title         = resolvedTitle,
+                    Year          = resolvedYear,
+                    Genre         = disk.Genre,
+                    Director      = disk.Director,
+                    Cast          = disk.Cast,
+                    Description   = disk.Description,
+                    ImdbId        = disk.ImdbId,
+                    TmdbId        = disk.TmdbId,
+                    ImdbRating    = disk.Rating,
+                    MpaRating     = disk.MpaRating,
+                    IsEpisode     = disk.IsEpisode,
+                    IsWatched     = disk.IsWatched,
+                    ShowTitle     = disk.ShowTitle    ?? string.Empty,
+                    Season        = disk.Season,
+                    Episode       = disk.Episode,
+                    EpisodeTitle  = disk.EpisodeTitle ?? string.Empty,
+                    AiredDate     = disk.AiredDate    ?? string.Empty,
+                    TmdbSeriesId  = disk.TmdbSeriesId ?? string.Empty,
+                    CoverArt      = disk.ArtworkBytes,
+                };
+
+                // If the file was renamed, drop the stale cache entry for the old path
+                // so a future scan can't resurrect pre-rename metadata.
+                if (!lookupPath.Equals(currentPath, StringComparison.OrdinalIgnoreCase))
+                    _libraryCacheService.Evict(lookupPath);
+
+                _libraryCacheService.Put(currentPath, diskSize, diskMtime, cacheEntry);
+
                 var livePaths = LibraryEntries.Select(e => e.FilePath).ToList();
+                if (!livePaths.Contains(currentPath, StringComparer.OrdinalIgnoreCase))
+                    livePaths.Add(currentPath);
                 _ = _libraryCacheService.SaveAsync(livePaths);
             }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[SyncLibraryEntry] cache update failed: {ex.GetType().Name}: {ex.Message}"); }
         }
-        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[SyncLibraryEntry] {ex.GetType().Name}: {ex.Message}"); }
     }
 
     // ── INotifyPropertyChanged ────────────────────────────────────────────────

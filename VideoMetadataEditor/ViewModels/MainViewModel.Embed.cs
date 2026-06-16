@@ -203,6 +203,14 @@ public partial class MainViewModel
                 // matches the existing LibraryEntry (which still has the old path).
                 // SyncLibraryEntry also updates LibraryEntry.FilePath when renamed.
                 SyncLibraryEntry(currentPath, targetFile.FilePath, metadataToWrite);
+                // Refresh the FILES panel's in-memory snapshot from disk so it reflects
+                // exactly what was persisted (prevents the panel showing values that were
+                // never actually committed, and keeps a later re-embed working from truth).
+                try
+                {
+                    targetFile.EmbeddedMetadata = _metadataService.ReadMetadata(targetFile.FilePath);
+                }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Embed] post-write re-read failed: {ex.Message}"); }
                 // Remove any .vme_* temp rows the Watch Folder may have caught
                 EvictTempFileRows();
                 // Invalidate duplicate detector hash cache for the modified file
