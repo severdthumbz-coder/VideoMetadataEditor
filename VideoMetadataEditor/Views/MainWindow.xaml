@@ -345,6 +345,27 @@
                                                         <TextBlock Text="REMUXED" FontSize="10" FontWeight="Bold"
                                                                    Foreground="White"/>
                                                     </Border>
+                                                    <!-- Disk-verified badge — "what's actually on disk" signal.
+                                                         Green ✓ = post-embed disk re-read matched the intended write;
+                                                         amber ⚠ = written but the disk re-read did not match. -->
+                                                    <Border CornerRadius="3" Padding="4,1" Margin="6,0,0,0"
+                                                            Visibility="{Binding DiskVerifiedDisplay, Converter={StaticResource NullVis}}">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding DiskVerified}" Value="True">
+                                                                        <Setter Property="Background" Value="#2E7D32"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding DiskVerified}" Value="False">
+                                                                        <Setter Property="Background" Value="#B26A00"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <TextBlock Text="{Binding DiskVerifiedDisplay}"
+                                                                   FontSize="10" Foreground="White"/>
+                                                    </Border>
                                                 </StackPanel>
                                             </StackPanel>
 
@@ -4953,6 +4974,22 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 96 — Phase 2: Self-verification and recoverability
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Verification: after every embed the write path now re-reads the file and verifies the FULL VME token set (rating, IDs, MPA, watched, and all TV fields), not just Title. A container that silently dropped tokens used to pass the Title-only check and revert on the next scan; now the write fails with the exact list of fields that didn't commit. Enforced only for formats that claim full-tag support (MP4/M4V/MKV/MOV); WebM/WMV/AVI keep the Title-only check to avoid false failures.
+                                        Indicator: FILES panel shows a per-file badge — green "verified on disk" when the post-embed re-read matched, amber "not verified" when it didn't — so a silent revert is visible, not hidden.
+                                        Tests: 6 new VerifyWritten unit tests (CI-runnable, pure logic).
+
+                                        v1.4.0  ·  Build 95 — First-save cache persistence bug fix
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Fix: LibraryCacheService.SaveAsync used File.Replace, which throws on the first save for a folder (no existing target) and was silently swallowed — the first cache write was lost on fresh setups, compounding metadata-revert symptoms. Now uses File.Move to create the file, File.Replace only when it exists; save failures are logged instead of silenced. Caught by the Phase 1 integration tests.
+
+                                        v1.4.0  ·  Build 94 — CI fix for Phase 1 tests
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Fix: added LibraryModels/LibraryCacheService/SubtitleDetector to the test compile list and guarded WPF-only members (CoverSource decode, LibraryTab) under NO_WPF so the cache persistence tests compile in the non-WPF test project.
+
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 93 — Phase 1: Foundation stabilization
                                         ─────────────────────────────────────────────────────────────────────────────────────

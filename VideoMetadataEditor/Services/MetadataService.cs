@@ -400,26 +400,45 @@ public class MetadataService
 
             // ── Post-write verification ────────────────────────────────────────
             // Some formats (AVI, WMV, WebM) silently succeed on Save() but don't
-            // actually commit the tags. Re-read the file and verify Title was stored.
-            // Title is the most reliable field across all containers.
-            if (!string.IsNullOrWhiteSpace(metadata.Title))
+            // actually commit the tags. Re-read the file and verify the data was
+            // stored — both the standard Title field AND the full VME token set
+            // (rating, IDs, MPA, watched, and all TV episode fields). A format that
+            // drops, say, the episode tokens would previously have passed the
+            // Title-only check and reverted silently on the next scan.
+            try
             {
-                try
-                {
-                    using var verify = File.Create(filePath);
-                    var writtenTitle = verify.Tag.Title ?? string.Empty;
-                    var expectedTitle = string.IsNullOrWhiteSpace(metadata.Title)
-                        ? Path.GetFileNameWithoutExtension(filePath)
-                        : metadata.Title;
+                using var verify = File.Create(filePath);
 
+                // 1. Title (standard field, most reliable across containers)
+                if (!string.IsNullOrWhiteSpace(metadata.Title))
+                {
+                    var writtenTitle  = verify.Tag.Title ?? string.Empty;
+                    var expectedTitle = metadata.Title;
                     if (!writtenTitle.Equals(expectedTitle, StringComparison.OrdinalIgnoreCase))
                         return (false,
                             $"Post-write verification failed — Title was not committed " +
                             $"(expected '{expectedTitle}', read back '{writtenTitle}'). " +
                             $"This format may not support embedded metadata reliably.");
                 }
-                catch { /* verification is best-effort — don't fail on verify read error */ }
+
+                // 2. Full VME token set — only enforced for formats that claim full
+                //    tag support (MP4/M4V/MKV/MOV). WebM/WMV/AVI cannot reliably store
+                //    the comment token block and already surface a capability warning,
+                //    so failing the write on a missing token there would be a false
+                //    negative — the user was already told those fields may not save.
+                var caps = GetFormatCapabilities(DetectFormat(filePath));
+                if (caps.supportsFullTags)
+                {
+                    var readBackComment = verify.Tag.Comment ?? string.Empty;
+                    var missing = VmeCommentCodec.VerifyWritten(comment, readBackComment);
+                    if (missing.Count > 0)
+                        return (false,
+                            $"Post-write verification failed — these fields were not committed: " +
+                            $"{string.Join(", ", missing)}. " +
+                            $"This file may be damaged or the container may not support embedded metadata.");
+                }
             }
+            catch { /* verification is best-effort — don't fail on a verify read error */ }
 
             return (true, null);
         }

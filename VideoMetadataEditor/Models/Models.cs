@@ -452,6 +452,29 @@ public class VideoFile : INotifyPropertyChanged
     /// <summary>Human-readable explanation of the last write failure (populated when VerboseWriteErrors is on).</summary>
     public string WriteErrorDetail { get => _writeErrorDetail; set => Set(ref _writeErrorDetail, value); }
 
+    /// <summary>
+    /// True when, after an embed, the file was re-read from disk and the embedded
+    /// metadata matched what was intended. This is the "what's actually on disk"
+    /// signal: a green check means the panel reflects verified disk content, not just
+    /// an in-memory snapshot that might silently revert on the next scan. Null =
+    /// not yet embedded this session; true = verified; false = written but the
+    /// disk re-read did not match (a warning state).
+    /// </summary>
+    private bool? _diskVerified;
+    public bool? DiskVerified
+    {
+        get => _diskVerified;
+        set { Set(ref _diskVerified, value); OnPropertyChanged(nameof(DiskVerifiedDisplay)); }
+    }
+
+    /// <summary>Short badge text for the FILES panel verification indicator.</summary>
+    public string DiskVerifiedDisplay => _diskVerified switch
+    {
+        true  => "✓ verified on disk",
+        false => "⚠ not verified",
+        _     => string.Empty,
+    };
+
     // Watched flag — stored in VME custom tag
     private bool _isWatched;
     public bool IsWatched { get => _isWatched; set => Set(ref _isWatched, value); }
@@ -518,6 +541,8 @@ public class VideoFile : INotifyPropertyChanged
         field = value;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
+    private void OnPropertyChanged([CallerMemberName] string? name = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
 // ─── API Search Result ────────────────────────────────────────────────────────

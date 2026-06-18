@@ -139,4 +139,61 @@ public static class VmeCommentCodec
         public string TvdbId       { get; init; } = "";
         public string TmdbSeriesId { get; init; } = "";
     }
+
+    // ── Post-write verification ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Compares the VME token fields that were intended for a write against what
+    /// was actually read back from the file's comment after the write. Returns the
+    /// list of field names that did NOT persist correctly (empty list = full match).
+    ///
+    /// Pure logic, no file I/O — so the verification contract is unit-testable in CI
+    /// without needing TagLib# to open a real container. Only fields that were
+    /// actually set in the intended write are checked; a field the user left blank is
+    /// not expected to appear on disk and is never reported as a mismatch.
+    ///
+    /// String comparisons are case-insensitive and whitespace-trimmed because some
+    /// containers normalise tag text. Rating is compared at one-decimal precision to
+    /// match how it is encoded.
+    /// </summary>
+    public static IReadOnlyList<string> VerifyWritten(
+        string intendedComment, string readBackComment)
+    {
+        var want = Decode(intendedComment);
+        var got  = Decode(readBackComment);
+        var mismatches = new List<string>();
+
+        void CheckStr(string name, string intended, string actual)
+        {
+            if (string.IsNullOrWhiteSpace(intended)) return; // not set → not expected
+            if (!string.Equals(intended.Trim(), actual.Trim(), StringComparison.OrdinalIgnoreCase))
+                mismatches.Add(name);
+        }
+
+        CheckStr("IMDB ID",       want.ImdbId,       got.ImdbId);
+        CheckStr("TMDB ID",       want.TmdbId,       got.TmdbId);
+        CheckStr("MPA rating",    want.MpaRating,    got.MpaRating);
+        CheckStr("Description",   want.Description,  got.Description);
+
+        if (want.Rating > 0f && Math.Abs(want.Rating - got.Rating) > 0.05f)
+            mismatches.Add("Rating");
+
+        // Watched is only asserted when the user set it true (false writes no token).
+        if (want.IsWatched && !got.IsWatched)
+            mismatches.Add("Watched flag");
+
+        if (want.IsEpisode)
+        {
+            if (!got.IsEpisode) mismatches.Add("Episode flag");
+            CheckStr("Show title",    want.ShowTitle,    got.ShowTitle);
+            CheckStr("Episode title", want.EpisodeTitle, got.EpisodeTitle);
+            CheckStr("Aired date",    want.AiredDate,    got.AiredDate);
+            CheckStr("TVDB ID",       want.TvdbId,       got.TvdbId);
+            CheckStr("TMDB series ID",want.TmdbSeriesId, got.TmdbSeriesId);
+            if (want.Season.HasValue  && want.Season  != got.Season)  mismatches.Add("Season");
+            if (want.Episode.HasValue && want.Episode != got.Episode) mismatches.Add("Episode number");
+        }
+
+        return mismatches;
+    }
 }

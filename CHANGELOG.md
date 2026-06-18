@@ -2,6 +2,23 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 96 — Phase 2: Self-verification and recoverability
+
+Builds on the Phase 1 single-projection foundation. The goal: a silent partial-write or revert should be impossible to miss.
+
+### Full-token post-write verification
+- After every embed, the write path re-reads the file and now verifies the **complete VME token set** (rating, IMDB/TMDB IDs, MPA rating, watched flag, and all TV episode fields), not just the Title. A container that silently dropped, say, the episode tokens previously passed the Title-only check and reverted on the next scan; now the write reports failure with the exact list of fields that did not commit.
+- Verification is only enforced for formats that claim full-tag support (MP4/M4V/MKV/MOV). WebM/WMV/AVI, which already surface a capability warning, keep the Title-only check so the stricter verification doesn't produce false failures on formats that genuinely can't store the token block.
+- The comparison logic lives in a new pure `VmeCommentCodec.VerifyWritten` method — case-insensitive, whitespace-trimmed, and it only checks fields that were actually set (no false positives for blank fields).
+
+### "What's actually on disk" indicator
+- The FILES panel now shows a per-file verification badge: green "✓ verified on disk" when the post-embed disk re-read matched the intended write, amber "⚠ not verified" when it did not. This makes the difference between "verified disk content" and "an in-memory snapshot that might revert" visible rather than hidden. Backed by a new `VideoFile.DiskVerified` state set during the single-projection sync.
+
+### Tests
+- New `VerifyWritten` unit tests (6) cover identical match, dropped rating, dropped episode fields (the Dr. Stone silent-revert scenario), unset-field false-positive guard, case/whitespace insensitivity, and the watched-false case. Pure logic — run unskipped in CI.
+
+---
+
 ## v1.4.0 Build 95 — First-save cache persistence bug (caught by Phase 1 tests)
 
 The Phase 1 integration tests did their job: they failed on first CI run and exposed a real, long-standing production bug in the cache persistence layer.

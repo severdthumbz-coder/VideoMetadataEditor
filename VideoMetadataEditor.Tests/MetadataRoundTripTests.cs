@@ -150,4 +150,68 @@ public class MetadataRoundTripTests
         Assert.Equal(1, d.Season);
         Assert.Equal(3, d.Episode);
     }
+
+    // ── Post-write verification (VerifyWritten) ───────────────────────────────
+
+    [Fact]
+    public void Verify_IdenticalComment_NoMismatches()
+    {
+        var c = VmeCommentCodec.Encode(
+            imdbId: "tt1375666", tmdbId: "27205", rating: 8.8f,
+            mpaRating: "PG-13", isWatched: true);
+        Assert.Empty(VmeCommentCodec.VerifyWritten(c, c));
+    }
+
+    [Fact]
+    public void Verify_DroppedRating_ReportedAsMismatch()
+    {
+        var intended = VmeCommentCodec.Encode(imdbId: "tt1", rating: 7.5f);
+        // Disk got the ID but the rating token was silently dropped
+        var onDisk   = VmeCommentCodec.Encode(imdbId: "tt1");
+        var missing  = VmeCommentCodec.VerifyWritten(intended, onDisk);
+        Assert.Contains("Rating", missing);
+        Assert.DoesNotContain("IMDB ID", missing);
+    }
+
+    [Fact]
+    public void Verify_DroppedEpisodeFields_ReportedAsMismatch()
+    {
+        var intended = VmeCommentCodec.Encode(
+            isEpisode: true, showTitle: "Dr. Stone", season: 2, episode: 4,
+            episodeTitle: "Stone Wars");
+        // Disk lost everything episode-related (the exact silent-revert scenario)
+        var onDisk   = VmeCommentCodec.Encode();
+        var missing  = VmeCommentCodec.VerifyWritten(intended, onDisk);
+        Assert.Contains("Episode flag", missing);
+        Assert.Contains("Show title",   missing);
+        Assert.Contains("Season",       missing);
+        Assert.Contains("Episode number", missing);
+    }
+
+    [Fact]
+    public void Verify_UnsetFields_NotReported()
+    {
+        // Intended write set only the IMDB ID; everything else blank.
+        var intended = VmeCommentCodec.Encode(imdbId: "tt9");
+        var onDisk   = VmeCommentCodec.Encode(imdbId: "tt9");
+        // No false positives for fields the user never set.
+        Assert.Empty(VmeCommentCodec.VerifyWritten(intended, onDisk));
+    }
+
+    [Fact]
+    public void Verify_CaseAndWhitespaceInsensitive_ForText()
+    {
+        var intended = VmeCommentCodec.Encode(mpaRating: "PG-13");
+        var onDisk   = VmeCommentCodec.Encode(mpaRating: " pg-13 ");
+        Assert.Empty(VmeCommentCodec.VerifyWritten(intended, onDisk));
+    }
+
+    [Fact]
+    public void Verify_WatchedFalse_NeverReported()
+    {
+        // Watched=false writes no token; verification must not demand it on disk.
+        var intended = VmeCommentCodec.Encode(isWatched: false, imdbId: "tt1");
+        var onDisk   = VmeCommentCodec.Encode(imdbId: "tt1");
+        Assert.Empty(VmeCommentCodec.VerifyWritten(intended, onDisk));
+    }
 }

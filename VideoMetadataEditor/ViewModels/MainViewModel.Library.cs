@@ -1172,7 +1172,37 @@ public partial class MainViewModel
         // panel object holding the pre-write snapshot. Now every path can refresh it.
         if (filesPanelFile != null)
         {
-            try { filesPanelFile.EmbeddedMetadata = disk; }
+            try
+            {
+                filesPanelFile.EmbeddedMetadata = disk;
+
+                // "What's actually on disk" signal: compare what we intended to write
+                // (fallback) against what we just read back from disk. A clean match
+                // means the panel reflects verified disk content, not a snapshot that
+                // could silently revert. diskSize == 0 means the re-read failed, so we
+                // can't claim verification.
+                if (diskSize > 0)
+                {
+                    var intended = Services.MetadataService.BuildComment(
+                        fallback.Description, fallback.ImdbId, fallback.TmdbId,
+                        fallback.Rating, fallback.MpaRating, fallback.IsWatched,
+                        fallback.IsEpisode, fallback.ShowTitle, fallback.Season,
+                        fallback.Episode, fallback.EpisodeTitle, fallback.AiredDate,
+                        string.Empty, fallback.TmdbSeriesId);
+                    var onDisk = Services.MetadataService.BuildComment(
+                        disk.Description, disk.ImdbId, disk.TmdbId,
+                        disk.Rating, disk.MpaRating, disk.IsWatched,
+                        disk.IsEpisode, disk.ShowTitle, disk.Season,
+                        disk.Episode, disk.EpisodeTitle, disk.AiredDate,
+                        string.Empty, disk.TmdbSeriesId);
+                    var missing = Services.VmeCommentCodec.VerifyWritten(intended, onDisk);
+                    filesPanelFile.DiskVerified = missing.Count == 0;
+                }
+                else
+                {
+                    filesPanelFile.DiskVerified = false;
+                }
+            }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[SyncLibraryEntry] panel refresh failed: {ex.Message}"); }
         }
 
