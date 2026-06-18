@@ -4975,6 +4975,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 97 — Verification false-positive fix
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Fix: post-write verification re-opened the file while the write handle was still open, which could read a partially-flushed/locked view and report phantom "fields not committed" failures on files (and remuxed copies) that actually wrote fine. The tag-write now runs in its own scope that releases the handle BEFORE verification re-opens the file.
+                                        Fix: the free-text Description field is no longer hard-verified — some containers truncate/normalise long comment atoms, which would fail an otherwise-correct write. Structured tokens (rating, IDs, MPA, watched, all TV fields) are still strictly verified.
+                                        Note: a true revert (rescan shows pre-write values) still exhausts retries and recommends a faststart remux; the remux relocates the MP4 moov atom so tags can be written, and is now verified correctly rather than false-failing.
+
                                         v1.4.0  ·  Build 96 — Phase 2: Self-verification and recoverability
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         Verification: after every embed the write path now re-reads the file and verifies the FULL VME token set (rating, IDs, MPA, watched, and all TV fields), not just Title. A container that silently dropped tokens used to pass the Title-only check and revert on the next scan; now the write fails with the exact list of fields that didn't commit. Enforced only for formats that claim full-tag support (MP4/M4V/MKV/MOV); WebM/WMV/AVI keep the Title-only check to avoid false failures.

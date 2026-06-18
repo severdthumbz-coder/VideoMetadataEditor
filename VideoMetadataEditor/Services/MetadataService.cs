@@ -339,8 +339,19 @@ public class MetadataService
     {
         try
         {
-            using var tagFile = File.Create(filePath);
-            var tag = tagFile.Tag;
+            // The VME comment token block — hoisted out of the write scope so the
+            // post-write verification step (which runs AFTER the write handle is
+            // closed) can compare against it.
+            string comment = string.Empty;
+
+            // Write tags in their OWN scope so the TagLib# file handle is fully
+            // released before verification re-opens the file. Verifying while the
+            // write handle was still open could read a partially-flushed / locked
+            // state and report phantom "missing field" failures on files that
+            // actually wrote correctly. (Regression fixed in Build 97.)
+            using (var tagFile = File.Create(filePath))
+            {
+                var tag = tagFile.Tag;
 
             tag.Title = string.IsNullOrWhiteSpace(metadata.Title)
                 ? Path.GetFileNameWithoutExtension(filePath)
@@ -368,7 +379,7 @@ public class MetadataService
             if (uint.TryParse(metadata.Year, out uint year))
                 tag.Year = year;
 
-            var comment     = BuildComment(metadata.Description, metadata.ImdbId, metadata.TmdbId,
+            comment         = BuildComment(metadata.Description, metadata.ImdbId, metadata.TmdbId,
                     metadata.Rating, metadata.MpaRating, metadata.IsWatched,
                     metadata.IsEpisode, metadata.ShowTitle, metadata.Season,
                     metadata.Episode, metadata.EpisodeTitle, metadata.AiredDate,
@@ -393,17 +404,17 @@ public class MetadataService
             // If ArtworkBytes is null here, preserve whatever Pictures the tag already has
             // (we read it above but it may still be null if the file has no embedded art)
 
-            // Save() may rewrite the entire file for moov-at-end MP4s.
-            // This is by design — TagLib# handles this transparently when
-            // the file handle is still open via the using block.
-            tagFile.Save();
+                // Save() may rewrite the entire file for moov-at-end MP4s.
+                // This is by design — TagLib# handles this transparently when
+                // the file handle is still open via the using block.
+                tagFile.Save();
+            } // ← write handle fully released here, BEFORE verification re-opens the file
 
             // ── Post-write verification ────────────────────────────────────────
-            // Some formats (AVI, WMV, WebM) silently succeed on Save() but don't
-            // actually commit the tags. Re-read the file and verify the data was
-            // stored — both the standard Title field AND the full VME token set
-            // (rating, IDs, MPA, watched, and all TV episode fields). A format that
-            // drops, say, the episode tokens would previously have passed the
+            // Re-read the file (now that the write handle is closed) and verify the
+            // data was stored — both the standard Title field AND the full VME token
+            // set (rating, IDs, MPA, watched, and all TV episode fields). A format
+            // that drops, say, the episode tokens would previously have passed the
             // Title-only check and reverted silently on the next scan.
             try
             {

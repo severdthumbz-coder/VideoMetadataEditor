@@ -2,6 +2,17 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 97 — Verification false-positive fix (file-handle ordering)
+
+Follow-up to the Build 96 full-token verification. A user reported that a file which "wrote successfully" in older builds was now flagged as a failed write, and that even a remuxed copy failed — yet on rescan the file still showed its pre-write metadata (a genuine revert).
+
+- **Root cause of the false failures:** the post-write verification re-opened the file with `File.Create` (a TagLib# open) while the *write* handle was still open inside the same `using` scope. Reading back tags through a second handle while the first hadn't released could return a partially-flushed/locked view, so verification reported phantom "fields not committed" failures on files that actually wrote correctly — including freshly remuxed ones.
+- **Fix:** the tag-write now runs in its own `using` block that fully releases the file handle *before* verification re-opens it. Verification reads a settled file.
+- **Description no longer hard-verified:** the free-text Description field is excluded from the pass/fail verification. Some containers truncate or normalise long comment atoms, which would fail an otherwise-correct write. Structured tokens (rating, IDs, MPA, watched, all TV fields) are still strictly verified — those are what matter for data integrity.
+- **Note on genuine reverts:** when a file's metadata truly does not survive (rescan shows pre-write values), the write path now exhausts its temp-copy and in-place retries and surfaces a diagnosis that recommends a faststart remux. The remux uses lossless `-c copy -movflags +faststart`, which relocates the MP4 moov atom to the front so tags can be written — and with this build's handle fix, the remuxed file is verified correctly instead of false-failing.
+
+---
+
 ## v1.4.0 Build 96 — Phase 2: Self-verification and recoverability
 
 Builds on the Phase 1 single-projection foundation. The goal: a silent partial-write or revert should be impossible to miss.
