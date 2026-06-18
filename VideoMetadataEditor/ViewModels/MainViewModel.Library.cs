@@ -1089,17 +1089,30 @@ public partial class MainViewModel
     }
 
     /// <summary>Updates the corresponding LibraryEntry when a file is successfully embedded.</summary>
-    private void SyncLibraryEntry(string lookupPath, string currentPath, MovieMetadata meta)
+    /// <summary>
+    /// THE single source-of-truth projection for a file's metadata after any write.
+    ///
+    /// A file's metadata lives in up to four places — disk tags, the FILES-panel
+    /// <see cref="VideoFile.EmbeddedMetadata"/>, the <see cref="LibraryEntry"/> grid row,
+    /// and the persistent cache. Disk is the only authority. Every embed/write path
+    /// MUST funnel through this one method so all representations are projected from a
+    /// single fresh disk read in a single place. Hand-updating any representation at a
+    /// call site is what caused metadata to silently revert after a scan/restart.
+    /// </summary>
+    /// <param name="lookupPath">The file's path BEFORE any rename (used to find the existing grid/cache entry).</param>
+    /// <param name="currentPath">The file's path AFTER any rename (the real on-disk path now).</param>
+    /// <param name="fallback">In-memory metadata used only if the disk re-read fails.</param>
+    /// <param name="filesPanelFile">Optional FILES-panel VideoFile to refresh from disk too.</param>
+    private void SyncLibraryEntry(
+        string lookupPath, string currentPath, MovieMetadata fallback,
+        VideoFile? filesPanelFile = null)
     {
-        // ── Authoritative re-read from disk ────────────────────────────────────
-        // CRITICAL: do NOT trust the in-memory `meta` object as the source of truth
-        // for the cache. The cache freshness key is (path, size, mtime); if we store
-        // the in-memory metadata against a mtime that later fails to invalidate the
-        // OLD cache entry, a subsequent scan/restart silently returns the pre-embed
-        // values. Re-reading the file we just wrote guarantees the cache + grid hold
-        // exactly what is physically embedded, and pins the correct post-write stat.
+        // ── 1. Authoritative re-read from disk ─────────────────────────────────
+        // The cache freshness key is (path, size, mtime). Re-reading the file we just
+        // wrote guarantees every representation holds exactly what is physically
+        // embedded, pinned to the correct post-write stat.
         MovieMetadata disk;
-        long   diskSize;
+        long diskSize;
         DateTime diskMtime;
         try
         {
@@ -1112,11 +1125,10 @@ public partial class MainViewModel
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[SyncLibraryEntry] disk re-read failed: {ex.Message}");
-            // Fall back to the in-memory metadata so the grid still updates.
-            disk = meta; diskSize = 0; diskMtime = DateTime.UtcNow;
+            disk = fallback; diskSize = 0; diskMtime = DateTime.UtcNow;
         }
 
-        // Carry over the filename-derived title/year fallbacks the scan would apply,
+        // Carry over filename-derived title/year fallbacks the scan would apply,
         // so an embed that left Title empty still shows a sensible value.
         var (parsedTitle, parsedYear) = FilenameParser.Parse(
             Path.GetFileNameWithoutExtension(currentPath));
@@ -1127,47 +1139,52 @@ public partial class MainViewModel
                           : !string.IsNullOrWhiteSpace(parsedYear) ? parsedYear
                           : string.Empty;
 
-        // Look up by the path that was current BEFORE any rename — LibraryEntries
-        // still has the old path if the file was renamed during this embed operation.
+        // ── Single field-mapping helper — used for BOTH the grid entry and the    ──
+        // ── cache entry so the two can never drift apart again.                   ──
+        void ApplyDiskTo(Models.LibraryEntry target, bool preserveWatched)
+        {
+            target.FilePath      = currentPath;
+            target.FileSizeBytes = diskSize > 0 ? diskSize : target.FileSizeBytes;
+            target.Title         = resolvedTitle;
+            target.Year          = resolvedYear;
+            target.Genre         = disk.Genre;
+            target.Director      = disk.Director;
+            target.Cast          = disk.Cast;
+            target.Description   = disk.Description;
+            target.ImdbId        = disk.ImdbId;
+            target.TmdbId        = disk.TmdbId;
+            target.ImdbRating    = disk.Rating;
+            target.MpaRating     = disk.MpaRating;
+            target.IsWatched     = preserveWatched ? (disk.IsWatched || target.IsWatched) : disk.IsWatched;
+            if (disk.ArtworkBytes is { Length: > 0 })
+                target.CoverArt  = disk.ArtworkBytes;
+            target.IsEpisode     = disk.IsEpisode;
+            target.ShowTitle     = disk.ShowTitle    ?? string.Empty;
+            target.Season        = disk.Season;
+            target.Episode       = disk.Episode;
+            target.EpisodeTitle  = disk.EpisodeTitle ?? string.Empty;
+            target.AiredDate     = disk.AiredDate    ?? string.Empty;
+            target.TmdbSeriesId  = disk.TmdbSeriesId ?? string.Empty;
+        }
+
+        // ── 2. Project into the FILES-panel VideoFile (if supplied) ────────────
+        // Previously only the single-file embed path did this; batch paths left the
+        // panel object holding the pre-write snapshot. Now every path can refresh it.
+        if (filesPanelFile != null)
+        {
+            try { filesPanelFile.EmbeddedMetadata = disk; }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[SyncLibraryEntry] panel refresh failed: {ex.Message}"); }
+        }
+
+        // ── 3. Project into the grid entry (if the file is in the library) ─────
         var entry = LibraryEntries.FirstOrDefault(e =>
             e.FilePath.Equals(lookupPath, StringComparison.OrdinalIgnoreCase));
-
-        // If the file is not yet in LibraryEntries (added via Add Files / Add Folder
-        // and never scanned into the library), we still MUST update the cache so the
-        // next scan or restart reflects the embed. Previously this method returned
-        // early in that case, leaving the cache holding stale (or no) data — the core
-        // cause of values reverting after a scan / restart.
         if (entry != null)
         {
-            if (!lookupPath.Equals(currentPath, StringComparison.OrdinalIgnoreCase))
-                entry.FilePath = currentPath;
+            ApplyDiskTo(entry, preserveWatched: true);
 
-            entry.Title        = resolvedTitle;
-            entry.Year         = resolvedYear;
-            entry.Genre        = disk.Genre;
-            entry.Director     = disk.Director;
-            entry.Cast         = disk.Cast;
-            entry.Description  = disk.Description;
-            entry.ImdbId       = disk.ImdbId;
-            entry.TmdbId       = disk.TmdbId;
-            entry.ImdbRating   = disk.Rating;
-            entry.MpaRating    = disk.MpaRating;
-            entry.IsWatched    = disk.IsWatched || entry.IsWatched;
-            if (disk.ArtworkBytes is { Length: > 0 })
-                entry.CoverArt = disk.ArtworkBytes;
-
-            // ── TV episode fields ──────────────────────────────────────────────
-            entry.IsEpisode    = disk.IsEpisode;
-            entry.ShowTitle    = disk.ShowTitle    ?? string.Empty;
-            entry.Season       = disk.Season;
-            entry.Episode      = disk.Episode;
-            entry.EpisodeTitle = disk.EpisodeTitle ?? string.Empty;
-            entry.AiredDate    = disk.AiredDate    ?? string.Empty;
-            entry.TmdbSeriesId = disk.TmdbSeriesId ?? string.Empty;
-
-            // Raise TV tree immediately so the untagged warning clears without rescan.
-            // May be called from a background batch task — marshal to the UI dispatcher
-            // since the TvShowTree getter rebuilds collections the UI binds to.
+            // Raise TV tree so the untagged warning clears without a rescan. May be
+            // called from a background batch task — marshal to the UI dispatcher.
             var dispatcher = System.Windows.Application.Current?.Dispatcher;
             if (dispatcher != null && !dispatcher.CheckAccess())
                 dispatcher.InvokeAsync(() => RaiseProperty(nameof(TvShowTree)));
@@ -1175,39 +1192,19 @@ public partial class MainViewModel
                 RaiseProperty(nameof(TvShowTree));
         }
 
-        // ── Update the persistent cache (always, regardless of grid membership) ──
+        // ── 4. Project into the persistent cache (ALWAYS, even if not in grid) ──
+        // Files added via Add Files/Add Folder that were never scanned into the
+        // library still must update the cache, or the next scan/restart reverts.
         if (diskSize > 0)
         {
             try
             {
-                // Build a cache-ready entry from the authoritative disk read.
-                var cacheEntry = entry ?? new Models.LibraryEntry
-                {
-                    FilePath      = currentPath,
-                    FileSizeBytes = diskSize,
-                    Title         = resolvedTitle,
-                    Year          = resolvedYear,
-                    Genre         = disk.Genre,
-                    Director      = disk.Director,
-                    Cast          = disk.Cast,
-                    Description   = disk.Description,
-                    ImdbId        = disk.ImdbId,
-                    TmdbId        = disk.TmdbId,
-                    ImdbRating    = disk.Rating,
-                    MpaRating     = disk.MpaRating,
-                    IsEpisode     = disk.IsEpisode,
-                    IsWatched     = disk.IsWatched,
-                    ShowTitle     = disk.ShowTitle    ?? string.Empty,
-                    Season        = disk.Season,
-                    Episode       = disk.Episode,
-                    EpisodeTitle  = disk.EpisodeTitle ?? string.Empty,
-                    AiredDate     = disk.AiredDate    ?? string.Empty,
-                    TmdbSeriesId  = disk.TmdbSeriesId ?? string.Empty,
-                    CoverArt      = disk.ArtworkBytes,
-                };
+                Models.LibraryEntry cacheEntry;
+                if (entry != null) { cacheEntry = entry; }
+                else { cacheEntry = new Models.LibraryEntry(); ApplyDiskTo(cacheEntry, preserveWatched: false); }
 
-                // If the file was renamed, drop the stale cache entry for the old path
-                // so a future scan can't resurrect pre-rename metadata.
+                // On rename, drop the stale old-path cache entry so a future scan
+                // can't resurrect pre-rename metadata.
                 if (!lookupPath.Equals(currentPath, StringComparison.OrdinalIgnoreCase))
                     _libraryCacheService.Evict(lookupPath);
 

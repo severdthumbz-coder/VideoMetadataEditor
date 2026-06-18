@@ -71,8 +71,6 @@ public partial class MainViewModel : INotifyPropertyChanged
     private readonly Services.LibraryCacheService _libraryCacheService;
 
     // ── Phase 2: Dedicated sub-ViewModels ─────────────────────────────────────
-    /// <summary>Owns library scan, tabs, columns, watch, TV picker, export.</summary>
-    public LibraryViewModel  Library  { get; private set; } = null!;
     /// <summary>Owns copy/move engine, destination, conflict mode, progress.</summary>
     public CopyMoveViewModel Transfer { get; private set; } = null!;
     /// <summary>Owns search, retrieval, TV episode picker.</summary>
@@ -1395,30 +1393,18 @@ public partial class MainViewModel : INotifyPropertyChanged
 
     public MainViewModel()
     {
-        // ── Initialise services that sub-ViewModels depend on ─────────────────
-        // MUST happen before sub-VM instantiation — LibraryViewModel receives
-        // these as constructor arguments and will be null if initialized later.
+        // ── Initialise services the library scan/cache paths depend on ────────
+        // MUST happen before any code that touches the library, since the scan
+        // service wraps the cache service and both are used throughout this VM.
         _libraryCacheService = new Services.LibraryCacheService();
         _libraryScanService  = new Services.LibraryScanService(_metadataService, _libraryCacheService);
 
         // ── Instantiate sub-ViewModels ─────────────────────────────────────────
-        Library  = new LibraryViewModel(Settings, _libraryScanService!, _libraryCacheService!, _libraryWatchService);
         Transfer = new CopyMoveViewModel(Settings, () => Files);
         Search   = new SearchViewModel(_apiService, _aniListService, () => TmdbKey, () => OmdbKey, m => RetrievedMetadata = m);
         Metadata = new MetadataViewModel(Settings, _metadataService, _renameService);
 
         // ── Wire sub-VM delegates → MainViewModel implementations ──────────────
-        Library.ScanAsync              = ScanLibraryAsync;
-        Library.ExportCsvAsync         = ExportLibraryCsvAsync;
-        Library.ExportXlsxAsync        = ExportLibraryXlsxAsync;
-        Library.BrowseFolder           = BrowseLibraryFolder;
-        Library.LoadEntryIntoPanel     = entry => LibraryRowDoubleClickAsync(entry).ConfigureAwait(false).GetAwaiter().GetResult();
-        Library.LoadSelectionIntoPanel = list  => LoadLibrarySelection(list as System.Collections.IList);
-        Library.SaveColumnLayout       = SaveLibraryColumnLayoutWithConfirmation;
-        Library.TabChanged             = isTv  => System.Windows.Application.Current?.Dispatcher.InvokeAsync(
-            () => { if (System.Windows.Application.Current?.MainWindow is Views.MainWindow mw) mw.SyncLibraryColumnVisibility(); },
-            System.Windows.Threading.DispatcherPriority.Background);
-
         Transfer.ExecuteTransferAsync  = ExecuteCopyMoveAsync;
         Transfer.BrowseDestination     = () => { var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Select copy/move destination" }; if (dlg.ShowDialog() == true) { CopyDestination = dlg.FolderName; Transfer.Destination = dlg.FolderName; } };
 

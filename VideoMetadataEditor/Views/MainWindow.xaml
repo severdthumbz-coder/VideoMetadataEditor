@@ -4954,6 +4954,13 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 93 — Phase 1: Foundation stabilization
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Architecture: deleted the dead LibraryViewModel shell (its own unused Entries/Tabs/View/commands the UI never bound to) — removes the two-parallel-collections confusion behind the recurring library state bugs. Behaviour unchanged.
+                                        Architecture: SyncLibraryEntry is now the single source-of-truth projection — one fresh disk read projected into the grid row, the cache, AND the FILES-panel snapshot in one place. Grid and cache field mapping share one helper so they can't drift.
+                                        Fix: batch and TV-batch embeds now refresh the FILES-panel snapshot too (previously only the single-file path did), closing the same revert class one layer up.
+                                        Tests: new LibraryCachePersistenceTests (5 tests) cover the embed → save → reload lifecycle where metadata used to revert; run unskipped in CI. Total 80 tests across 10 files.
+
                                         v1.4.0  ·  Build 92 — Library persistence root-cause fix
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         Fix: library metadata no longer reverts to pre-embed values after a Library scan or after closing and reopening the app.

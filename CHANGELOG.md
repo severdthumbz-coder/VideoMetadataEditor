@@ -2,6 +2,25 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 93 — Phase 1: Foundation stabilization
+
+This build pays down the architectural debt behind the recurring library state bugs, rather than adding features. No user-facing feature changes; the goal is that the revert class of bug cannot recur.
+
+### Removed dead parallel state
+- Deleted `LibraryViewModel` entirely. It was a half-wired shell holding its own `Entries`, `Tabs`, `View`, `Columns` and command set that the UI never bound to — the actual library state and commands live on `MainViewModel` (`LibraryEntries`, `LibraryView`, `LibraryTabs`, `TvShowTree`, `ScanLibraryCommand`, etc.). Two parallel "library entry" collections were a standing source of "which collection am I updating" confusion. Its only live effect, a column-visibility callback on tab change, is already handled by the real tab-selection path — verified before removal, so behaviour is unchanged.
+
+### Single source-of-truth projection for metadata
+- A file's metadata can live in four places: disk tags, the FILES-panel `VideoFile.EmbeddedMetadata`, the `LibraryEntry` grid row, and the persistent cache. Disk is the only authority. `SyncLibraryEntry` is now the one method every embed path funnels through; it does a single fresh disk read and projects that into all representations in one place.
+- It now also refreshes the FILES-panel `VideoFile.EmbeddedMetadata` (via an optional parameter). Previously only the single-file path did this; the batch and TV-batch paths left the panel object holding a pre-write snapshot — the same revert class one layer up.
+- Grid-entry and cache-entry field mapping is now a single shared local helper, so the two can no longer drift apart.
+- All three embed paths (single-file, batch, TV batch) pass their `VideoFile` so the panel, grid, and cache update together.
+
+### Tests — integration coverage for the bug class that kept recurring
+- New `LibraryCachePersistenceTests` (5 tests) exercise the embed → Put → SaveAsync → (new instance) Load → TryGet lifecycle — the close/reopen cycle where metadata used to revert. These run unskipped in CI because the cache is pure logic (no TagLib# container needed). Coverage: movie round-trip, TV-episode fields round-trip (guards the "Dr. Stone S02E04 untagged" symptom), stale-file invalidation, rename old-path eviction, and ghost pruning.
+- Total: 80 test methods across 10 test files.
+
+---
+
 ## v1.4.0 Build 92 — Library persistence root-cause fix
 
 ### Library metadata no longer reverts after scan / restart (the persistent bug)

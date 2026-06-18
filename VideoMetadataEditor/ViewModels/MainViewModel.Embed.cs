@@ -199,18 +199,9 @@ public partial class MainViewModel
                 // forces a fresh TagLib# read — regardless of whether the file is
                 // currently in LibraryEntries. This is the unconditional guarantee.
                 _libraryScanService?.MarkAsEmbedded(targetFile.FilePath);
-                // Sync the Library entry — use the path BEFORE rename so the lookup
-                // matches the existing LibraryEntry (which still has the old path).
-                // SyncLibraryEntry also updates LibraryEntry.FilePath when renamed.
-                SyncLibraryEntry(currentPath, targetFile.FilePath, metadataToWrite);
-                // Refresh the FILES panel's in-memory snapshot from disk so it reflects
-                // exactly what was persisted (prevents the panel showing values that were
-                // never actually committed, and keeps a later re-embed working from truth).
-                try
-                {
-                    targetFile.EmbeddedMetadata = _metadataService.ReadMetadata(targetFile.FilePath);
-                }
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Embed] post-write re-read failed: {ex.Message}"); }
+                // Single source-of-truth projection: re-reads disk and updates the
+                // grid entry, the cache, AND the FILES-panel snapshot in one place.
+                SyncLibraryEntry(currentPath, targetFile.FilePath, metadataToWrite, targetFile);
                 // Remove any .vme_* temp rows the Watch Folder may have caught
                 EvictTempFileRows();
                 // Invalidate duplicate detector hash cache for the modified file
@@ -631,13 +622,10 @@ public partial class MainViewModel
                             Interlocked.Increment(ref renamedCount);
                     }
 
-                    // Sync library grid + cache with the embedded metadata.
-                    // lookupPath = old path (before rename) so the existing LibraryEntry
-                    // is found; currentPath = new path (after rename) for cache Put().
-                    // This is the same call the single-file embed makes — without it
-                    // the cache is never updated and the next scan reverts to stale data.
+                    // Single source-of-truth projection — also refreshes the FILES-panel
+                    // snapshot, which the batch path previously left stale.
                     var preBatchPath = vf.UndoFilePath ?? vf.FilePath;
-                    SyncLibraryEntry(preBatchPath, vf.FilePath, meta);
+                    SyncLibraryEntry(preBatchPath, vf.FilePath, meta, vf);
 
                     Interlocked.Increment(ref successCount);
                 }
@@ -1889,7 +1877,8 @@ public partial class MainViewModel
         // Sync the in-memory LibraryEntry + cache so the Library grid reflects the
         // embedded TV metadata immediately and survives the next scan without reverting.
         // lookupPath = path before rename; currentPath = final path after rename.
-        SyncLibraryEntry(preWritePath, file.FilePath, meta);
+        // Single source-of-truth projection — grid, cache, and FILES-panel snapshot.
+        SyncLibraryEntry(preWritePath, file.FilePath, meta, file);
 
         Log(
             $"[{DateTime.Now:HH:mm:ss}] ✓ {meta.ShowTitle} " +
