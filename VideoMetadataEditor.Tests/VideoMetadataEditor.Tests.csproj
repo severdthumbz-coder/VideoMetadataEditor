@@ -32,7 +32,10 @@
     <Compile Include="../VideoMetadataEditor/Services/MkvPropEditService.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/WriteResult.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/FileLockService.cs"/>
+    <Compile Include="../VideoMetadataEditor/Services/LibraryCacheService.cs"/>
+    <Compile Include="../VideoMetadataEditor/Services/SubtitleDetector.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/Models.cs"/>
+    <Compile Include="../VideoMetadataEditor/Models/LibraryModels.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/SubtitleModels.cs"/>
     <Compile Include="../VideoMetadataEditor/GlobalUsings.cs"/>
   </ItemGroup>

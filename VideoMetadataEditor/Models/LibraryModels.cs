@@ -1,4 +1,6 @@
+#if !NO_WPF
 using System.Windows.Media.Imaging;
+#endif
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -140,12 +142,15 @@ public class LibraryEntry : INotifyPropertyChanged
         {
             _coverArt = value;
             OnPropertyChanged();
+#if !NO_WPF
             // Pre-decode to BitmapSource so the DataGrid binding is instant
             CoverSource = DecodeCoverArt(value);
             OnPropertyChanged(nameof(CoverSource));
+#endif
         }
     }
 
+#if !NO_WPF
     private BitmapSource? _coverSource;
     public BitmapSource? CoverSource
     {
@@ -169,6 +174,7 @@ public class LibraryEntry : INotifyPropertyChanged
         }
         catch { return null; }
     }
+#endif
 
     // ── Technical ─────────────────────────────────────────────────────────────
     public string Duration        { get; set; } = string.Empty;   // e.g. "1:52:44"
@@ -226,6 +232,7 @@ public class LibraryColumn : INotifyPropertyChanged
 
 // ─── Library Tab model ────────────────────────────────────────────────────────
 
+#if !NO_WPF
 /// <summary>
 /// Represents one pane in the Library tab when multiple folders are added.
 /// Each pane has its own CollectionViewSource for independent filtering/sorting.
@@ -287,3 +294,4 @@ public class LibraryTab : VideoMetadataEditor.ViewModels.ViewModelBase
         };
     }
 }
+#endif

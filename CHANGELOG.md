@@ -2,6 +2,14 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 94 — CI fix for Phase 1 tests
+
+- Fix: the new `LibraryCachePersistenceTests` failed to compile in CI (`CS0246: LibraryEntry could not be found`). The test project compiles a hand-picked subset of source files rather than referencing the WPF main project, and `LibraryModels.cs` / `LibraryCacheService.cs` / `SubtitleDetector.cs` were not in that list.
+- Added those three files to the test project's compile list.
+- Guarded the WPF-only members of `LibraryModels.cs` under `#if !NO_WPF`: the `BitmapSource CoverSource` property and its `DecodeCoverArt` helper on `LibraryEntry` (the `CoverArt` byte storage the cache uses stays available unconditionally), and the entire `LibraryTab` class (a UI-only view-model using `CollectionViewSource`/`ViewModelBase`, irrelevant to cache logic). No behaviour change in the main WPF build, which always compiles these.
+
+---
+
 ## v1.4.0 Build 93 — Phase 1: Foundation stabilization
 
 This build pays down the architectural debt behind the recurring library state bugs, rather than adding features. No user-facing feature changes; the goal is that the revert class of bug cannot recur.
