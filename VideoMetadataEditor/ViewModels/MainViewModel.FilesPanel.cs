@@ -620,12 +620,14 @@ public partial class MainViewModel
     {
         if (candidate is not { IsRemuxCandidate: true }) return;
 
-        // Read original metadata BEFORE ReplaceOriginal deletes the source file
+        // Read original metadata BEFORE ReplaceOriginal deletes the source file.
+        // Use the full read (not Fast) so cover art is captured — otherwise the
+        // remuxed file would lose its artwork on auto-embed.
         MovieMetadata? originalMeta = null;
         if (replace && !string.IsNullOrWhiteSpace(candidate.OriginalPath) &&
             File.Exists(candidate.OriginalPath))
         {
-            try { originalMeta = _metadataService.ReadMetadataFast(candidate.OriginalPath); }
+            try { originalMeta = _metadataService.ReadMetadata(candidate.OriginalPath); }
             catch { /* non-fatal — user can embed manually */ }
         }
 
@@ -644,15 +646,18 @@ public partial class MainViewModel
         // Remove the candidate row from the panel
         Files.Remove(candidate);
 
-        // On Replace: evict the old library cache entry for both the original
-        // and candidate paths. The remuxed file has no tags — the next Scan
-        // Library would otherwise serve stale cached metadata (showing old info
-        // for the now-deleted original path, or missing info for the new path).
-        // Evicting forces a fresh TagLib# read on the next scan.
+        // On Replace: evict the old library cache entry for the original, the
+        // candidate, AND the actual final path. The final path differs from both
+        // when the container extension changed (e.g. original .mkv → remuxed .mp4),
+        // and a stale cache entry under that final path would otherwise be served on
+        // the next scan. The remuxed file has no tags yet (the auto-embed below
+        // re-populates), so a fresh read must win.
         if (replace)
         {
             _libraryCacheService.Evict(candidate.OriginalPath ?? string.Empty);
             _libraryCacheService.Evict(candidate.FilePath);
+            if (result.FinalPath != null)
+                _libraryCacheService.Evict(result.FinalPath);
         }
 
         // On Replace, optionally surface the adopted file; on Restore, the original stays on disk
@@ -684,16 +689,15 @@ public partial class MainViewModel
                         if (writeOk)
                         {
                             StatusText = $"✓ Metadata restored to {Path.GetFileName(result.FinalPath)}";
-                            // Update the loaded file's displayed metadata
+                            // Project verified disk content into the loaded file, grid,
+                            // and cache via the single source-of-truth path. Passing the
+                            // VideoFile lets SyncLibraryEntry refresh EmbeddedMetadata from
+                            // the actual disk re-read and set the DiskVerified badge,
+                            // rather than optimistically showing the intended metadata.
                             var loaded = Files.FirstOrDefault(f =>
                                 f.FilePath.Equals(result.FinalPath, StringComparison.OrdinalIgnoreCase));
-                            if (loaded != null)
-                            {
-                                loaded.EmbeddedMetadata = originalMeta;
-                                loaded.PendingMetadata  = originalMeta.Clone();
-                            }
                             _libraryScanService?.MarkAsEmbedded(result.FinalPath);
-                            SyncLibraryEntry(result.FinalPath, result.FinalPath, originalMeta);
+                            SyncLibraryEntry(result.FinalPath, result.FinalPath, originalMeta, loaded);
                         }
                         else
                             StatusText = $"⚠ Metadata restore failed — embed manually.";

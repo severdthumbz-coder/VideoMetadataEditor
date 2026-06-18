@@ -260,9 +260,9 @@
                                                           Click="FilesRemuxToMp4_Click"
                                                           ToolTip="Losslessly rebuild this file as MP4 with faststart. Original is kept."/>
                                                 <Separator/>
-                                                <MenuItem Header="🔧 Open in fallback app (e.g. TagScanner)"
+                                                <MenuItem Header="🔧 Open in fallback app…"
                                                           Click="FilesOpenInFallback_Click"
-                                                          ToolTip="Open this file in the fallback application set in Settings → Write Error Diagnostics."/>
+                                                          ToolTip="Open this file in the fallback application (e.g. TagScanner, MediaInfo Lite) set in Settings → Write Error Diagnostics."/>
                                                 <MenuItem Header="📂 Open containing folder"
                                                           Click="FilesOpenFolder_Click"/>
                                             </ContextMenu>
@@ -4975,6 +4975,16 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 99 — Remux cache eviction on extension change
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Fix: after Remux → Replace Original, the cache was evicted for the original and candidate paths but not the actual final path when the extension changed (e.g. .mkv remuxed to .mp4). A stale entry under the final path could be served on the next scan, making a remuxed file appear to revert. The final path is now evicted too. One mechanism within the broader write→cache→scan family fixed across Builds 92–98; not the cause of reverts on files never remuxed.
+
+                                        v1.4.0  ·  Build 98 — Remux auto-embed and context-menu fixes
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Fix: Remux → Replace Original → auto-embed now routes through the single source-of-truth projection so the panel shows verified disk content (and the disk-verified badge) rather than optimistic intended metadata. With the Build 97 handle fix, the embed that used to fail after a successful replace should now succeed or give an honest diagnosis.
+                                        Fix: original metadata is captured WITH artwork before replacing, so the remuxed file keeps its cover art on auto-embed.
+                                        Fix: FILES-panel right-click "Open in fallback app (e.g. TagScanner)" could render cut off — shortened to "Open in fallback app…" with the example moved to the tooltip.
+
                                         v1.4.0  ·  Build 97 — Verification false-positive fix
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         Fix: post-write verification re-opened the file while the write handle was still open, which could read a partially-flushed/locked view and report phantom "fields not committed" failures on files (and remuxed copies) that actually wrote fine. The tag-write now runs in its own scope that releases the handle BEFORE verification re-opens the file.

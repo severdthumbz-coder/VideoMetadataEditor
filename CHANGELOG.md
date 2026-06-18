@@ -2,6 +2,21 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 99 — Remux cache eviction on extension change
+
+- **Fix:** after Remux → Replace Original, the library cache was evicted for the original path and the candidate path, but NOT for the actual final path when the container extension changed (e.g. original `.mkv` remuxed to `.mp4`, final name `Movie.mp4`). A stale cache entry under that final path could then be served on the next Scan Library, contributing to metadata appearing to revert after a remux. The final path is now also evicted.
+- This was one mechanism (specific to remuxed files) within the broader family of write→cache→scan persistence issues addressed across Builds 92–98. It is not the root cause of reverts on files that were never remuxed — those were the `SyncLibraryEntry` early-return/in-memory mask (Build 92) and the first-save cache loss (Build 95).
+
+---
+
+## v1.4.0 Build 98 — Remux auto-embed and context-menu fixes
+
+- **Remux → Replace Original → auto-embed:** the auto-embed that restores metadata into the freshly remuxed file now goes through the single source-of-truth projection (passing the loaded `VideoFile`), so the FILES panel reflects verified disk content and the disk-verified badge, instead of optimistically showing the intended metadata before it was confirmed on disk. Combined with the Build 97 verification handle fix, the embed that previously failed after a successful replace should now succeed (or give an honest diagnosis).
+- **Artwork preserved on remux:** the original metadata captured before replacing is now read WITH artwork (was a fast/no-artwork read), so the remuxed file keeps its cover art on auto-embed rather than losing it.
+- **Context-menu label fix:** the FILES-panel right-click item "Open in fallback app (e.g. TagScanner)" could render partially cut off; shortened to "Open in fallback app…" with the TagScanner/MediaInfo example moved into the tooltip.
+
+---
+
 ## v1.4.0 Build 97 — Verification false-positive fix (file-handle ordering)
 
 Follow-up to the Build 96 full-token verification. A user reported that a file which "wrote successfully" in older builds was now flagged as a failed write, and that even a remuxed copy failed — yet on rescan the file still showed its pre-write metadata (a genuine revert).
