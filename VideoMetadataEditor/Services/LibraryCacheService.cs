@@ -192,9 +192,32 @@ public class LibraryCacheService
             var json    = JsonConvert.SerializeObject(file, Formatting.None);
             var tmpPath = _currentCachePath + ".tmp";
             await File.WriteAllTextAsync(tmpPath, json, Encoding.UTF8).ConfigureAwait(false);
-            File.Replace(tmpPath, _currentCachePath, null);
+
+            // File.Replace requires the destination to already exist — on the FIRST
+            // save for a library folder it does not, and File.Replace throws
+            // FileNotFoundException. That used to be swallowed by the catch below,
+            // silently losing the entire first cache write (so nothing persisted until
+            // a second save happened to run). Use atomic replace only when the target
+            // exists; otherwise move the temp file into place.
+            if (File.Exists(_currentCachePath))
+            {
+                File.Replace(tmpPath, _currentCachePath, null);
+            }
+            else
+            {
+                // overwrite:true guards the rare race where the file appears between
+                // the Exists check and the move.
+                File.Move(tmpPath, _currentCachePath, overwrite: true);
+            }
         }
-        catch { /* cache save failure is non-fatal */ }
+        catch (Exception ex)
+        {
+            // Cache save failure is non-fatal (the library rebuilds on next scan),
+            // but log it — a fully silent swallow is how the File.Replace-on-first-save
+            // bug stayed hidden. Clean up any orphaned temp file.
+            System.Diagnostics.Debug.WriteLine($"[LibraryCache] SaveAsync failed: {ex.GetType().Name}: {ex.Message}");
+            try { var tmp = _currentCachePath + ".tmp"; if (File.Exists(tmp)) File.Delete(tmp); } catch { }
+        }
         finally { _saveLock.Release(); }
     }
 

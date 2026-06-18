@@ -2,6 +2,16 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 95 — First-save cache persistence bug (caught by Phase 1 tests)
+
+The Phase 1 integration tests did their job: they failed on first CI run and exposed a real, long-standing production bug in the cache persistence layer.
+
+- **Bug:** `LibraryCacheService.SaveAsync` used `File.Replace(tmp, target, null)`, which throws `FileNotFoundException` when the target cache file does not yet exist — i.e. on the **first save for any library folder** (fresh install, or first scan of a newly added folder). The exception was swallowed by a silent `catch { }`, so the entire first cache write was lost and nothing persisted until some later save happened to run against an existing file. This compounded the "metadata reverts after restart" symptom on fresh setups.
+- **Fix:** use atomic `File.Replace` only when the target already exists; otherwise `File.Move(..., overwrite: true)` to create it. The save `catch` now logs the failure to debug output and cleans up any orphaned `.tmp` file instead of swallowing silently — a fully silent catch is how this stayed hidden.
+- All 5 `LibraryCachePersistenceTests` now pass (movie round-trip, TV-episode fields, stale invalidation, rename eviction, ghost pruning).
+
+---
+
 ## v1.4.0 Build 94 — CI fix for Phase 1 tests
 
 - Fix: the new `LibraryCachePersistenceTests` failed to compile in CI (`CS0246: LibraryEntry could not be found`). The test project compiles a hand-picked subset of source files rather than referencing the WPF main project, and `LibraryModels.cs` / `LibraryCacheService.cs` / `SubtitleDetector.cs` were not in that list.
