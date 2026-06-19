@@ -2,6 +2,13 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 100 — Write-failure dialog layout fix
+
+- **Fix:** the "Write Failed" dialog packed five buttons (Open in fallback app, two Remux options, Copy, Close) into a fixed 720px non-resizable window using a horizontal StackPanel. The total button width exceeded the window, so the right-aligned row overflowed off the left edge and clipped the first button — e.g. "🔧 Open in TagScanner" showed as "in TagScanner". The window is now wider (880px) and resizable, and the buttons live in a WrapPanel so they reflow to a second row instead of clipping at any width.
+- **Note on the underlying write failure:** for a file where verification reports the comment-token fields (IMDB/TMDB IDs, MPA, rating) were not committed while Title succeeds, the container cannot reliably store the embedded comment block — the genuine fix is Remux → .mp4 (fix + faststart), which rebuilds a clean container with the moov atom at the front so tags can be written. The remux + Replace Original flow then re-embeds the original metadata (with artwork, per Build 98).
+
+---
+
 ## v1.4.0 Build 99 — Remux cache eviction on extension change
 
 - **Fix:** after Remux → Replace Original, the library cache was evicted for the original path and the candidate path, but NOT for the actual final path when the container extension changed (e.g. original `.mkv` remuxed to `.mp4`, final name `Movie.mp4`). A stale cache entry under that final path could then be served on the next Scan Library, contributing to metadata appearing to revert after a remux. The final path is now also evicted.

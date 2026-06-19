@@ -730,11 +730,13 @@ public partial class MainWindow : Window
         var win = new System.Windows.Window
         {
             Title           = $"Write Failed — {e.File.FileName}",
-            Width           = 720,
-            Height          = 420,
+            Width           = 880,
+            MinWidth        = 680,
+            Height          = 440,
+            MinHeight       = 360,
             WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner,
             Owner           = this,
-            ResizeMode      = ResizeMode.NoResize,
+            ResizeMode      = ResizeMode.CanResize,
             Background      = (System.Windows.Media.Brush)Application.Current.Resources["SurfaceBrush"]
         };
 
@@ -768,7 +770,7 @@ public partial class MainWindow : Window
         };
         Grid.SetRow(detail, 1);
 
-        var btnPanel = new StackPanel
+        var btnPanel = new WrapPanel
         {
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Right,
@@ -779,7 +781,7 @@ public partial class MainWindow : Window
         {
             Content = "📋 Copy to Clipboard",
             Padding = new Thickness(14, 7, 14, 7),
-            Margin  = new Thickness(0, 0, 8, 0)
+            Margin  = new Thickness(0, 0, 8, 6)
         };
         copyBtn.Click += (_, _) =>
         {
@@ -794,7 +796,7 @@ public partial class MainWindow : Window
             {
                 Content = $"🔧 Open in {VM.FallbackAppName}",
                 Padding  = new Thickness(14, 7, 14, 7),
-                Margin   = new Thickness(0, 0, 8, 0),
+                Margin   = new Thickness(0, 0, 8, 6),
                 ToolTip  = $"Open the failed file directly in {VM.FallbackAppName}"
             };
             openInBtn.Click += (_, _) =>
@@ -821,7 +823,7 @@ public partial class MainWindow : Window
         {
             Content = primaryLabel,
             Padding = new Thickness(14, 7, 14, 7),
-            Margin  = new Thickness(0, 0, 8, 0),
+            Margin  = new Thickness(0, 0, 8, 6),
             ToolTip = remuxTip
         };
         remuxPrimaryBtn.Click += async (_, _) =>
@@ -836,7 +838,7 @@ public partial class MainWindow : Window
         {
             Content = secondaryLabel,
             Padding = new Thickness(14, 7, 14, 7),
-            Margin  = new Thickness(0, 0, 8, 0),
+            Margin  = new Thickness(0, 0, 8, 6),
             ToolTip = remuxTip
         };
         remuxSecondaryBtn.Click += async (_, _) =>
@@ -851,6 +853,7 @@ public partial class MainWindow : Window
         {
             Content  = "Close",
             Padding  = new Thickness(14, 7, 14, 7),
+            Margin   = new Thickness(0, 0, 0, 6),
             IsDefault = true,
             IsCancel  = true
         };

@@ -4975,6 +4975,11 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 100 — Write-failure dialog layout fix
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Fix: the "Write Failed" dialog crammed five buttons into a fixed 720px non-resizable window, so the right-aligned row overflowed off the left edge and clipped the first button (e.g. "Open in TagScanner" → "in TagScanner"). The window is now wider and resizable, and buttons reflow in a WrapPanel instead of clipping.
+                                        Note: when verification reports the comment-token fields (IMDB/TMDB/MPA/rating) didn't commit while Title did, the container can't reliably hold the embedded comment block — the fix is Remux → .mp4, which rebuilds a clean faststart container; Replace Original then re-embeds the metadata with artwork.
+
                                         v1.4.0  ·  Build 99 — Remux cache eviction on extension change
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         Fix: after Remux → Replace Original, the cache was evicted for the original and candidate paths but not the actual final path when the extension changed (e.g. .mkv remuxed to .mp4). A stale entry under the final path could be served on the next scan, making a remuxed file appear to revert. The final path is now evicted too. One mechanism within the broader write→cache→scan family fixed across Builds 92–98; not the cause of reverts on files never remuxed.
