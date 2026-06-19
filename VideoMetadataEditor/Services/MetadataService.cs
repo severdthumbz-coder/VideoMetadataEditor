@@ -217,6 +217,23 @@ public class MetadataService
             progress?.Report($"Embedding tags: {Path.GetFileName(filePath)}");
 
             var (tagOk, tagErr) = await Task.Run(() => WriteTagsSafe(tempPath, metadata, settings), ct);
+
+            // Automatic artwork-free retry: if the write failed verification AND we
+            // were embedding artwork, the picture atom may be disturbing the comment
+            // atom on this container. Retry once without artwork on a fresh temp copy.
+            if (!tagOk && metadata.ArtworkBytes is { Length: > 0 }
+                && (tagErr?.Contains("verification failed") ?? false))
+            {
+                attemptErrors.Add($"With-artwork write failed verification: {tagErr}");
+                progress?.Report($"Retrying without artwork: {Path.GetFileName(filePath)}");
+                await Task.Run(() => SysFile.Copy(filePath, tempPath, overwrite: true), ct);
+                var noArt = metadata.Clone();
+                noArt.ArtworkBytes = null;
+                (tagOk, tagErr) = await Task.Run(() => WriteTagsSafe(tempPath, noArt, settings), ct);
+                if (tagOk)
+                    attemptErrors.Add("Succeeded without artwork — cover art left unchanged on this file.");
+            }
+
             if (!tagOk)
                 throw new InvalidOperationException(
                     $"Tag write failed: {tagErr ?? "TagLib# returned false"}");
@@ -443,10 +460,22 @@ public class MetadataService
                     var readBackComment = verify.Tag.Comment ?? string.Empty;
                     var missing = VmeCommentCodec.VerifyWritten(comment, readBackComment);
                     if (missing.Count > 0)
+                    {
+                        var diag =
+                            $"[diag] tagTypes={verify.TagTypes} " +
+                            $"intendedLen={comment.Length} readbackLen={readBackComment.Length} " +
+                            $"readback='{(readBackComment.Length > 120 ? readBackComment.Substring(0,120) : readBackComment)}'";
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[WriteVerify] MISMATCH on {Path.GetFileName(filePath)}\n" +
+                            $"  missing : {string.Join(", ", missing)}\n" +
+                            $"  intended: '{comment}'\n" +
+                            $"  readback: '{readBackComment}'");
                         return (false,
                             $"Post-write verification failed — these fields were not committed: " +
                             $"{string.Join(", ", missing)}. " +
-                            $"This file may be damaged or the container may not support embedded metadata.");
+                            $"This file may be damaged or the container may not support embedded metadata. " +
+                            diag);
+                    }
                 }
             }
             catch { /* verification is best-effort — don't fail on a verify read error */ }

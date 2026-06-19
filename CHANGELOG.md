@@ -2,6 +2,21 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 102 — Artwork-free write fallback + fuller diagnostic
+
+- Standalone diagnostics cleared the file, container, artwork bytes, field ordering, the A: drive, File.Replace, and in-place writes — every operation works in isolation. The one app step never reproducible standalone is `CompressArtwork` (System.Drawing re-encode) feeding `tag.Pictures`, so the prime remaining suspect is the picture atom disturbing the comment atom on this specific container.
+- **Automatic artwork-free retry:** when a write fails post-write verification and artwork was being embedded, the app now retries once on a fresh temp copy WITHOUT artwork. If that succeeds, the text metadata (IDs, rating, MPA, TV fields) is preserved and the file's existing cover art is left untouched — turning a total failure into a partial success.
+- **Fuller diagnostic:** the verification-failure message now reports the verify file's TagTypes, the intended vs read-back comment lengths, and a readback preview, so the remaining unknown is fully visible.
+
+---
+
+## v1.4.0 Build 101 — Write-verification diagnostic instrumentation
+
+- Standalone testing proved TagLib# writes and reads the VME comment tokens correctly on the reported problem file in every configuration (with/without real 67KB artwork, short and 737-char comments) — so the container, file, artwork, and TagLib# are not the cause. The remaining possibility is an asymmetry inside the app's own write/verify comparison.
+- This build adds diagnostic output to the post-write verification failure path: it logs (and appends to the error dialog) the intended IMDB token versus the read-back IMDB token, so a verification mismatch can be pinpointed exactly rather than inferred. No behaviour change to the write itself.
+
+---
+
 ## v1.4.0 Build 100 — Write-failure dialog layout fix
 
 - **Fix:** the "Write Failed" dialog packed five buttons (Open in fallback app, two Remux options, Copy, Close) into a fixed 720px non-resizable window using a horizontal StackPanel. The total button width exceeded the window, so the right-aligned row overflowed off the left edge and clipped the first button — e.g. "🔧 Open in TagScanner" showed as "in TagScanner". The window is now wider (880px) and resizable, and the buttons live in a WrapPanel so they reflow to a second row instead of clipping at any width.
