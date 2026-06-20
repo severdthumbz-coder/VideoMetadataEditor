@@ -2507,6 +2507,39 @@
                                             diagnostic window with the exact failure reason and actionable suggestions.
                                             The "Copy to Clipboard" button lets you paste the details for support.
                                         </TextBlock>
+                                        <CheckBox Content="Enable full diagnostic dump (advanced)"
+                                                  IsChecked="{Binding Settings.EnableDiagnosticDump}"
+                                                  Margin="0,0,0,6"
+                                                  ToolTip="Writes a detailed per-file report to %TEMP%\vme_artdump\ on every embed. Leave OFF unless troubleshooting a write problem."/>
+                                        <TextBlock FontSize="11"
+                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,0,0,10">
+                                            For deep troubleshooting only. When enabled, every embed appends a
+                                            detailed report — MP4 atom layout, tag state before and after the write,
+                                            the intended comment, and artwork validity — to
+                                            %TEMP%\vme_artdump\&lt;filename&gt;.diag.txt, captured at each stage of the
+                                            write pipeline. This is the instrumentation that isolated the Build 105
+                                            semicolon-truncation bug. Leave OFF for normal use; it has no effect on
+                                            the write itself and slightly slows embedding.
+                                        </TextBlock>
+                                        <Button x:Name="RunSelfTestButton"
+                                                Content="🩺  Run Full Write Diagnostic on a File…"
+                                                Click="RunSelfTest_Click"
+                                                HorizontalAlignment="Left"
+                                                Margin="0,0,0,4"
+                                                Padding="12,6"
+                                                Visibility="{Binding Settings.EnableDiagnosticDump, Converter={StaticResource BoolVis}}"
+                                                ToolTip="Runs the full 16-step write diagnostic against a file you choose, on a safe copy, and lets you export a log."/>
+                                        <TextBlock FontSize="11"
+                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,0,0,10"
+                                                   Visibility="{Binding Settings.EnableDiagnosticDump, Converter={StaticResource BoolVis}}">
+                                            Reproduces the entire write investigation (16 checks) on one file and shows
+                                            a green check or red cross per step, then lets you export the full log to a
+                                            location of your choice for analysis.
+                                        </TextBlock>
                                         <!-- Row colour legend -->
                                         <TextBlock Text="FILE ROW COLOURS (this session)" Style="{StaticResource LabelText}"/>
                                         <StackPanel Orientation="Horizontal" Margin="0,4,0,2">
@@ -4964,6 +4997,10 @@
                                         <TextBlock Style="{StaticResource BaseText}">4. STALE BACKUP (.vme_bak_*): the write already succeeded — just Delete the redundant backup</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">5. Interrupted remux or faststart fix leaves .remux.* or .faststart.tmp.* files — the startup sweep offers to clean them up; your originals are always intact</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}">6. Change behaviour in Settings → Temp File Handling: Ask / Auto-Delete / Ignore</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,10,0,2" TextWrapping="Wrap">Persistent write failure on a specific file</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">7. First try the write-failure popup's Remux → .mp4 (fix + faststart) → then Replace Original. This rebuilds the container and fixes most stubborn files</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">8. If a file embeds but the values revert after a Library rescan, re-embed it once on the current build — older builds could silently drop tokens (see Build 105 in Revision History)</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">9. For a write problem that none of the above resolves, enable Settings → Write Error Diagnostics → "Enable full diagnostic dump". This (a) makes every embed write a report to %TEMP%\vme_artdump\&lt;filename&gt;.diag.txt, and (b) reveals a "🩺 Run Full Write Diagnostic on a File…" button. That button runs all 16 write checks against a file you pick — on a safe copy, your original is never touched — showing a green check or red cross per step, then lets you export the full log to a location of your choice. Send that log in so the issue can be pinpointed and fixed in a future build. Turn the setting back OFF when done</TextBlock>
                                     </StackPanel>
 
                                 </StackPanel>
@@ -4974,6 +5011,25 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 105 — ROOT CAUSE FIX: semicolon truncated the metadata comment
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        The long-running "embeds then reverts on rescan" / "Write Failed" bug that hit only SOME files is fixed. Root cause: TagLib# 2.3.0 truncates the MP4 comment atom at the first semicolon on write. VME stores its [VME:...] tokens at the end of the comment, after the plot description — so any file whose description contained a ';' had its entire token block (IMDB/TMDB/rating/MPA + all TV fields) silently cut off, keeping the old comment and appearing to revert on the next scan. Files without a ';' were unaffected — which is why it was only some files.
+                                        Fix: Encode now replaces ';' with ',' in the description and free-text token values before building the comment, so tokens can never be truncated away. Regression tests added using the exact real descriptions that failed.
+
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 107 — Built-in Full Write Diagnostic tool
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Enabling Settings → Write Error Diagnostics → "Enable full diagnostic dump" now also reveals a "🩺 Run Full Write Diagnostic on a File…" button. It runs the entire 16-step write investigation (the same checks built up while tracking down the Build 105 bug) against a file you choose — on a safe copy, the original is never modified — showing a green check or red cross for each step with a plain-language interpretation, then exports the full log to a location of your choice. The file picker defaults to your Move/Copy destination folder. Use this to capture a precise report for any future write problem.
+
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 106 — Optional diagnostic dump
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        The full per-file write diagnostic used to isolate the Build 105 bug is retained as an opt-in tool rather than removed. Enable it under Settings → Write Error Diagnostics → "Enable full diagnostic dump" (default OFF). When on, every embed appends a detailed report to %TEMP%\vme_artdump\&lt;filename&gt;.diag.txt covering the MP4 atom layout and tag state before/after the write at each pipeline stage.
+
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 100 — Write-failure dialog layout fix
                                         ─────────────────────────────────────────────────────────────────────────────────────

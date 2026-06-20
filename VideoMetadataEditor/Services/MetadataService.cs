@@ -208,7 +208,9 @@ public class MetadataService
 
             // ── Step 1: Copy original → temp (shared read, no lock on original) ─
             progress?.Report($"Copying to temp: {Path.GetFileName(filePath)}");
+            DumpDiag("pre-write (original)", filePath, metadata, null, null, settings);
             await Task.Run(() => SysFile.Copy(filePath, tempPath, overwrite: true), ct);
+            DumpDiag("temp-before (after copy)", tempPath, metadata, null, null, settings);
 
             // ── Step 2: Write tags to temp using TagLib# ──────────────────────
             // Write into the TEMP file — not the original — so any TagLib#
@@ -339,6 +341,119 @@ public class MetadataService
         try { if (SysFile.Exists(path)) SysFile.Delete(path); } catch { }
     }
 
+    // ── Optional diagnostic dump (Settings → "Enable full diagnostic dump") ──────
+    // OFF by default. When enabled, every embed appends a detailed per-file report to
+    // %TEMP%\vme_artdump\<stem>.diag.txt covering each pipeline stage, plus the
+    // compressed artwork and intended comment as separate files. This is the tool that
+    // isolated the semicolon-truncation bug (Build 105); kept available for future
+    // hard-to-diagnose write failures. Best-effort and fully guarded — never affects
+    // the write.
+    private static readonly object _diagLock = new();
+
+    private static int FindAtom(byte[] buf, string fourcc, int len)
+    {
+        var b = System.Text.Encoding.ASCII.GetBytes(fourcc);
+        for (int i = 0; i < len - b.Length; i++)
+        {
+            bool m = true;
+            for (int j = 0; j < b.Length; j++) if (buf[i + j] != b[j]) { m = false; break; }
+            if (m) return i;
+        }
+        return -1;
+    }
+
+    private static string AtomLayout(string path)
+    {
+        try
+        {
+            var fi = new FileInfo(path);
+            int n = (int)Math.Min(300_000, fi.Length);
+            var head = new byte[n];
+            using (var fs = SysFile.OpenRead(path)) fs.Read(head, 0, n);
+            int ftyp = FindAtom(head, "ftyp", n);
+            int moov = FindAtom(head, "moov", n);
+            int mdat = FindAtom(head, "mdat", n);
+            int udta = FindAtom(head, "udta", n);
+            int ilst = FindAtom(head, "ilst", n);
+            string faststart = moov < 0 ? "moov NOT in head → likely MOOV-AT-END (needs rewrite/faststart)"
+                              : (mdat >= 0 && moov > mdat) ? "moov after mdat → MOOV-AT-END"
+                              : "moov before mdat → faststart OK";
+            return $"size={fi.Length}; ftyp@{ftyp} moov@{moov} mdat@{mdat} udta@{udta} ilst@{ilst}; {faststart}";
+        }
+        catch (Exception ex) { return $"(atom scan failed: {ex.Message})"; }
+    }
+
+    private static bool JpegValid(byte[] a) =>
+        a.Length > 4 && a[0] == 0xFF && a[1] == 0xD8 && a[^2] == 0xFF && a[^1] == 0xD9;
+
+    /// <summary>
+    /// Dump a full diagnostic snapshot for a file at a given pipeline stage. No-op
+    /// unless settings.EnableDiagnosticDump is true.
+    /// stage = "pre-write" (original), "temp-before", "pre-Save", "post-Save".
+    /// </summary>
+    private void DumpDiag(string stage, string filePath, MovieMetadata metadata,
+        string? intendedComment, byte[]? compressedArt, AppSettings? settings)
+    {
+        if (settings is null || !settings.EnableDiagnosticDump) return;
+        try
+        {
+            var dumpDir = Path.Combine(Path.GetTempPath(), "vme_artdump");
+            Directory.CreateDirectory(dumpDir);
+            var stem = Path.GetFileNameWithoutExtension(filePath);
+            var report = Path.Combine(dumpDir, stem + ".diag.txt");
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"================ STAGE: {stage} @ {DateTime.Now:HH:mm:ss.fff} ================");
+            sb.AppendLine($"path        : {filePath}");
+            sb.AppendLine($"exists      : {SysFile.Exists(filePath)}");
+            sb.AppendLine($"ext         : {Path.GetExtension(filePath)}");
+            sb.AppendLine($"atom layout : {AtomLayout(filePath)}");
+
+            try
+            {
+                using var tf = File.Create(filePath);
+                sb.AppendLine($"tagTypes    : {tf.TagTypes}");
+                sb.AppendLine($"cur Title   : '{tf.Tag.Title}'");
+                var curCmt = tf.Tag.Comment ?? "";
+                sb.AppendLine($"cur Comment : len={curCmt.Length} '{(curCmt.Length > 160 ? curCmt.Substring(0,160)+"…" : curCmt)}'");
+                sb.AppendLine($"cur Desc len: {(tf.Tag.Description ?? "").Length}");
+                sb.AppendLine($"cur Pics    : {tf.Tag.Pictures?.Length ?? 0}" +
+                    (tf.Tag.Pictures is { Length: > 0 } p ? $" (first {p[0].Data.Count} bytes, mime {p[0].MimeType})" : ""));
+                if (tf.GetTag(TagTypes.Apple) is TagLib.Mpeg4.AppleTag at)
+                    sb.AppendLine($"apple.Comment len: {(at.Comment ?? "").Length}");
+            }
+            catch (Exception ex) { sb.AppendLine($"(tag read failed: {ex.GetType().Name}: {ex.Message})"); }
+
+            if (intendedComment != null)
+            {
+                sb.AppendLine($"intended    : len={intendedComment.Length}");
+                sb.AppendLine($"  IMDB='{VmeCommentCodec.Get(intendedComment, "IMDB")}' TMDB='{VmeCommentCodec.Get(intendedComment, "TMDB")}' RATING='{VmeCommentCodec.Get(intendedComment, "RATING")}' MPA='{VmeCommentCodec.Get(intendedComment, "MPA")}'");
+                sb.AppendLine($"  EP_MODE='{VmeCommentCodec.Get(intendedComment, "EP_MODE")}' SHOW='{VmeCommentCodec.Get(intendedComment, "SHOW")}' SEASON='{VmeCommentCodec.Get(intendedComment, "SEASON")}' EPISODE='{VmeCommentCodec.Get(intendedComment, "EPISODE")}'");
+                sb.AppendLine($"  full intended comment >>>");
+                sb.AppendLine(intendedComment);
+                sb.AppendLine($"  <<<");
+                SysFile.WriteAllText(Path.Combine(dumpDir, stem + ".comment.txt"), intendedComment);
+            }
+
+            sb.AppendLine($"meta.Title  : '{metadata.Title}'  Year='{metadata.Year}'");
+            sb.AppendLine($"meta.IsEpisode={metadata.IsEpisode} Show='{metadata.ShowTitle}' S={metadata.Season} E={metadata.Episode}");
+            sb.AppendLine($"meta.ArtworkBytes: {(metadata.ArtworkBytes?.Length ?? 0)}");
+
+            if (compressedArt != null)
+            {
+                sb.AppendLine($"compressedArt: {compressedArt.Length} bytes, validJPEG={JpegValid(compressedArt)}, " +
+                    $"header={compressedArt[0]:X2}{compressedArt[1]:X2} trailer={compressedArt[^2]:X2}{compressedArt[^1]:X2}");
+                sb.AppendLine($"  maxPx={settings.ArtworkMaxPx} jpegQ={settings.ArtworkJpegQuality}");
+                SysFile.WriteAllBytes(Path.Combine(dumpDir, stem + ".compressed.jpg"), compressedArt);
+            }
+            sb.AppendLine();
+
+            lock (_diagLock) SysFile.AppendAllText(report, sb.ToString());
+        }
+        catch { /* diagnostics must never break the write */ }
+    }
+
+
     /// <summary>
     /// Writes tags to <paramref name="filePath"/> using TagLib#.
     /// Returns (success, errorMessage). Never throws — all exceptions are captured.
@@ -405,9 +520,12 @@ public class MetadataService
             tag.Description = comment;
 
             // Artwork: compress and embed if present; preserve existing if none provided
+            byte[]? compressedForDiag = null;
             if (metadata.ArtworkBytes is { Length: > 0 })
             {
                 var artwork = CompressArtwork(metadata.ArtworkBytes, settings.ArtworkMaxPx, settings.ArtworkJpegQuality);
+                compressedForDiag = artwork;
+
                 tag.Pictures =
                 [
                     new Picture(new ByteVector(artwork))
@@ -418,6 +536,9 @@ public class MetadataService
                     }
                 ];
             }
+
+            DumpDiag("pre-Save (temp, tags set)", filePath, metadata, comment, compressedForDiag, settings);
+
             // If ArtworkBytes is null here, preserve whatever Pictures the tag already has
             // (we read it above but it may still be null if the file has no embedded art)
 
@@ -426,6 +547,8 @@ public class MetadataService
                 // the file handle is still open via the using block.
                 tagFile.Save();
             } // ← write handle fully released here, BEFORE verification re-opens the file
+
+            DumpDiag("post-Save (handle released)", filePath, metadata, comment, null, settings);
 
             // ── Post-write verification ────────────────────────────────────────
             // Re-read the file (now that the write handle is closed) and verify the

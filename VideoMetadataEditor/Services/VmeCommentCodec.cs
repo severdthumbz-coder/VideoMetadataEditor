@@ -14,6 +14,22 @@ namespace VideoMetadataEditor.Services;
 /// </summary>
 public static class VmeCommentCodec
 {
+    // ── Sanitization ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Neutralizes characters that corrupt the stored comment. TagLib# 2.3.0
+    /// truncates the MP4/Apple comment atom (©cmt) at the first SEMICOLON on write —
+    /// silently dropping everything after it, including the [VME:...] token block
+    /// that lives at the end of the comment. A description containing ';' therefore
+    /// caused the entire structured-metadata write to be lost (the file kept its old
+    /// comment), which presented as "metadata reverts on rescan" for exactly the
+    /// files whose plot text used a semicolon. We replace ';' with a comma, which
+    /// reads naturally in prose and round-trips safely (the decoder never needs to
+    /// reconstruct a ';'). Newlines are preserved.
+    /// </summary>
+    internal static string Sanitize(string s)
+        => string.IsNullOrEmpty(s) ? s : s.Replace(';', ',');
+
     // ── Encode ────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -37,7 +53,7 @@ public static class VmeCommentCodec
     {
         var body = new StringBuilder();
         if (!string.IsNullOrWhiteSpace(description))
-            body.Append(description.Trim());
+            body.Append(Sanitize(description.Trim()));
 
         var tokens = new StringBuilder();
         if (!string.IsNullOrWhiteSpace(imdbId))
@@ -54,10 +70,10 @@ public static class VmeCommentCodec
         if (isEpisode)
         {
             tokens.Append("[VME:EP_MODE=1]");
-            if (!string.IsNullOrWhiteSpace(showTitle))  tokens.Append($"[VME:SHOW={showTitle}]");
+            if (!string.IsNullOrWhiteSpace(showTitle))  tokens.Append($"[VME:SHOW={Sanitize(showTitle)}]");
             if (season.HasValue)                         tokens.Append($"[VME:SEASON={season}]");
             if (episode.HasValue)                        tokens.Append($"[VME:EPISODE={episode}]");
-            if (!string.IsNullOrWhiteSpace(episodeTitle)) tokens.Append($"[VME:ETITLE={episodeTitle}]");
+            if (!string.IsNullOrWhiteSpace(episodeTitle)) tokens.Append($"[VME:ETITLE={Sanitize(episodeTitle)}]");
             if (!string.IsNullOrWhiteSpace(airedDate))   tokens.Append($"[VME:AIRED={airedDate}]");
             if (!string.IsNullOrWhiteSpace(tvdbId))      tokens.Append($"[VME:TVDB={tvdbId}]");
             if (!string.IsNullOrWhiteSpace(tmdbSeriesId)) tokens.Append($"[VME:TMDB_SERIES={tmdbSeriesId}]");

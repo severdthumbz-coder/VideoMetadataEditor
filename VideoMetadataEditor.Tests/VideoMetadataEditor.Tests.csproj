@@ -28,6 +28,7 @@
     <Compile Include="../VideoMetadataEditor/Services/FfmpegService.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/NativeLibraryExtractor.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/VmeCommentCodec.cs"/>
+    <Compile Include="../VideoMetadataEditor/Services/WriteSelfTest.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/MetadataService.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/MkvPropEditService.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/WriteResult.cs"/>

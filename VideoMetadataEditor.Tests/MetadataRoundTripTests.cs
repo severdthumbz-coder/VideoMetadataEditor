@@ -214,4 +214,59 @@ public class MetadataRoundTripTests
         var onDisk   = VmeCommentCodec.Encode(imdbId: "tt1");
         Assert.Empty(VmeCommentCodec.VerifyWritten(intended, onDisk));
     }
+
+    // ── Semicolon truncation regression (the "A Taste of Hunger" / Dr. STONE bug) ──
+    // TagLib# 2.3.0 truncates the MP4 comment atom at the first ';' on write, which
+    // silently dropped every VME token (they sit after the description). Encode must
+    // neutralize semicolons so the token block always survives.
+
+    [Fact]
+    public void Encode_SemicolonInDescription_NoSemicolonInOutput()
+    {
+        var desc = "Maggie and Carsten run their own gourmet restaurant; Malus. They want it all.";
+        var c = VmeCommentCodec.Encode(description: desc, imdbId: "tt11188560", tmdbId: "766105",
+            rating: 6.0f, mpaRating: "NR");
+        Assert.DoesNotContain(';', c);                 // the truncation trigger is gone
+        Assert.Contains("[VME:IMDB=tt11188560]", c);   // tokens survive
+        Assert.Contains("[VME:TMDB=766105]", c);
+    }
+
+    [Fact]
+    public void Encode_SemicolonDescription_TokensStillDecode()
+    {
+        // The real failing movie description.
+        var desc = "Maggie and Carsten love each other; they run their own gourmet restaurant; Malus.";
+        var c = VmeCommentCodec.Encode(description: desc, imdbId: "tt11188560", tmdbId: "766105",
+            rating: 6.0f, mpaRating: "NR");
+        var d = VmeCommentCodec.Decode(c);
+        Assert.Equal("tt11188560", d.ImdbId);
+        Assert.Equal("766105", d.TmdbId);
+        Assert.Equal("NR", d.MpaRating);
+        Assert.Equal(6.0f, d.Rating);
+    }
+
+    [Fact]
+    public void Encode_SemicolonInEpisodeDescription_EpisodeTokensSurvive()
+    {
+        // The real failing Dr. STONE episode description.
+        var desc = "Chrome and Magma struggle with Ukyo; Senku gets busy building an invention; a new hope.";
+        var c = VmeCommentCodec.Encode(description: desc, imdbId: "tt9679542", tmdbId: "2617654",
+            rating: 7.2f, mpaRating: "TV-14", isEpisode: true, showTitle: "Dr. STONE",
+            season: 2, episode: 4, episodeTitle: "Full Assault", airedDate: "2021-02-04",
+            tmdbSeriesId: "86031");
+        Assert.DoesNotContain(';', c);
+        var d = VmeCommentCodec.Decode(c);
+        Assert.True(d.IsEpisode);
+        Assert.Equal("Dr. STONE", d.ShowTitle);
+        Assert.Equal(4, d.Episode);
+        Assert.Equal("Full Assault", d.EpisodeTitle);
+        Assert.Equal("86031", d.TmdbSeriesId);
+    }
+
+    [Fact]
+    public void Sanitize_ReplacesSemicolonWithComma()
+    {
+        Assert.Equal("a, b, c", VmeCommentCodec.Sanitize("a; b; c"));
+        Assert.DoesNotContain(';', VmeCommentCodec.Sanitize("x;y;z"));
+    }
 }

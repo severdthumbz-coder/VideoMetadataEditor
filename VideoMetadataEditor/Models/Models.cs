@@ -84,6 +84,12 @@ public class AppSettings
     // Write diagnostics
     public bool VerboseWriteErrors  { get; set; } = false;
 
+    // Full diagnostic dump: when ON, every embed writes a detailed per-file report to
+    // %TEMP%\vme_artdump\<name>.diag.txt (atom layout, tag state before/after Save,
+    // intended comment, compressed-artwork validity, at each pipeline stage). Default
+    // OFF — this is a troubleshooting aid for hard-to-diagnose write failures.
+    public bool EnableDiagnosticDump { get; set; } = false;
+
     // External fallback application for write/rename failures (e.g. TagScanner, MediaInfo)
     // Launched with the failed file path as the first argument.
     public string FallbackAppPath   { get; set; } = string.Empty;

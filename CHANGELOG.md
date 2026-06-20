@@ -2,6 +2,52 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 107 — Built-in Full Write Diagnostic tool
+
+- Enabling **Settings → Write Error Diagnostics → "Enable full diagnostic dump"** now also reveals a **"🩺 Run Full Write Diagnostic on a File…"** button. It folds the entire v1–v16 investigation that found the Build 105 semicolon bug into a one-click tool: pick a file (defaults to your Move/Copy destination folder), and it runs all 16 write checks against a **safe copy** (the original is never modified), streaming a green check or red cross per step with details, finishing with a plain-language interpretation of where (if anywhere) the write breaks down, and an **Export Log…** button to save the full report wherever you like.
+- New engine `WriteSelfTest` implements the 16 checks (basic round-trip, comment+description, full field set ±artwork, same-drive write, overwrite, length tolerance, the file's own artwork, atom/faststart layout, determinism, the file's real description, the semicolon-truncation probe, Encode sanitization, full encoded round-trip, atomic temp+replace, and end-to-end VerifyWritten). It is UI-free and unit-tested.
+- Help tab: Revision History and the Recovery workflow document the new tool and when to use it.
+
+---
+
+## v1.4.0 Build 106 — Optional diagnostic dump + Help updates
+
+- The full per-file write diagnostic that isolated the Build 105 semicolon bug is now retained as an **opt-in** tool instead of being removed. New setting: **Settings → Write Error Diagnostics → "Enable full diagnostic dump"** (default OFF). When enabled, every embed appends a detailed report to `%TEMP%\vme_artdump\<filename>.diag.txt` capturing, at each pipeline stage (pre-write, after temp copy, pre-Save, post-Save), the MP4 atom layout (ftyp/moov/mdat/udta/ilst + faststart verdict), TagLib# tag state, the intended comment with parsed tokens, and compressed-artwork validity. It has no effect on the write itself and is fully guarded.
+- Help tab: Revision History updated (Builds 105/106), and the Recovery workflow now documents the recommended steps for a persistent write failure — remux → replace, re-embed on the current build, and finally the diagnostic dump.
+
+---
+
+## v1.4.0 Build 105 — ROOT CAUSE FIX: semicolon truncated the metadata comment
+
+This is the fix for the long-running "metadata embeds then reverts on rescan" / "Write Failed" problem that affected only *some* files (e.g. "A Taste of Hunger (2021)", "Dr. STONE S02E04").
+
+**Root cause:** TagLib# 2.3.0 truncates the MP4/Apple comment atom (©cmt) at the **first semicolon (`;`)** when writing. VME packs its structured metadata as `[VME:...]` tokens appended to the END of the comment, after the plot description. So any file whose description contained a semicolon had its entire token block silently cut off at write time — the IMDB/TMDB IDs, rating, MPA, and all TV episode fields were dropped, and the file kept its previous comment. On the next Library scan the file therefore appeared to "revert" to its pre-embed state. Files whose descriptions had no semicolon were unaffected, which is why it hit only some files.
+
+This was isolated with a sequence of standalone diagnostics: synthetic comment text of any length wrote fine, but the real descriptions failed at a fixed point; character-class elimination then pinned it to the semicolon, and the truncation position exactly matched the read-back length on both test files.
+
+**Fix:** `VmeCommentCodec.Encode` now sanitizes semicolons (replacing `;` with `,`, which reads naturally in prose) in the description and in free-text token values (show/episode titles) before building the comment, so the token block can never be truncated away. Decoding is unaffected.
+
+**Tests:** added regression tests using the exact real "A Taste of Hunger" and "Dr. STONE" descriptions, asserting the output contains no `;` and that all tokens still decode. Also a direct `Sanitize` test.
+
+Diagnostic instrumentation from Builds 101–104 has been removed now that the cause is found; the artwork-free write fallback (Build 102) and full-token post-write verification (Build 96) remain as defense-in-depth.
+
+---
+
+## v1.4.0 Build 104 — Comprehensive write diagnostic dump
+
+- Expands the Build 103 dump into a full per-file snapshot written to `%TEMP%\vme_artdump\<name>.diag.txt`, captured in ONE embed attempt and firing for every file (with or without artwork, movies and TV episodes alike). Intended to confirm whether the same root cause affects both "A Taste of Hunger" and "Dr. STONE S02E04".
+- Each report records, at four pipeline stages (pre-write original, temp-after-copy, pre-Save with tags set, post-Save after handle release): the MP4 atom layout (ftyp/moov/mdat/udta/ilst offsets and a faststart/moov-at-end verdict), TagLib# tag state (tagTypes, Title, Comment length+preview, Description length, picture count/size, Apple comment length), the exact intended comment with parsed tokens, the metadata object, and compressed-artwork JPEG validity. The post-Save stage reveals definitively whether Save() committed or silently left the old comment.
+- Diagnostic only — no change to write behaviour.
+
+---
+
+## v1.4.0 Build 103 — Artwork-output dump for diagnosis
+
+- Seven standalone diagnostics have now cleared the file, container, A: drive, File.Replace, in-place write, comment length (100–1000 chars all round-trip), and pre-existing-tag overwrite. The only remaining unreproduced variable is the actual output of `CompressArtwork` (System.Drawing/GDI re-encode), which cannot be produced outside the running app.
+- This build dumps the exact compressed artwork bytes and comment string to `%TEMP%\vme_artdump\` during a write, so the real GDI output can be loaded into the standalone diagnostic and tested directly. Diagnostic only — no behaviour change to the write.
+
+---
+
 ## v1.4.0 Build 102 — Artwork-free write fallback + fuller diagnostic
 
 - Standalone diagnostics cleared the file, container, artwork bytes, field ordering, the A: drive, File.Replace, and in-place writes — every operation works in isolation. The one app step never reproducible standalone is `CompressArtwork` (System.Drawing re-encode) feeding `tag.Pictures`, so the prime remaining suspect is the picture atom disturbing the comment atom on this specific container.

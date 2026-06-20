@@ -1266,4 +1266,161 @@ public partial class MainWindow : Window
         }
         catch { /* non-fatal — rebuilds on next scan */ }
     }
+
+    // ── Full Write Diagnostic (Settings → Enable full diagnostic dump) ───────────
+    private async void RunSelfTest_Click(object sender, RoutedEventArgs e)
+    {
+        // Default the picker to the Move/Copy destination, else the Library folder.
+        var initialDir = VM.Settings.LastCopyDestination;
+        if (string.IsNullOrWhiteSpace(initialDir) || !System.IO.Directory.Exists(initialDir))
+            initialDir = VM.Settings.LibraryFolderPath;
+
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "Select a video file to run the full write diagnostic",
+            Filter = "Video files|*.mp4;*.m4v;*.mkv;*.mov;*.avi;*.wmv;*.webm|All files|*.*"
+        };
+        if (!string.IsNullOrWhiteSpace(initialDir) && System.IO.Directory.Exists(initialDir))
+            dlg.InitialDirectory = initialDir;
+        if (dlg.ShowDialog(this) != true) return;
+
+        var filePath = dlg.FileName;
+        ShowSelfTestDialog(filePath);
+    }
+
+    private void ShowSelfTestDialog(string filePath)
+    {
+        var win = new System.Windows.Window
+        {
+            Title       = $"Write Diagnostic — {System.IO.Path.GetFileName(filePath)}",
+            Width       = 820,
+            MinWidth    = 640,
+            Height      = 620,
+            MinHeight   = 420,
+            WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner,
+            Owner       = this,
+            ResizeMode  = ResizeMode.CanResize,
+            Background  = (System.Windows.Media.Brush)Application.Current.Resources["SurfaceBrush"]
+        };
+
+        var root = new Grid { Margin = new Thickness(16) };
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });   // header
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // steps
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });   // interpretation
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });   // buttons
+
+        var header = new TextBlock
+        {
+            Text = $"Running 16-step write diagnostic on a safe copy of:\n{filePath}",
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 10),
+            FontWeight = FontWeights.SemiBold
+        };
+        Grid.SetRow(header, 0);
+        root.Children.Add(header);
+
+        var stepsPanel = new StackPanel();
+        var scroller = new ScrollViewer
+        {
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Content = stepsPanel
+        };
+        Grid.SetRow(scroller, 1);
+        root.Children.Add(scroller);
+
+        var interpretation = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 10, 0, 10),
+            FontStyle = FontStyles.Italic
+        };
+        Grid.SetRow(interpretation, 2);
+        root.Children.Add(interpretation);
+
+        var btnPanel = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right };
+        var exportBtn = new Button { Content = "💾 Export Log…", Padding = new Thickness(14, 7, 14, 7), Margin = new Thickness(0, 0, 8, 0), IsEnabled = false };
+        var closeBtn  = new Button { Content = "Close", Padding = new Thickness(14, 7, 14, 7), IsCancel = true };
+        btnPanel.Children.Add(exportBtn);
+        btnPanel.Children.Add(closeBtn);
+        Grid.SetRow(btnPanel, 3);
+        root.Children.Add(btnPanel);
+
+        win.Content = root;
+
+        // Render one step row with a green check or red cross / grey info dot.
+        void AddStepRow(Services.WriteSelfTest.StepResult s)
+        {
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 3) };
+            var (glyph, colour) = s.Outcome switch
+            {
+                Services.WriteSelfTest.Outcome.Pass => ("✓", System.Windows.Media.Brushes.SeaGreen),
+                Services.WriteSelfTest.Outcome.Fail => ("✗", System.Windows.Media.Brushes.IndianRed),
+                _                                    => ("•", System.Windows.Media.Brushes.Gray),
+            };
+            row.Children.Add(new TextBlock
+            {
+                Text = glyph, Foreground = colour, FontWeight = FontWeights.Bold,
+                Width = 22, FontSize = 15, VerticalAlignment = VerticalAlignment.Top
+            });
+            var text = new StackPanel();
+            text.Children.Add(new TextBlock { Text = $"{s.Number}. {s.Name}", FontWeight = FontWeights.SemiBold });
+            text.Children.Add(new TextBlock
+            {
+                Text = s.Detail, TextWrapping = TextWrapping.Wrap,
+                Foreground = (System.Windows.Media.Brush)Application.Current.Resources["ForegroundMutedBrush"],
+                FontSize = 12
+            });
+            row.Children.Add(text);
+            stepsPanel.Children.Add(row);
+        }
+
+        Services.WriteSelfTest.Report? report = null;
+
+        exportBtn.Click += (_, _) =>
+        {
+            if (report == null) return;
+            var save = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Export diagnostic log",
+                Filter = "Text log|*.txt|All files|*.*",
+                FileName = System.IO.Path.GetFileNameWithoutExtension(filePath) + ".write-diagnostic.txt"
+            };
+            var dest = VM.Settings.LastCopyDestination;
+            if (!string.IsNullOrWhiteSpace(dest) && System.IO.Directory.Exists(dest))
+                save.InitialDirectory = dest;
+            if (save.ShowDialog(win) == true)
+            {
+                try
+                {
+                    System.IO.File.WriteAllText(save.FileName, Services.WriteSelfTest.FormatLog(report));
+                    VM.StatusText = $"Diagnostic log saved: {System.IO.Path.GetFileName(save.FileName)}";
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.MessageBox.Show(win, $"Could not save log:\n{ex.Message}",
+                        "Export failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+        };
+
+        win.Show();
+
+        // Run the engine off the UI thread, marshalling each step back for live display.
+        _ = System.Threading.Tasks.Task.Run(() =>
+        {
+            var rep = Services.WriteSelfTest.Run(filePath, step =>
+            {
+                Dispatcher.Invoke(() => AddStepRow(step));
+            });
+            Dispatcher.Invoke(() =>
+            {
+                report = rep;
+                interpretation.Text = $"Result: {rep.Passed} passed, {rep.Failed} failed.\n\n{rep.Interpretation}";
+                interpretation.Foreground = rep.AllPassed
+                    ? System.Windows.Media.Brushes.SeaGreen
+                    : (System.Windows.Media.Brush)Application.Current.Resources["ForegroundBrush"];
+                exportBtn.IsEnabled = true;
+            });
+        });
+    }
 }
