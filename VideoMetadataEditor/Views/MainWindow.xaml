@@ -5026,6 +5026,12 @@
 
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 112 — Phase 2: MetadataViewModel cleanup (internal)
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Internal refactor, no behaviour change. Removed a dead unused artwork property from MetadataViewModel (its last WPF imaging dependency) and tightened the rename-preview debounce to dispose its cancellation source. The live artwork display is unchanged.
+
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 111 — Phase 2: MetadataViewModel timer decoupling (internal)
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         Internal refactor, no behaviour change. The rename-preview debounce now uses a platform-agnostic timer (Task.Delay + cancellation) routed through IUiDispatcher instead of WPF's DispatcherTimer. Same 150ms debounce and preview output. Part of the ongoing move toward a shared cross-platform core.

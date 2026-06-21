@@ -2,6 +2,17 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 112 — Phase 2: MetadataViewModel fully WPF-imaging-free + debounce cleanup
+
+Continues Phase 2. No behaviour change.
+
+- Removed a dead `BitmapSource ArtworkImage` property (and its `System.Windows.Media.Imaging` import) from `MetadataViewModel` — it was an unused leftover from the earlier extraction; the live artwork display binds to `MainViewModel.ArtworkImage` and to `RetrievedMetadata.ArtworkBytes` via the existing `BytesToImg` converter. `MetadataViewModel` now references WPF only through `ICommand`.
+- Tightened the Build 111 rename-preview debounce to dispose the previous `CancellationTokenSource` when it's replaced, preventing accumulation of undisposed token sources during rapid typing.
+
+Note: the remaining cross-platform blocker in the child ViewModels is not `ICommand` itself (shared across WPF/Avalonia) but `CommandManager.RequerySuggested` in the command classes, which is WPF-only. Replacing that auto-requery mechanism is a high-impact change affecting every command and will be done as its own carefully-tested build rather than folded into a sweep.
+
+---
+
 ## v1.4.0 Build 111 — Phase 2: MetadataViewModel timer decoupling
 
 Continues Phase 2. No behaviour change.

@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Input;
-using System.Windows.Media.Imaging;
 using VideoMetadataEditor.Models;
 using VideoMetadataEditor.Services;
 
@@ -75,10 +74,6 @@ public class MetadataViewModel : ViewModelBase
 
     private WriteStatus _writeStatus = WriteStatus.Untouched;
     public WriteStatus WriteStatus { get => _writeStatus; set => Set(ref _writeStatus, value); }
-
-    // ── Artwork ───────────────────────────────────────────────────────────────
-    private BitmapSource? _artworkImage;
-    public BitmapSource? ArtworkImage { get => _artworkImage; set => Set(ref _artworkImage, value); }
 
     // ── Rename preview ────────────────────────────────────────────────────────
     private string _renamePreview = string.Empty;
@@ -213,7 +208,9 @@ public class MetadataViewModel : ViewModelBase
         // Debounce: cancel any pending preview and schedule a fresh one 150ms out.
         // Uses Task.Delay + cancellation (platform-agnostic) instead of DispatcherTimer;
         // the result is marshalled back to the UI thread via IUiDispatcher.
-        _renamePreviewCts?.Cancel();
+        var previous = _renamePreviewCts;
+        previous?.Cancel();
+        previous?.Dispose();
         _renamePreviewCts = new System.Threading.CancellationTokenSource();
         var ct = _renamePreviewCts.Token;
 
