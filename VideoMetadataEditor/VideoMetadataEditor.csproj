@@ -6,15 +6,15 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <AssemblyName>VideoMetadataEditor v1.4.0.108</AssemblyName>
+    <AssemblyName>VideoMetadataEditor v1.4.0.109</AssemblyName>
     <RootNamespace>VideoMetadataEditor</RootNamespace>
     <ApplicationIcon>Resources\app.ico</ApplicationIcon>
     <StartupObject>VideoMetadataEditor.App</StartupObject>
 
     <!-- Version shown in title bar, Help tab, status bar, and file properties -->
     <Version>1.4.0</Version>
-    <AssemblyVersion>1.4.0.108</AssemblyVersion>
-    <FileVersion>1.4.0.108</FileVersion>
+    <AssemblyVersion>1.4.0.109</AssemblyVersion>
+    <FileVersion>1.4.0.109</FileVersion>
 
     <!-- File properties (visible in Windows Explorer → Properties → Details) -->
     <Product>Video Metadata Editor</Product>

@@ -1831,6 +1831,27 @@ public partial class MainViewModel : INotifyPropertyChanged
 
     // ── File Management ───────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Loads a specific set of files into the FILES panel (used by the Health Check
+    /// "Re-embed flagged files" action). Adds each path, reports a status line, and
+    /// leaves them ready for the user to re-fetch metadata and Embed on the current build.
+    /// </summary>
+    public void LoadFilesForReembed(IReadOnlyList<string> paths)
+    {
+        if (paths == null || paths.Count == 0) return;
+        int added = 0;
+        foreach (var path in paths)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) continue;
+            TryAddFile(path);
+            added++;
+        }
+        StatusText = added > 0
+            ? $"Loaded {added} file(s) for re-embedding — search/apply metadata, then Embed."
+            : "No valid files to load for re-embedding.";
+        Log($"[{DateTime.Now:HH:mm:ss}] Health Check → loaded {added} semicolon-flagged file(s) for re-embed.");
+    }
+
     public void AddFiles()
     {
         var dlg = new Microsoft.Win32.OpenFileDialog

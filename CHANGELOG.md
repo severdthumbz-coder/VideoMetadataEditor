@@ -2,6 +2,15 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 109 — Re-embed semicolon-flagged files from Health Check
+
+- New **"📝 Re-embed Semicolon Files (n)"** button on the Media Health Check panel, next to Fix All Issues. It loads every file flagged with the `SemicolonInComment` warning into the FILES panel and switches to that tab, ready for you to re-fetch metadata and Embed on the current (Build 105+) codec, which writes a clean, sanitised comment.
+- The button is enabled only when at least one semicolon-flagged file is present and no scan/fix is running; its label shows the live count.
+- Honesty note surfaced in the confirmation dialog: tags already lost to a pre-105 truncation cannot be recovered from the file itself — re-fetching from the metadata provider restores them. This is why the action loads files for a proper re-embed rather than silently rewriting the truncated on-disk comment (which would only sanitise the `;` without recovering dropped tokens).
+- This complements "Fix All Issues", which intentionally excludes semicolon files because their remedy is a re-embed, not an ffmpeg remux.
+
+---
+
 ## v1.4.0 Build 108 — CI build fix + semicolon check in Health Check
 
 - **Fix:** Build 107 failed CI — `WriteSelfTest.cs` used `Path`/`FileInfo`/`Directory` which did not resolve in the WPF markup-compile pass (`CS0103`/`CS0246`). Switched those BCL IO calls to explicit aliases (`IOPath`, `IODir`, fully-qualified `System.IO.FileInfo`) matching the existing `SysFile` alias pattern, so resolution no longer depends on using-context.

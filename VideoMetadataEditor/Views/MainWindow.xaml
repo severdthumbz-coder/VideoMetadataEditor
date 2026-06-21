@@ -4537,6 +4537,13 @@
                                         Padding="12,6"
                                         Command="{Binding MediaHealthVM.FixAllIssuesCommand}"
                                         ToolTip="Auto-fix all fixable issues in sequence: rename extension mismatches, then fix faststart. ZeroBytes and unreadable files are skipped — they require manual intervention."/>
+                                <Button Padding="12,6"
+                                        Command="{Binding MediaHealthVM.ReembedSemicolonCommand}"
+                                        ToolTip="Loads files flagged for a semicolon in their stored comment into the FILES panel so you can re-fetch metadata and Embed cleanly on this build. Semicolon files are not touched by Fix All Issues because the remedy is re-embedding, not remuxing.">
+                                    <TextBlock>
+                                        <Run Text="📝 Re-embed Semicolon Files ("/><Run Text="{Binding MediaHealthVM.SemicolonFlaggedCount, Mode=OneWay}"/><Run Text=")"/>
+                                    </TextBlock>
+                                </Button>
                             </StackPanel>
 
                             <!-- Progress + summary + ffmpeg status -->
@@ -5016,6 +5023,13 @@
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         The long-running "embeds then reverts on rescan" / "Write Failed" bug that hit only SOME files is fixed. Root cause: TagLib# 2.3.0 truncates the MP4 comment atom at the first semicolon on write. VME stores its [VME:...] tokens at the end of the comment, after the plot description — so any file whose description contained a ';' had its entire token block (IMDB/TMDB/rating/MPA + all TV fields) silently cut off, keeping the old comment and appearing to revert on the next scan. Files without a ';' were unaffected — which is why it was only some files.
                                         Fix: Encode now replaces ';' with ',' in the description and free-text token values before building the comment, so tokens can never be truncated away. Regression tests added using the exact real descriptions that failed.
+
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 109 — Re-embed semicolon-flagged files from Health Check
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        New "📝 Re-embed Semicolon Files (n)" button on the Health Check panel, beside Fix All Issues. It loads every file flagged with a semicolon in its stored comment into the FILES panel and switches to that tab, so you can re-fetch metadata and Embed cleanly on this build. The button shows a live count and is enabled only when there are flagged files and no scan is running.
+                                        Note: tags already lost to a pre-105 truncation can't be recovered from the file itself — re-fetching from the provider restores them. That's why this loads files for a real re-embed rather than just rewriting the truncated comment. Complements Fix All Issues, which excludes semicolon files (their fix is a re-embed, not a remux).
 
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">

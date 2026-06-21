@@ -83,6 +83,14 @@ public partial class MainWindow : Window
                 VM.LoadRemuxCandidate(candidatePath, originalPath);
                 if (MainTabControl != null) MainTabControl.SelectedIndex = 0; // Files tab
             };
+
+            // When the user asks to re-embed semicolon-flagged files from Health Check,
+            // load them into the FILES panel and switch to that tab for re-fetch + Embed.
+            VM.MediaHealthVM.RequestReembed += paths =>
+            {
+                VM.LoadFilesForReembed(paths);
+                if (MainTabControl != null) MainTabControl.SelectedIndex = 0; // Files tab
+            };
             VM.WriteFailedDetailed   += OnWriteFailedDetailed;
 
             VM.RecoveryCandidatesFound += OnRecoveryCandidatesFound;

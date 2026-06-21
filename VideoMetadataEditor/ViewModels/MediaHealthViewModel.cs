@@ -18,6 +18,14 @@ public class MediaHealthViewModel : ViewModelBase
     public ICommand FixAllFaststartCommand { get; }
     public ICommand FixAllIssuesCommand    { get; }
     public ICommand DetectFfmpegCommand    { get; }
+    public ICommand ReembedSemicolonCommand { get; }
+
+    /// <summary>
+    /// Raised when the user asks to re-embed the semicolon-flagged files. Carries the
+    /// affected file paths; the main window loads them into the FILES panel so the user
+    /// can re-fetch metadata and embed cleanly on the current (Build 105+) codec.
+    /// </summary>
+    public event Action<IReadOnlyList<string>>? RequestReembed;
 
     public MediaHealthViewModel()
     {
@@ -41,6 +49,8 @@ public class MediaHealthViewModel : ViewModelBase
                 r.Issue != MediaHealthService.IssueType.UnreadableHeader &&
                 r.Issue != MediaHealthService.IssueType.SemicolonInComment));
         DetectFfmpegCommand = new AsyncRelayCommand(RefreshFfmpegAsync);
+        ReembedSemicolonCommand = new RelayCommand(_ => ReembedSemicolonFiles(),
+            _ => !IsScanning && SemicolonFlaggedCount > 0);
 
         // Restore the last-used folder + recurse preference (display in the textbox).
         // Set the backing fields directly so we don't trigger a redundant save here.
@@ -69,6 +79,32 @@ public class MediaHealthViewModel : ViewModelBase
 
     public int FaststartFixableCount => Results.Count(r =>
         r.Issue == MediaHealthService.IssueType.NoFaststart);
+
+    public int SemicolonFlaggedCount => Results.Count(r =>
+        r.Issue == MediaHealthService.IssueType.SemicolonInComment);
+
+    private void ReembedSemicolonFiles()
+    {
+        var paths = Results
+            .Where(r => r.Issue == MediaHealthService.IssueType.SemicolonInComment)
+            .Select(r => r.FilePath)
+            .ToList();
+        if (paths.Count == 0) return;
+
+        var confirm = System.Windows.MessageBox.Show(
+            $"Load {paths.Count} semicolon-flagged file(s) into the FILES panel for re-embedding?\n\n" +
+            "These files' stored tags may have been truncated by an older build. They will be added to " +
+            "the main FILES list so you can re-fetch their metadata and Embed — the current build writes " +
+            "a clean comment with the semicolon sanitised.\n\n" +
+            "Note: tags that were already lost to truncation cannot be recovered from the file itself; " +
+            "re-fetching from the metadata provider restores them.",
+            "Re-embed flagged files",
+            System.Windows.MessageBoxButton.OKCancel,
+            System.Windows.MessageBoxImage.Information);
+        if (confirm != System.Windows.MessageBoxResult.OK) return;
+
+        RequestReembed?.Invoke(paths);
+    }
 
     private async Task RefreshFfmpegAsync()
     {
@@ -253,6 +289,7 @@ public class MediaHealthViewModel : ViewModelBase
         RaiseProperty(nameof(ErrorCount));
         RaiseProperty(nameof(SummaryLine));
         RaiseProperty(nameof(FaststartFixableCount));
+        RaiseProperty(nameof(SemicolonFlaggedCount));
     }
 
     /// <summary>
@@ -519,5 +556,6 @@ public class MediaHealthViewModel : ViewModelBase
                  (failed > 0 ? $", {failed} failed." : ".");
         RaiseProperty(nameof(FixAllFaststartCommand));
         RaiseProperty(nameof(FixAllIssuesCommand));
+        RaiseProperty(nameof(ReembedSemicolonCommand));
     }
 }
