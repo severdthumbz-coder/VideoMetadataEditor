@@ -2,6 +2,18 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 114 — Phase 2: dialog abstraction (Health Check migrated) + Help cleanup
+
+Continues Phase 2. No behaviour change.
+
+- New `IDialogService` abstraction over message boxes and file/folder pickers (platform-neutral `DialogButtons`/`DialogIcon`/`DialogResult` enums), with a WPF implementation that stays in the app and a headless `NullDialogService` that auto-cancels and never auto-confirms a destructive prompt.
+- `MediaHealthViewModel` migrated to it: the faststart confirm, fix-complete summary, remux complete/failed, ffmpeg-missing, and re-embed confirm dialogs all route through the abstraction with identical text and buttons. It now references WPF only via `ICommand` and one `Clipboard` call (the latter to be abstracted next).
+- `DuplicatesViewModel` (which also has file/folder pickers) is the next migration target.
+- Added CI tests for `NullDialogService`.
+- Help tab: fixed the Revision History so it reads strictly newest-first (an out-of-order Build 105 entry was relocated to its correct position), and expanded the terse Build 110–113 entries to the same level of detail as older entries. Updated the Media Health Check workflow to document the semicolon Warning and the "Re-embed Semicolon Files" button.
+
+---
+
 ## v1.4.0 Build 113 — Phase 2: command framework decoupled from WPF CommandManager
 
 The keystone Phase 2 change. Behaviour is intended to be identical to before; this is a coupling change, not a behaviour change.

@@ -80,7 +80,7 @@ public partial class MainViewModel : INotifyPropertyChanged
 
     // ── Duplicates ───────────────────────────────────────────────────────────
     public DuplicatesViewModel DuplicatesVM { get; }
-    public MediaHealthViewModel MediaHealthVM { get; } = new();
+    public MediaHealthViewModel MediaHealthVM { get; } = new(new Services.WpfDialogService());
 
     // ── Watch Folder (Files panel) ───────────────────────────────────────────
     private readonly Services.WatchFolderService _watchFolderService = new();

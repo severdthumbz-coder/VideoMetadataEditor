@@ -27,8 +27,11 @@ public class MediaHealthViewModel : ViewModelBase
     /// </summary>
     public event Action<IReadOnlyList<string>>? RequestReembed;
 
-    public MediaHealthViewModel()
+    private readonly Services.IDialogService _dialogs;
+
+    public MediaHealthViewModel(Services.IDialogService? dialogs = null)
     {
+        _dialogs = dialogs ?? Services.NullDialogService.Instance;
         ScanCommand   = new AsyncRelayCommand(RunScanAsync, _ => !IsScanning);
         CancelCommand = new RelayCommand(_ => _cts?.Cancel(), _ => IsScanning);
         CopyReportCommand = new RelayCommand(_ => CopyReport(), _ => Results.Count > 0);
@@ -91,7 +94,7 @@ public class MediaHealthViewModel : ViewModelBase
             .ToList();
         if (paths.Count == 0) return;
 
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = _dialogs.Show(
             $"Load {paths.Count} semicolon-flagged file(s) into the FILES panel for re-embedding?\n\n" +
             "These files' stored tags may have been truncated by an older build. They will be added to " +
             "the main FILES list so you can re-fetch their metadata and Embed — the current build writes " +
@@ -99,9 +102,9 @@ public class MediaHealthViewModel : ViewModelBase
             "Note: tags that were already lost to truncation cannot be recovered from the file itself; " +
             "re-fetching from the metadata provider restores them.",
             "Re-embed flagged files",
-            System.Windows.MessageBoxButton.OKCancel,
-            System.Windows.MessageBoxImage.Information);
-        if (confirm != System.Windows.MessageBoxResult.OK) return;
+            Services.DialogButtons.OkCancel,
+            Services.DialogIcon.Information);
+        if (confirm != Services.DialogResult.Ok) return;
 
         RequestReembed?.Invoke(paths);
     }
@@ -317,15 +320,15 @@ public class MediaHealthViewModel : ViewModelBase
             .ToList();
         if (targets.Count == 0) return;
 
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = _dialogs.Show(
             $"Add faststart to {targets.Count} MP4 file(s)?\n\n" +
             "This is a lossless remux (no quality loss, no re-encode). " +
             "Each file is rewritten in place with its 'moov' atom moved to the front.\n\n" +
             "Original timestamps are preserved. Continue?",
             "Fix Faststart",
-            System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Question);
-        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+            Services.DialogButtons.YesNo,
+            Services.DialogIcon.Question);
+        if (confirm != Services.DialogResult.Yes) return;
 
         IsScanning = true;
         IsFixing   = true;
@@ -401,11 +404,11 @@ public class MediaHealthViewModel : ViewModelBase
               $"✓ {fixedCount} succeeded\n✕ {failed} failed (of {targets.Count})\n\n" +
               "First failures:\n" + string.Join("\n", errorList.Take(10));
 
-        System.Windows.MessageBox.Show(msg,
+        _dialogs.Show(msg,
             failed == 0 ? "Health Check — Fix Complete" : "Health Check — Partial Success",
-            System.Windows.MessageBoxButton.OK,
-            failed == 0 ? System.Windows.MessageBoxImage.Information
-                        : System.Windows.MessageBoxImage.Warning);
+            Services.DialogButtons.Ok,
+            failed == 0 ? Services.DialogIcon.Information
+                        : Services.DialogIcon.Warning);
     }
 
     // ── Remux to fix tagger-hostile / mismatched containers ───────────────────
@@ -426,10 +429,10 @@ public class MediaHealthViewModel : ViewModelBase
     {
         if (!FfmpegAvailable)
         {
-            System.Windows.MessageBox.Show(
+            _dialogs.Show(
                 "ffmpeg is required for remuxing. Install it in Settings → External Tools.",
-                "ffmpeg not found", System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Warning);
+                "ffmpeg not found", Services.DialogButtons.Ok,
+                Services.DialogIcon.Warning);
             return;
         }
 
@@ -444,21 +447,21 @@ public class MediaHealthViewModel : ViewModelBase
             // Hand the candidate to the host so it loads in the FILES panel with
             // Replace/Restore buttons — same workflow as a FILES-panel remux.
             RemuxCandidateCreated?.Invoke(res.OutputPath, target.FilePath);
-            System.Windows.MessageBox.Show(
+            _dialogs.Show(
                 $"A clean remuxed copy was created:\n{System.IO.Path.GetFileName(res.OutputPath)}\n\n" +
                 "It's now loaded in the FILES panel (marked REMUXED). Test it / try embedding, " +
                 "then use the buttons under the Preview panel:\n\n" +
                 "  ✓ Replace Original — keep the remux, delete the original\n" +
                 "  ↩ Restore Original — discard the remux, keep the original\n\n" +
                 "Nothing is deleted until you choose.",
-                "Remux Complete", System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Information);
+                "Remux Complete", Services.DialogButtons.Ok,
+                Services.DialogIcon.Information);
         }
         else
         {
             Status = $"Remux failed: {res.Message}";
-            System.Windows.MessageBox.Show(res.Message, "Remux Failed",
-                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            _dialogs.Show(res.Message, "Remux Failed",
+                Services.DialogButtons.Ok, Services.DialogIcon.Warning);
         }
     }
 
