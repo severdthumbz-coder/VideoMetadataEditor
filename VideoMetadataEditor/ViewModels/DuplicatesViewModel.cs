@@ -365,9 +365,12 @@ public class DuplicatesViewModel : ViewModelBase
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
-    public DuplicatesViewModel(MetadataService metaSvc)
+    private readonly Services.IDialogService _dialogs;
+
+    public DuplicatesViewModel(MetadataService metaSvc, Services.IDialogService? dialogs = null)
     {
         _metaSvc = metaSvc;
+        _dialogs = dialogs ?? Services.NullDialogService.Instance;
 
         // Restore last-used folders from settings
         _sourceFolder      = App.ConfigService.Settings.DuplicateSourceFolder;
@@ -463,26 +466,14 @@ public class DuplicatesViewModel : ViewModelBase
 
     private void BrowseSource()
     {
-        var dlg = new Microsoft.Win32.OpenFolderDialog
-        {
-            Title = "Select Source Folder to scan for duplicates"
-        };
-        if (!string.IsNullOrWhiteSpace(_sourceFolder) && Directory.Exists(_sourceFolder))
-            dlg.InitialDirectory = _sourceFolder;
-        if (dlg.ShowDialog() == true)
-            SourceFolder = dlg.FolderName;
+        var picked = _dialogs.PickFolder("Select Source Folder to scan for duplicates", _sourceFolder);
+        if (picked != null) SourceFolder = picked;
     }
 
     private void BrowseDestination()
     {
-        var dlg = new Microsoft.Win32.OpenFolderDialog
-        {
-            Title = "Select Destination Folder (for moving duplicates)"
-        };
-        if (!string.IsNullOrWhiteSpace(_destinationFolder) && Directory.Exists(_destinationFolder))
-            dlg.InitialDirectory = _destinationFolder;
-        if (dlg.ShowDialog() == true)
-            DestinationFolder = dlg.FolderName;
+        var picked = _dialogs.PickFolder("Select Destination Folder (for moving duplicates)", _destinationFolder);
+        if (picked != null) DestinationFolder = picked;
     }
 
     // ── Scan ─────────────────────────────────────────────────────────────────
@@ -687,18 +678,17 @@ public class DuplicatesViewModel : ViewModelBase
         if (selectedFiles.Count > 5)
             preview += $"\n  …and {selectedFiles.Count - 5} more";
 
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = _dialogs.Show(
             $"You're about to {verb} {selectedFiles.Count} file(s)  ·  {sizeText}\n\n" +
             preview + "\n\n" +
             (doMove
                 ? $"Files will be moved to:\n  {_destinationFolder}\n\nContinue?"
                 : "Files will be moved to the Recycle Bin.\n\nContinue?"),
             doMove ? "Confirm Batch Move" : "Confirm Batch Delete",
-            System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Warning,
-            System.Windows.MessageBoxResult.No);
+            Services.DialogButtons.YesNo,
+            Services.DialogIcon.Warning);
 
-        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+        if (confirm != Services.DialogResult.Yes) return;
 
         int succeeded = 0, failed = 0;
         var errors    = new List<string>();
@@ -759,14 +749,14 @@ public class DuplicatesViewModel : ViewModelBase
                     if (isNetwork)
                     {
                         // Recycle Bin unavailable on network paths — confirm permanent delete
-                        var networkConfirm = System.Windows.MessageBox.Show(
+                        var networkConfirm = _dialogs.Show(
                             $"'{System.IO.Path.GetFileName(path)}' is on a network path.\n\n" +
                             "Network files cannot be sent to the Recycle Bin — this will permanently delete the file.\n\n" +
                             "Delete permanently?",
                             "Network file — permanent delete",
-                            System.Windows.MessageBoxButton.YesNo,
-                            System.Windows.MessageBoxImage.Warning);
-                        if (networkConfirm != System.Windows.MessageBoxResult.Yes)
+                            Services.DialogButtons.YesNo,
+                            Services.DialogIcon.Warning);
+                        if (networkConfirm != Services.DialogResult.Yes)
                         {
                             failed++;
                             errors.Add($"{System.IO.Path.GetFileName(path)}: skipped (network path — permanent delete declined).");
@@ -825,11 +815,11 @@ public class DuplicatesViewModel : ViewModelBase
             : $"✓ {succeeded} file(s) {verb2}  ·  {sizeText} freed.";
 
         if (errors.Count > 0)
-            System.Windows.MessageBox.Show(
+            _dialogs.Show(
                 "Some files couldn't be processed:\n\n" + string.Join("\n", errors.Take(10)),
                 "Batch operation — partial failure",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Warning);
+                Services.DialogButtons.Ok,
+                Services.DialogIcon.Warning);
 
         RaiseProperty(nameof(HasGroups));
         RaiseProperty(nameof(HasNoGroups));
@@ -852,17 +842,16 @@ public class DuplicatesViewModel : ViewModelBase
         bool doMove  = _moveInsteadOfDelete && !string.IsNullOrWhiteSpace(_destinationFolder);
         string action = doMove ? $"move to {_destinationFolder}" : "permanently delete";
 
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = _dialogs.Show(
             $"Are you sure you want to {action} this file?\n\n" +
             $"  {fileName}\n" +
             $"  {file.FileSizeDisplay}  ·  {file.FolderPath}\n\n" +
             "This action cannot be undone.",
             doMove ? "Confirm Move" : "Confirm Delete",
-            System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Warning,
-            System.Windows.MessageBoxResult.No);
+            Services.DialogButtons.YesNo,
+            Services.DialogIcon.Warning);
 
-        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+        if (confirm != Services.DialogResult.Yes) return;
 
         try
         {
@@ -936,8 +925,8 @@ public class DuplicatesViewModel : ViewModelBase
         {
             var msg = $"Could not {(doMove ? "move" : "delete")} {fileName}: {ex.Message}";
             ErrorOccurred?.Invoke(this, msg);
-            System.Windows.MessageBox.Show(msg, "Error",
-                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            _dialogs.Show(msg, "Error",
+                Services.DialogButtons.Ok, Services.DialogIcon.Error);
         }
     }
 
@@ -1251,14 +1240,10 @@ public class DuplicatesViewModel : ViewModelBase
     /// </summary>
     private async Task RunReferenceScanAsync()
     {
-        var dlg = new Microsoft.Win32.OpenFileDialog
-        {
-            Title = "Pick a reference file — find duplicates of this in the library",
-            Filter = "Video files|*.mp4;*.mkv;*.avi;*.mov;*.wmv;*.m4v;*.webm|All files|*.*"
-        };
-        if (dlg.ShowDialog() != true) return;
-
-        var referencePath = dlg.FileName;
+        var referencePath = _dialogs.PickOpenFile(
+            "Pick a reference file — find duplicates of this in the library",
+            "Video files|*.mp4;*.mkv;*.avi;*.mov;*.wmv;*.m4v;*.webm|All files|*.*");
+        if (referencePath == null) return;
 
         IsDeepScanning = true;
         DeepScanProgress = 0;
@@ -1373,13 +1358,10 @@ public class DuplicatesViewModel : ViewModelBase
 
     private void ExportFingerprintCache()
     {
-        var dlg = new Microsoft.Win32.SaveFileDialog
-        {
-            Title    = "Export fingerprint cache",
-            Filter   = "JSON|*.json",
-            FileName = $"vme_fingerprints_{DateTime.Now:yyyyMMdd}.json",
-        };
-        if (dlg.ShowDialog() != true) return;
+        var exportPath = _dialogs.PickSaveFile(
+            "Export fingerprint cache", "JSON|*.json",
+            $"vme_fingerprints_{DateTime.Now:yyyyMMdd}.json");
+        if (exportPath == null) return;
 
         try
         {
@@ -1392,8 +1374,8 @@ public class DuplicatesViewModel : ViewModelBase
                 ScanStatus = "No fingerprints to export yet. Run Deep Scan first.";
                 return;
             }
-            File.Copy(src, dlg.FileName, overwrite: true);
-            ScanStatus = $"✓ Fingerprint cache exported to {Path.GetFileName(dlg.FileName)}";
+            File.Copy(src, exportPath, overwrite: true);
+            ScanStatus = $"✓ Fingerprint cache exported to {Path.GetFileName(exportPath)}";
         }
         catch (Exception ex)
         {
@@ -1403,12 +1385,8 @@ public class DuplicatesViewModel : ViewModelBase
 
     private void ImportFingerprintCache()
     {
-        var dlg = new Microsoft.Win32.OpenFileDialog
-        {
-            Title  = "Import fingerprint cache",
-            Filter = "JSON|*.json",
-        };
-        if (dlg.ShowDialog() != true) return;
+        var importPath = _dialogs.PickOpenFile("Import fingerprint cache", "JSON|*.json");
+        if (importPath == null) return;
 
         try
         {
@@ -1420,32 +1398,31 @@ public class DuplicatesViewModel : ViewModelBase
             bool merge = false;
             if (File.Exists(dest))
             {
-                var res = System.Windows.MessageBox.Show(
+                var res = _dialogs.Show(
                     "An existing fingerprint cache was found.\n\n" +
                     "  • Merge  — add the imported entries to your existing cache\n" +
                     "  • Replace  — discard your existing cache and use the imported one\n\n" +
                     "Choose Merge to keep both.",
                     "Import fingerprint cache",
-                    System.Windows.MessageBoxButton.YesNoCancel,
-                    System.Windows.MessageBoxImage.Question,
-                    System.Windows.MessageBoxResult.Yes);
-                if (res == System.Windows.MessageBoxResult.Cancel) return;
-                merge = res == System.Windows.MessageBoxResult.Yes; // Yes=Merge, No=Replace
+                    Services.DialogButtons.YesNoCancel,
+                    Services.DialogIcon.Question);
+                if (res == Services.DialogResult.Cancel) return;
+                merge = res == Services.DialogResult.Yes; // Yes=Merge, No=Replace
             }
 
             if (merge)
             {
                 // Merge: load the import file into the cache without touching the existing file
-                _fpCache.MergeFrom(dlg.FileName);
+                _fpCache.MergeFrom(importPath);
                 _fpCache.SaveIfDirty();
             }
             else
             {
-                File.Copy(dlg.FileName, dest, overwrite: true);
+                File.Copy(importPath, dest, overwrite: true);
                 _fpCache.Reload();   // live reload — no restart needed
             }
 
-            ScanStatus = $"✓ Fingerprint cache imported from {Path.GetFileName(dlg.FileName)}.";
+            ScanStatus = $"✓ Fingerprint cache imported from {Path.GetFileName(importPath)}.";
         }
         catch (Exception ex)
         {

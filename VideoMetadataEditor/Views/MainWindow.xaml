@@ -5021,6 +5021,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 115 — Phase 2: DuplicatesViewModel migrated to dialog abstraction
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Internal refactor, no behaviour change. DuplicatesViewModel now routes all its standard dialogs through the IDialogService abstraction from Build 114: the source/destination folder pickers, all six message boxes (batch and single delete/move confirms, the network permanent-delete warning, partial-failure and error notices, and the cache import merge/replace prompt), and the three file pickers (reference file, cache export, cache import). Identical prompts and buttons. It now touches WPF only via ICommand, one batched-UI Dispatcher block, and the custom side-by-side compare window — the latter two deferred to their own follow-ups.
+
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 114 — Phase 2: dialog abstraction (Health Check migrated)
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         Internal refactor, no behaviour change. Introduces IDialogService — a platform-neutral abstraction over message boxes and file/folder pickers — so ViewModels no longer call WPF's MessageBox or Microsoft.Win32 dialogs directly. The WPF-backed implementation stays in the app; a headless fallback auto-cancels (and never auto-confirms a destructive prompt) for tests. MediaHealthViewModel is migrated first: all its confirmation and result dialogs (faststart confirm, fix-complete summary, remux complete/failed, ffmpeg-missing, the re-embed confirm) now go through the abstraction, with identical prompts and buttons. DuplicatesViewModel (which also has file/folder pickers) follows next. Added CI tests for the headless dialog service.

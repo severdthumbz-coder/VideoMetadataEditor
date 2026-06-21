@@ -2,6 +2,16 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 115 — Phase 2: DuplicatesViewModel migrated to dialog abstraction
+
+Continues Phase 2. No behaviour change.
+
+- `DuplicatesViewModel` now uses `IDialogService` for all its standard dialogs: both folder pickers (source/destination), all six message boxes (batch delete/move confirm, network permanent-delete confirm, partial-failure warning, single delete/move confirm, error, and the import merge/replace prompt), and the three file pickers (reference-file open, cache export save, cache import open). Same prompts, buttons, and behaviour.
+- It now references WPF only via `ICommand`, a `Dispatcher` block (batched UI updates during scan), and the custom `DuplicateCompareDialog` window. Those last two are deliberately deferred: the dispatcher block will move to `IUiDispatcher`, and the compare window — being a custom View, not a standard dialog — will be extracted via an event to the code-behind, both as their own focused follow-ups.
+- The real `WpfDialogService` is injected at construction; headless contexts fall back to the safe `NullDialogService`.
+
+---
+
 ## v1.4.0 Build 114 — Phase 2: dialog abstraction (Health Check migrated) + Help cleanup
 
 Continues Phase 2. No behaviour change.
