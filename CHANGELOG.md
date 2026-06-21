@@ -2,6 +2,15 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 111 — Phase 2: MetadataViewModel timer decoupling
+
+Continues Phase 2. No behaviour change.
+
+- `MetadataViewModel`'s rename-preview debounce no longer uses WPF's `DispatcherTimer`. It now uses a platform-agnostic `Task.Delay` + `CancellationTokenSource` debounce and marshals the result back to the UI thread via `IUiDispatcher`. Same 150ms debounce, same preview output.
+- This removes the `DispatcherTimer` dependency from the ViewModel. The remaining WPF reference there (`BitmapSource ArtworkImage`) is scheduled for its own focused build, since changing the artwork property type touches the XAML `<Image>` binding and warrants isolated testing.
+
+---
+
 ## v1.4.0 Build 110 — Phase 2: UI-dispatcher abstraction (cross-platform prep)
 
 First step of Phase 2 (purifying the extracted ViewModels of WPF dependencies so they can move to a platform-agnostic Core project for Phase 3). No behaviour change.

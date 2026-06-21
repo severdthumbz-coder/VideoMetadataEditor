@@ -5026,6 +5026,12 @@
 
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 111 — Phase 2: MetadataViewModel timer decoupling (internal)
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Internal refactor, no behaviour change. The rename-preview debounce now uses a platform-agnostic timer (Task.Delay + cancellation) routed through IUiDispatcher instead of WPF's DispatcherTimer. Same 150ms debounce and preview output. Part of the ongoing move toward a shared cross-platform core.
+
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 110 — Phase 2: UI-dispatcher abstraction (internal)
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         Internal refactor, no behaviour change. Introduces an IUiDispatcher abstraction so ViewModels no longer reference WPF's Dispatcher directly — the first step toward a shared, platform-agnostic core (future Mac/Linux support). SearchViewModel is converted as the proof-of-pattern; the rest follow in later builds.

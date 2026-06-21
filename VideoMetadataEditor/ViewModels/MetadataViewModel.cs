@@ -84,7 +84,8 @@ public class MetadataViewModel : ViewModelBase
     private string _renamePreview = string.Empty;
     public string RenamePreview { get => _renamePreview; set => Set(ref _renamePreview, value); }
 
-    private System.Windows.Threading.DispatcherTimer? _renamePreviewDebounce;
+    private readonly IUiDispatcher _ui;
+    private System.Threading.CancellationTokenSource? _renamePreviewCts;
 
     // ── Smart rename pattern ──────────────────────────────────────────────────
     public string MovieRenamePattern
@@ -180,11 +181,12 @@ public class MetadataViewModel : ViewModelBase
     public Func<Task>?            ToggleLockAsync           { get; set; }
 
     public MetadataViewModel(AppSettings settings, MetadataService metaService,
-        FileRenameService renameService)
+        FileRenameService renameService, IUiDispatcher? ui = null)
     {
         _settings         = settings;
         _metaService      = metaService;
         _renameService    = renameService;
+        _ui               = ui ?? NullUiDispatcher.Instance;
 
 
         ApplyCommand       = new AsyncRelayCommand(() => ApplyToFileAsync?.Invoke() ?? Task.CompletedTask,
@@ -208,20 +210,30 @@ public class MetadataViewModel : ViewModelBase
 
     public void UpdateRenamePreview()
     {
-        _renamePreviewDebounce?.Stop();
-        _renamePreviewDebounce = new System.Windows.Threading.DispatcherTimer
-            { Interval = TimeSpan.FromMilliseconds(150) };
-        _renamePreviewDebounce.Tick += (_, _) =>
+        // Debounce: cancel any pending preview and schedule a fresh one 150ms out.
+        // Uses Task.Delay + cancellation (platform-agnostic) instead of DispatcherTimer;
+        // the result is marshalled back to the UI thread via IUiDispatcher.
+        _renamePreviewCts?.Cancel();
+        _renamePreviewCts = new System.Threading.CancellationTokenSource();
+        var ct = _renamePreviewCts.Token;
+
+        _ = System.Threading.Tasks.Task.Run(async () =>
         {
-            _renamePreviewDebounce.Stop();
-            if (_selectedFile == null) { RenamePreview = string.Empty; return; }
-            var ext        = _selectedFile.Extension?.ToLowerInvariant() ?? "mp4";
-            var resolution = string.Empty;
-            var fmt        = _selectedFile.Extension ?? string.Empty;
-            var pattern    = IsEpisodeMode ? _settings.TvRenamePattern : _settings.RenamePattern;
-            RenamePreview  = _renameService.Preview(pattern, EditingMetadata, "." + ext, resolution, fmt);
-        };
-        _renamePreviewDebounce.Start();
+            try { await System.Threading.Tasks.Task.Delay(150, ct); }
+            catch (OperationCanceledException) { return; }
+            if (ct.IsCancellationRequested) return;
+
+            _ui.Post(() =>
+            {
+                if (ct.IsCancellationRequested) return;
+                if (_selectedFile == null) { RenamePreview = string.Empty; return; }
+                var ext        = _selectedFile.Extension?.ToLowerInvariant() ?? "mp4";
+                var resolution = string.Empty;
+                var fmt        = _selectedFile.Extension ?? string.Empty;
+                var pattern    = IsEpisodeMode ? _settings.TvRenamePattern : _settings.RenamePattern;
+                RenamePreview  = _renameService.Preview(pattern, EditingMetadata, "." + ext, resolution, fmt);
+            });
+        }, ct);
     }
 
     public void FireRenameSucceeded(string oldName, string newName) =>
