@@ -16,6 +16,7 @@ public class SearchViewModel : ViewModelBase
     private readonly Func<string>        _tmdbKey;
     private readonly Func<string>        _omdbKey;
     private readonly Action<MovieMetadata?> _onMetadataReady;
+    private readonly IUiDispatcher _ui;
 
     // ── Events ────────────────────────────────────────────────────────────────
     public event Action<MovieMetadata>? EpisodeApplied;
@@ -86,9 +87,7 @@ public class SearchViewModel : ViewModelBase
         {
             Set(ref _tvSelectedEpisode, value);
             RaiseProperty(nameof(CanPickTvEpisode));
-            System.Windows.Application.Current?.Dispatcher.BeginInvoke(
-                System.Windows.Threading.DispatcherPriority.Normal,
-                new Action(CommandManager.InvalidateRequerySuggested));
+            _ui.InvalidateCommands();
         }
     }
 
@@ -122,13 +121,15 @@ public class SearchViewModel : ViewModelBase
         AniListApiService aniList,
         Func<string> tmdbKey,
         Func<string> omdbKey,
-        Action<MovieMetadata?> onMetadataReady)
+        Action<MovieMetadata?> onMetadataReady,
+        IUiDispatcher? ui = null)
     {
         _api             = api;
         _aniList         = aniList;
         _tmdbKey         = tmdbKey;
         _omdbKey         = omdbKey;
         _onMetadataReady = onMetadataReady;
+        _ui              = ui ?? NullUiDispatcher.Instance;
 
         SearchCommand         = new AsyncRelayCommand(SearchAsync,
             _ => !string.IsNullOrWhiteSpace(Query) && !IsSearching);

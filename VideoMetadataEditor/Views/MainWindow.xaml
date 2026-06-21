@@ -5026,6 +5026,12 @@
 
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 110 — Phase 2: UI-dispatcher abstraction (internal)
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Internal refactor, no behaviour change. Introduces an IUiDispatcher abstraction so ViewModels no longer reference WPF's Dispatcher directly — the first step toward a shared, platform-agnostic core (future Mac/Linux support). SearchViewModel is converted as the proof-of-pattern; the rest follow in later builds.
+
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 109 — Re-embed semicolon-flagged files from Health Check
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         New "📝 Re-embed Semicolon Files (n)" button on the Health Check panel, beside Fix All Issues. It loads every file flagged with a semicolon in its stored comment into the FILES panel and switches to that tab, so you can re-fetch metadata and Embed cleanly on this build. The button shows a live count and is enabled only when there are flagged files and no scan is running.

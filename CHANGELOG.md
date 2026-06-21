@@ -2,6 +2,16 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 110 — Phase 2: UI-dispatcher abstraction (cross-platform prep)
+
+First step of Phase 2 (purifying the extracted ViewModels of WPF dependencies so they can move to a platform-agnostic Core project for Phase 3). No behaviour change.
+
+- New `IUiDispatcher` abstraction (with a headless `NullUiDispatcher` default) decouples ViewModels from WPF's `System.Windows.Threading.Dispatcher`. The WPF-specific implementation (`WpfUiDispatcher`) is platform glue that stays in the app and is the only place referencing the WPF Dispatcher/CommandManager for this path.
+- `SearchViewModel` no longer references `Application.Current.Dispatcher` or `CommandManager` directly — it calls `IUiDispatcher.InvalidateCommands()` instead. At runtime it receives a real `WpfUiDispatcher`; in headless contexts it falls back to the inline `NullUiDispatcher`. This is the proof-of-pattern that subsequent builds will apply to `MetadataViewModel` (DispatcherTimer) and the `MainViewModel` partials.
+- Added CI tests for `NullUiDispatcher`. The `IUiDispatcher` abstraction is now compiled into the test project.
+
+---
+
 ## v1.4.0 Build 109 — Re-embed semicolon-flagged files from Health Check
 
 - New **"📝 Re-embed Semicolon Files (n)"** button on the Media Health Check panel, next to Fix All Issues. It loads every file flagged with the `SemicolonInComment` warning into the FILES panel and switches to that tab, ready for you to re-fetch metadata and Embed on the current (Build 105+) codec, which writes a clean, sanitised comment.

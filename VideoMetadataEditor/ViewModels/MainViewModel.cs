@@ -1401,7 +1401,7 @@ public partial class MainViewModel : INotifyPropertyChanged
 
         // ── Instantiate sub-ViewModels ─────────────────────────────────────────
         Transfer = new CopyMoveViewModel(Settings, () => Files);
-        Search   = new SearchViewModel(_apiService, _aniListService, () => TmdbKey, () => OmdbKey, m => RetrievedMetadata = m);
+        Search   = new SearchViewModel(_apiService, _aniListService, () => TmdbKey, () => OmdbKey, m => RetrievedMetadata = m, WpfUiDispatcher.FromCurrent());
         Metadata = new MetadataViewModel(Settings, _metadataService, _renameService);
 
         // ── Wire sub-VM delegates → MainViewModel implementations ──────────────
