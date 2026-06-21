@@ -5026,6 +5026,12 @@
 
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 113 — Phase 2: command framework decoupled (internal)
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Internal refactor, behaviour unchanged. The command classes no longer depend on WPF's CommandManager directly — CanExecute re-evaluation is routed through a platform-neutral seam, with the WPF-backed provider installed at startup. Buttons enable/disable exactly as before; this is the keystone step that lets the ViewModels move to a shared cross-platform core.
+
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 112 — Phase 2: MetadataViewModel cleanup (internal)
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         Internal refactor, no behaviour change. Removed a dead unused artwork property from MetadataViewModel (its last WPF imaging dependency) and tightened the rename-preview debounce to dispose its cancellation source. The live artwork display is unchanged.

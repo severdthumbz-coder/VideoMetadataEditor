@@ -43,7 +43,7 @@ public class CopyMoveViewModel : ViewModelBase
     };
 
     private bool _isRunning;
-    public bool IsRunning { get => _isRunning; private set { Set(ref _isRunning, value); CommandManager.InvalidateRequerySuggested(); } }
+    public bool IsRunning { get => _isRunning; private set { Set(ref _isRunning, value); CommandRequery.Invalidate(); } }
 
     private int _progressValue;
     public int ProgressValue { get => _progressValue; set => Set(ref _progressValue, value); }

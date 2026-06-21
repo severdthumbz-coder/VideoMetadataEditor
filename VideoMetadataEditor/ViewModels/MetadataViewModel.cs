@@ -70,7 +70,7 @@ public class MetadataViewModel : ViewModelBase
 
     // ── Write state ───────────────────────────────────────────────────────────
     private bool _isBusy;
-    public bool IsBusy { get => _isBusy; set { Set(ref _isBusy, value); CommandManager.InvalidateRequerySuggested(); } }
+    public bool IsBusy { get => _isBusy; set { Set(ref _isBusy, value); CommandRequery.Invalidate(); } }
 
     private WriteStatus _writeStatus = WriteStatus.Untouched;
     public WriteStatus WriteStatus { get => _writeStatus; set => Set(ref _writeStatus, value); }

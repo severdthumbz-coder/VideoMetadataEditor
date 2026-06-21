@@ -2,6 +2,20 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 113 — Phase 2: command framework decoupled from WPF CommandManager
+
+The keystone Phase 2 change. Behaviour is intended to be identical to before; this is a coupling change, not a behaviour change.
+
+- The `RelayCommand` / `AsyncRelayCommand` family no longer references WPF's `CommandManager` directly. CanExecute re-evaluation is routed through a new platform-neutral seam, `CommandRequery` (interface `ICommandRequeryProvider`).
+- On WPF, the app installs `WpfCommandRequery` at startup (in `App.OnStartup`, before any ViewModel/command is created). It is backed by `CommandManager.RequerySuggested` / `InvalidateRequerySuggested()`, so the automatic enable/disable behaviour every button relies on is preserved exactly. The WPF reference now lives in one small provider class instead of being scattered through the command types.
+- VM-level invalidate calls in `CopyMoveViewModel` (IsRunning) and `MetadataViewModel` (IsBusy) now go through `CommandRequery.Invalidate()` too.
+- Result: the command classes and the cleaned child ViewModels reference WPF only through the cross-platform `ICommand` interface — a future Avalonia/MAUI host installs its own requery provider.
+- Added CI tests for the `CommandRequery` seam (default safety, provider swap, handler routing).
+
+What to verify after updating: command enable/disable behaves exactly as before — e.g. Search enables once you type a query, Embed/Apply enable when a file is selected, async buttons (Embed, Copy/Move, Health Check fixes) disable while running and re-enable when done, and the Health Check buttons enable based on their counts.
+
+---
+
 ## v1.4.0 Build 112 — Phase 2: MetadataViewModel fully WPF-imaging-free + debounce cleanup
 
 Continues Phase 2. No behaviour change.

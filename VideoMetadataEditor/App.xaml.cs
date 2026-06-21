@@ -42,6 +42,12 @@ public partial class App : System.Windows.Application
         {
             base.OnStartup(e);
 
+            // Install the WPF-backed command requery provider before any ViewModel (and
+            // thus any RelayCommand) is constructed. This preserves the automatic
+            // enable/disable behaviour the UI relies on, now routed through the
+            // platform-neutral CommandRequery seam.
+            ViewModels.CommandRequery.Provider = new ViewModels.WpfCommandRequery();
+
             ConfigService = new ConfigService();
             ConfigService.Load();
             IsDarkTheme = ConfigService.Settings.IsDarkTheme;
