@@ -5019,6 +5019,13 @@
 
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 108 — CI build fix + Health Check semicolon scan
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Fix: Build 107 failed to compile in CI — WriteSelfTest.cs used Path/FileInfo/Directory which didn't resolve in the WPF markup-compile pass. Switched those calls to explicit aliases (matching the existing SysFile pattern). Resolved.
+                                        New: the Media Health Check now reads each file's embedded comment and flags any containing a semicolon — these files' stored tags may have been truncated by a pre-Build-105 write, so re-embed them on Build 105+ to be safe. Shown as a Warning; it does not block or trigger the ffmpeg "Fix All" (re-embedding is the fix, not remuxing).
+
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 107 — Built-in Full Write Diagnostic tool
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         Enabling Settings → Write Error Diagnostics → "Enable full diagnostic dump" now also reveals a "🩺 Run Full Write Diagnostic on a File…" button. It runs the entire 16-step write investigation (the same checks built up while tracking down the Build 105 bug) against a file you choose — on a safe copy, the original is never modified — showing a green check or red cross for each step with a plain-language interpretation, then exports the full log to a location of your choice. The file picker defaults to your Move/Copy destination folder. Use this to capture a precise report for any future write problem.

@@ -1,7 +1,10 @@
+using System.IO;
 using System.Text;
 using TagLib;
-using File    = TagLib.File;
-using SysFile = System.IO.File;
+using File     = TagLib.File;
+using SysFile  = System.IO.File;
+using IOPath   = System.IO.Path;
+using IODir    = System.IO.Directory;
 
 namespace VideoMetadataEditor.Services;
 
@@ -51,8 +54,8 @@ public static class WriteSelfTest
             return new Report(filePath, steps, "The selected file does not exist.");
         }
 
-        var ext = Path.GetExtension(filePath);
-        var dir = Path.GetDirectoryName(filePath) ?? Path.GetTempPath();
+        var ext = IOPath.GetExtension(filePath);
+        var dir = IOPath.GetDirectoryName(filePath) ?? IOPath.GetTempPath();
 
         // Local helper: write a comment to a fresh copy and read it back.
         // Returns (ok, readLength, exceptionMessage?). Works on a copy in the given
@@ -60,8 +63,8 @@ public static class WriteSelfTest
         (bool ok, int readLen, string? ex) WriteRead(string comment, bool besideOriginal = false,
             byte[]? artwork = null, bool clearFirst = false, bool removeApple = false)
         {
-            var copyDir = besideOriginal ? dir : Path.GetTempPath();
-            var work = Path.Combine(copyDir, $".vme_selftest_{Guid.NewGuid():N}{ext}");
+            var copyDir = besideOriginal ? dir : IOPath.GetTempPath();
+            var work = IOPath.Combine(copyDir, $".vme_selftest_{Guid.NewGuid():N}{ext}");
             try
             {
                 SysFile.Copy(filePath, work, true);
@@ -125,7 +128,7 @@ public static class WriteSelfTest
 
         // ── 2. Comment + Description together (v2) ───────────────────────────────
         {
-            var work = Path.Combine(Path.GetTempPath(), $".vme_selftest_{Guid.NewGuid():N}{ext}");
+            var work = IOPath.Combine(IOPath.GetTempPath(), $".vme_selftest_{Guid.NewGuid():N}{ext}");
             bool ok; string? ex = null;
             try
             {
@@ -143,7 +146,7 @@ public static class WriteSelfTest
 
         // ── 3. Full field set without artwork (v3/v4) ────────────────────────────
         {
-            var work = Path.Combine(Path.GetTempPath(), $".vme_selftest_{Guid.NewGuid():N}{ext}");
+            var work = IOPath.Combine(IOPath.GetTempPath(), $".vme_selftest_{Guid.NewGuid():N}{ext}");
             bool ok; string? ex = null;
             try
             {
@@ -312,9 +315,9 @@ public static class WriteSelfTest
 
         // ── 15. Atomic temp→replace cycle (v5 TEST2) ─────────────────────────────
         {
-            var fakeOrig = Path.Combine(dir, $".vme_selftest_orig_{Guid.NewGuid():N}{ext}");
-            var tmp = Path.Combine(dir, $".vme_selftest_tmp_{Guid.NewGuid():N}{ext}");
-            var bak = Path.Combine(dir, $".vme_selftest_bak_{Guid.NewGuid():N}{ext}");
+            var fakeOrig = IOPath.Combine(dir, $".vme_selftest_orig_{Guid.NewGuid():N}{ext}");
+            var tmp = IOPath.Combine(dir, $".vme_selftest_tmp_{Guid.NewGuid():N}{ext}");
+            var bak = IOPath.Combine(dir, $".vme_selftest_bak_{Guid.NewGuid():N}{ext}");
             bool ok; string? ex = null;
             try
             {
@@ -337,7 +340,7 @@ public static class WriteSelfTest
             var encoded = VmeCommentCodec.Encode(
                 description: "Final end-to-end check; with a semicolon to be safe.",
                 imdbId: "tt11188560", tmdbId: "766105", rating: 7.0f, mpaRating: "R");
-            var work = Path.Combine(Path.GetTempPath(), $".vme_selftest_{Guid.NewGuid():N}{ext}");
+            var work = IOPath.Combine(IOPath.GetTempPath(), $".vme_selftest_{Guid.NewGuid():N}{ext}");
             bool ok = false; string? ex = null; IReadOnlyList<string> missing = Array.Empty<string>();
             try
             {
@@ -411,7 +414,7 @@ public static class WriteSelfTest
     {
         try
         {
-            var fi = new FileInfo(path);
+            var fi = new System.IO.FileInfo(path);
             int n = (int)Math.Min(300_000, fi.Length);
             var head = new byte[n];
             using (var fs = SysFile.OpenRead(path)) fs.Read(head, 0, n);
@@ -431,6 +434,20 @@ public static class WriteSelfTest
             return ($"ftyp@{Find("ftyp")} moov@{moov} mdat@{mdat} — {(atEnd ? "MOOV-AT-END" : "faststart OK")}", atEnd);
         }
         catch (Exception ex) { return ($"(atom scan failed: {ex.Message})", false); }
+    }
+
+    /// <summary>
+    /// Best-effort read of a file's embedded comment text (for the Health Check
+    /// semicolon scan). Returns null on any error. Read-only — never modifies the file.
+    /// </summary>
+    public static string? TryReadComment(string filePath)
+    {
+        try
+        {
+            using var f = File.Create(filePath);
+            return f.Tag.Comment ?? string.Empty;
+        }
+        catch { return null; }
     }
 
     /// <summary>Render a full report as an exportable plain-text log.</summary>

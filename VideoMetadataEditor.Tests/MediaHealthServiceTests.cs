@@ -148,6 +148,39 @@ public class MediaHealthServiceTests
         return dir;
     }
 
+    [Fact]
+    public void CheckEmbeddedComment_SemicolonPresent_FlagsWarning()
+    {
+        var baseOk = new MediaHealthService.HealthResult(
+            @"C:\m.mp4", "m.mp4", ".mp4", "MP4",
+            MediaHealthService.HealthStatus.Ok, MediaHealthService.IssueType.None, "", "");
+        var flagged = MediaHealthService.CheckEmbeddedComment(baseOk, "A plot; with a semicolon.");
+        Assert.Equal(MediaHealthService.HealthStatus.Warning, flagged.Status);
+        Assert.Equal(MediaHealthService.IssueType.SemicolonInComment, flagged.Issue);
+    }
+
+    [Fact]
+    public void CheckEmbeddedComment_NoSemicolon_Unchanged()
+    {
+        var baseOk = new MediaHealthService.HealthResult(
+            @"C:\m.mp4", "m.mp4", ".mp4", "MP4",
+            MediaHealthService.HealthStatus.Ok, MediaHealthService.IssueType.None, "", "");
+        var result = MediaHealthService.CheckEmbeddedComment(baseOk, "A clean plot, no semicolons.");
+        Assert.Equal(MediaHealthService.IssueType.None, result.Issue);
+        Assert.Equal(MediaHealthService.HealthStatus.Ok, result.Status);
+    }
+
+    [Fact]
+    public void CheckEmbeddedComment_DoesNotMaskError()
+    {
+        var err = new MediaHealthService.HealthResult(
+            @"C:\m.mp4", "m.mp4", ".mp4", "—",
+            MediaHealthService.HealthStatus.Error, MediaHealthService.IssueType.ZeroBytes,
+            "empty", "delete");
+        var result = MediaHealthService.CheckEmbeddedComment(err, "has ; semicolon");
+        Assert.Equal(MediaHealthService.IssueType.ZeroBytes, result.Issue);   // error preserved
+    }
+
     private static void Cleanup(string dir)
     {
         try { if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true); }

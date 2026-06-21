@@ -38,7 +38,8 @@ public class MediaHealthViewModel : ViewModelBase
             _ => !IsScanning && Results.Any(r =>
                 r.Issue != MediaHealthService.IssueType.None &&
                 r.Issue != MediaHealthService.IssueType.ZeroBytes &&
-                r.Issue != MediaHealthService.IssueType.UnreadableHeader));
+                r.Issue != MediaHealthService.IssueType.UnreadableHeader &&
+                r.Issue != MediaHealthService.IssueType.SemicolonInComment));
         DetectFfmpegCommand = new AsyncRelayCommand(RefreshFfmpegAsync);
 
         // Restore the last-used folder + recurse preference (display in the textbox).
@@ -196,6 +197,10 @@ public class MediaHealthViewModel : ViewModelBase
                     {
                         if (ct.IsCancellationRequested) return;
                         var r = MediaHealthService.Analyse(files[i]);
+                        // Second pass: flag a semicolon in the embedded comment (a file
+                        // that may hold a comment truncated by a pre-Build-105 write).
+                        var comment = WriteSelfTest.TryReadComment(files[i]);
+                        r = MediaHealthService.CheckEmbeddedComment(r, comment);
                         results.Add((i, r));
                         var d = Interlocked.Increment(ref done);
                         if (d % 25 == 0 || d == files.Count)

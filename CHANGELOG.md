@@ -2,6 +2,14 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 108 — CI build fix + semicolon check in Health Check
+
+- **Fix:** Build 107 failed CI — `WriteSelfTest.cs` used `Path`/`FileInfo`/`Directory` which did not resolve in the WPF markup-compile pass (`CS0103`/`CS0246`). Switched those BCL IO calls to explicit aliases (`IOPath`, `IODir`, fully-qualified `System.IO.FileInfo`) matching the existing `SysFile` alias pattern, so resolution no longer depends on using-context.
+- **Health Check now flags semicolons:** the Media Health Check runs a second pass that reads each file's embedded comment and flags any containing a `;` (new `SemicolonInComment` warning). These are files whose stored tags may have been truncated by a pre-Build-105 write; the suggested fix is to re-embed them on Build 105+. The flag is a Warning (never masks a more serious container error) and is excluded from the ffmpeg "Fix All" set since it is resolved by re-embedding, not remuxing.
+- Tests added for `CheckEmbeddedComment` (flags a semicolon, ignores clean text, never masks an error).
+
+---
+
 ## v1.4.0 Build 107 — Built-in Full Write Diagnostic tool
 
 - Enabling **Settings → Write Error Diagnostics → "Enable full diagnostic dump"** now also reveals a **"🩺 Run Full Write Diagnostic on a File…"** button. It folds the entire v1–v16 investigation that found the Build 105 semicolon bug into a one-click tool: pick a file (defaults to your Move/Copy destination folder), and it runs all 16 write checks against a **safe copy** (the original is never modified), streaming a green check or red cross per step with details, finishing with a plain-language interpretation of where (if anywhere) the write breaks down, and an **Export Log…** button to save the full report wherever you like.

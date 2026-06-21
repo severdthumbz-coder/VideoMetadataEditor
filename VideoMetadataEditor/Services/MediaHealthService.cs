@@ -24,6 +24,8 @@ public static class MediaHealthService
         UnreadableHeader,    // couldn't read or recognise the container
         ZeroBytes,           // empty / truncated file
         UnknownContainer,    // recognised it's video but not a container we tag well
+        SemicolonInComment,  // embedded comment/description contains ';' — at risk of
+                             // truncation by old builds; re-embed on Build 105+ to be safe
     }
 
     public record HealthResult(
@@ -259,4 +261,33 @@ public static class MediaHealthService
     private static HealthResult Make(string path, string name, string ext, string container,
         HealthStatus status, IssueType issue, string detail, string fix)
         => new(path, name, ext, container, status, issue, detail, fix);
+
+    /// <summary>
+    /// Optional second-pass check: given a file's already-read embedded comment text,
+    /// flag a SEMICOLON. TagLib# 2.3.0 truncates the MP4 comment atom at the first ';'
+    /// on write, so a file whose stored comment/description contains one was at risk of
+    /// silently losing its VME tokens when re-embedded by a pre-Build-105 build. Build
+    /// 105+ sanitizes this on write, but this surfaces files that may already hold a
+    /// truncated comment and should be re-embedded. Only applied when the container
+    /// check found no more serious problem (we never mask an Error with this Warning).
+    /// Caller supplies the comment so MediaHealthService stays dependency-free.
+    /// </summary>
+    public static HealthResult CheckEmbeddedComment(HealthResult baseResult, string? embeddedComment)
+    {
+        if (baseResult.Status == HealthStatus.Error) return baseResult;            // worse issue wins
+        if (baseResult.Issue != IssueType.None && baseResult.Status == HealthStatus.Warning)
+            return baseResult;                                                     // keep existing warning
+        if (string.IsNullOrEmpty(embeddedComment) || !embeddedComment.Contains(';'))
+            return baseResult;                                                     // nothing to flag
+
+        return baseResult with
+        {
+            Status       = HealthStatus.Warning,
+            Issue        = IssueType.SemicolonInComment,
+            Detail       = "Embedded description/comment contains a semicolon. Older builds (pre-105) " +
+                           "truncated the comment at the first ';', which could drop embedded IDs/ratings. " +
+                           "On this build new writes are safe, but this file's stored tags may be incomplete.",
+            SuggestedFix = "Re-embed this file (Apply + Embed) on Build 105 or later to rewrite a clean comment."
+        };
+    }
 }
