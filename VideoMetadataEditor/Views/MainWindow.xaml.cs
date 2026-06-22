@@ -76,6 +76,17 @@ public partial class MainWindow : Window
             VM.DeleteFileRequested   += OnDeleteFileRequested;
             VM.MediaPlayerStopRequested += (_, _) => StopPreview_Click(this, new RoutedEventArgs());
 
+            // The Duplicates compare uses a custom WPF window; the ViewModel asks for it
+            // via a callback so it stays free of the Window type. Return the deleted path.
+            VM.DuplicatesVM.CompareDialogRequested = (left, right) =>
+            {
+                var dlg = new Views.DuplicateCompareDialog(left, right)
+                {
+                    Owner = System.Windows.Application.Current.MainWindow
+                };
+                return dlg.ShowDialog() == true ? dlg.DeletedPath : null;
+            };
+
             // When a Health Check remux creates a candidate, load it into the FILES
             // panel (where Replace/Restore live) and switch to that tab.
             VM.MediaHealthVM.RemuxCandidateCreated += (candidatePath, originalPath) =>

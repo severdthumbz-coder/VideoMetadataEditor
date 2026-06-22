@@ -149,6 +149,13 @@ public class TvShowNode
         set { _coverArt = value; _coverSource = null; }
     }
 
+    // Decoded posters are cached by the identity of their source byte[] so that the
+    // many TvShowNode instances rebuilt each time the tree getter runs reuse the same
+    // frozen BitmapSource instead of re-decoding the JPEG on the UI thread. The cover
+    // byte[] comes from a stable LibraryEntry, so reference identity is a valid key.
+    // ConditionalWeakTable lets the cached bitmap be collected once the bytes are gone.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<byte[], System.Windows.Media.Imaging.BitmapSource> _coverCache = new();
+
     private System.Windows.Media.Imaging.BitmapSource? _coverSource;
     public System.Windows.Media.Imaging.BitmapSource? CoverSource
     {
@@ -156,6 +163,14 @@ public class TvShowNode
         {
             if (_coverSource != null) return _coverSource;
             if (_coverArt is not { Length: > 0 }) return null;
+
+            // Reuse a previously-decoded poster for these exact bytes if we have one.
+            if (_coverCache.TryGetValue(_coverArt, out var cached))
+            {
+                _coverSource = cached;
+                return _coverSource;
+            }
+
             try
             {
                 using var ms = new System.IO.MemoryStream(_coverArt);
@@ -167,6 +182,7 @@ public class TvShowNode
                 bmp.EndInit();
                 bmp.Freeze();
                 _coverSource = bmp;
+                _coverCache.AddOrUpdate(_coverArt, bmp);
             }
             catch { /* BitmapImage decode failed — CoverSource stays null */ }
             return _coverSource;

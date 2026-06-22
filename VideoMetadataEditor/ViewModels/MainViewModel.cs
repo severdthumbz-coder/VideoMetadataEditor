@@ -1580,7 +1580,7 @@ public partial class MainViewModel : INotifyPropertyChanged
         InitLibraryColumns();
 
         // Duplicates tab ViewModel
-        DuplicatesVM = new DuplicatesViewModel(_metadataService, new Services.WpfDialogService());
+        DuplicatesVM = new DuplicatesViewModel(_metadataService, new Services.WpfDialogService(), WpfUiDispatcher.FromCurrent());
         DuplicatesVM.FileDeleted  += (_, msg) =>
             Log( $"[{DateTime.Now:HH:mm:ss}] 🗑 {msg}");
         DuplicatesVM.ErrorOccurred += (_, err) =>

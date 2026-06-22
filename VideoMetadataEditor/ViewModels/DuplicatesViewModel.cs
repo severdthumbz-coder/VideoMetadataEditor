@@ -366,11 +366,14 @@ public class DuplicatesViewModel : ViewModelBase
     // ── Constructor ───────────────────────────────────────────────────────────
 
     private readonly Services.IDialogService _dialogs;
+    private readonly Services.IUiDispatcher _ui;
 
-    public DuplicatesViewModel(MetadataService metaSvc, Services.IDialogService? dialogs = null)
+    public DuplicatesViewModel(MetadataService metaSvc, Services.IDialogService? dialogs = null,
+        Services.IUiDispatcher? ui = null)
     {
         _metaSvc = metaSvc;
         _dialogs = dialogs ?? Services.NullDialogService.Instance;
+        _ui      = ui ?? Services.NullUiDispatcher.Instance;
 
         // Restore last-used folders from settings
         _sourceFolder      = App.ConfigService.Settings.DuplicateSourceFolder;
@@ -535,7 +538,6 @@ public class DuplicatesViewModel : ViewModelBase
             ScanStatus = $"Reading metadata from {paths.Count} file(s)…";
 
             // ── Phase 2: read metadata fast (no artwork) ────────────────────
-            var dispatcher = System.Windows.Application.Current?.Dispatcher;
             var videoFiles = new System.Collections.Concurrent.ConcurrentBag<VideoFile>();
             int read = 0;
 
@@ -575,11 +577,11 @@ public class DuplicatesViewModel : ViewModelBase
                     videoFiles.Add(vf);
 
                     var done = System.Threading.Interlocked.Increment(ref read);
-                    await dispatcher!.InvokeAsync(() =>
+                    _ui.Post(() =>
                     {
                         ScanProgress = (int)((double)done / paths.Count * 50);
                         ScanStatus   = $"Reading metadata {done} / {paths.Count}…";
-                    }, System.Windows.Threading.DispatcherPriority.Background);
+                    });
                 }
                 catch (OperationCanceledException) { throw; }
                 catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Duplicates] {ex.GetType().Name}: {ex.Message}"); }
@@ -1499,9 +1501,18 @@ public class DuplicatesViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Supplied by the View: shows the side-by-side compare dialog for two files and
+    /// returns the path the user chose to delete (or null if cancelled/none). Keeps the
+    /// custom WPF compare window out of the ViewModel. If unset (headless), comparison
+    /// is a no-op.
+    /// </summary>
+    public Func<VideoFile, VideoFile, string?>? CompareDialogRequested { get; set; }
+
     private void OpenCompareDialog(DuplicateGroupViewModel? groupVm)
     {
         if (groupVm == null || groupVm.Files.Count < 2) return;
+        if (CompareDialogRequested == null) return;
 
         // Build VideoFile objects with full FileInfo + metadata so the dialog
         // can show real sizes and label which side is larger.
@@ -1510,26 +1521,23 @@ public class DuplicatesViewModel : ViewModelBase
         var left    = BuildVideoFileFromPath(leftVm.FilePath);
         var right   = BuildVideoFileFromPath(rightVm.FilePath);
 
-        var dlg = new Views.DuplicateCompareDialog(left, right)
-        {
-            Owner = System.Windows.Application.Current.MainWindow
-        };
+        var deletedPath = CompareDialogRequested(left, right);
 
-        if (dlg.ShowDialog() == true && dlg.DeletedPath != null)
+        if (deletedPath != null)
         {
             try
             {
                 // Move to Recycle Bin (safe delete)
                 Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(
-                    dlg.DeletedPath,
+                    deletedPath,
                     Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
                     Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
 
-                FileDeleted?.Invoke(this, dlg.DeletedPath);
+                FileDeleted?.Invoke(this, deletedPath);
 
                 // Remove the deleted file from this group
                 var updatedFiles = groupVm.Files
-                    .Where(f => !string.Equals(f.FilePath, dlg.DeletedPath,
+                    .Where(f => !string.Equals(f.FilePath, deletedPath,
                         StringComparison.OrdinalIgnoreCase))
                     .ToList();
 

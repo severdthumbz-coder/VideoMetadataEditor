@@ -5021,6 +5021,13 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 116 — TV tree poster caching + DuplicatesViewModel fully decoupled
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        Performance: show posters in the TV tree were re-decoded from JPEG on the UI thread every time the tree rebuilt (filtering, sorting, or switching into Tree view), causing a noticeable delay when entering the tree. Decoded posters are now cached by their source bytes, so rebuilds and re-entry reuse the already-decoded image. (The tree getter still re-scans season folders on each rebuild — a larger separate optimisation is planned.)
+                                        Phase 2 (internal, no behaviour change): DuplicatesViewModel is now fully decoupled from WPF — its scan progress updates route through IUiDispatcher, and the side-by-side compare window is supplied by the View via a callback rather than created in the ViewModel. It now references WPF only through the cross-platform ICommand interface.
+
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 115 — Phase 2: DuplicatesViewModel migrated to dialog abstraction
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         Internal refactor, no behaviour change. DuplicatesViewModel now routes all its standard dialogs through the IDialogService abstraction from Build 114: the source/destination folder pickers, all six message boxes (batch and single delete/move confirms, the network permanent-delete warning, partial-failure and error notices, and the cache import merge/replace prompt), and the three file pickers (reference file, cache export, cache import). Identical prompts and buttons. It now touches WPF only via ICommand, one batched-UI Dispatcher block, and the custom side-by-side compare window — the latter two deferred to their own follow-ups.

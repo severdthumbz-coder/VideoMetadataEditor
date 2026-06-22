@@ -2,6 +2,13 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 116 — Phase 2: DuplicatesViewModel fully decoupled + TV tree poster caching
+
+- **TV tree poster delay (partial fix):** show posters in the TV tree were decoded from JPEG synchronously on the UI thread, and a fresh decode happened every time the tree was rebuilt (filter, sort, or switching into Tree view). Decoded posters are now cached by the identity of their source bytes (via a ConditionalWeakTable), so repeated rebuilds and re-entry into Tree view reuse the already-decoded frozen bitmap instead of re-decoding. Known remaining cost: the `TvShowTree` getter still rebuilds all nodes and re-scans season folders for missing episodes on each access — that heavier rebuild is a separate, larger performance fix (caching the built tree and rebuilding only on real data change) planned for a future build.
+- **Phase 2 — DuplicatesViewModel fully decoupled from WPF.** Following the dialog migration in Build 115: its scan-progress `Dispatcher.InvokeAsync` now goes through `IUiDispatcher`, and the custom side-by-side compare window is no longer constructed in the ViewModel — the View supplies it via a `CompareDialogRequested` callback that returns the chosen delete path. DuplicatesViewModel now references WPF only through the cross-platform `ICommand` interface. No behaviour change.
+
+---
+
 ## v1.4.0 Build 115 — Phase 2: DuplicatesViewModel migrated to dialog abstraction
 
 Continues Phase 2. No behaviour change.
