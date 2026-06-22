@@ -32,6 +32,7 @@
     <Compile Include="../VideoMetadataEditor/Services/IUiDispatcher.cs"/>
     <Compile Include="../VideoMetadataEditor/ViewModels/CommandRequery.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/IDialogService.cs"/>
+    <Compile Include="../VideoMetadataEditor/Services/IClipboardService.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/MetadataService.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/MkvPropEditService.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/WriteResult.cs"/>

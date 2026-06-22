@@ -28,10 +28,13 @@ public class MediaHealthViewModel : ViewModelBase
     public event Action<IReadOnlyList<string>>? RequestReembed;
 
     private readonly Services.IDialogService _dialogs;
+    private readonly Services.IClipboardService _clipboard;
 
-    public MediaHealthViewModel(Services.IDialogService? dialogs = null)
+    public MediaHealthViewModel(Services.IDialogService? dialogs = null,
+        Services.IClipboardService? clipboard = null)
     {
-        _dialogs = dialogs ?? Services.NullDialogService.Instance;
+        _dialogs   = dialogs ?? Services.NullDialogService.Instance;
+        _clipboard = clipboard ?? Services.NullClipboardService.Instance;
         ScanCommand   = new AsyncRelayCommand(RunScanAsync, _ => !IsScanning);
         CancelCommand = new RelayCommand(_ => _cts?.Cancel(), _ => IsScanning);
         CopyReportCommand = new RelayCommand(_ => CopyReport(), _ => Results.Count > 0);
@@ -488,8 +491,9 @@ public class MediaHealthViewModel : ViewModelBase
                 sb.AppendLine($"        Fix:   {r.SuggestedFix}");
             }
         }
-        try { System.Windows.Clipboard.SetText(sb.ToString()); Status = "Report copied to clipboard."; }
-        catch { Status = "Couldn't access clipboard."; }
+        Status = _clipboard.SetText(sb.ToString())
+            ? "Report copied to clipboard."
+            : "Couldn't access clipboard.";
     }
 
     /// <summary>

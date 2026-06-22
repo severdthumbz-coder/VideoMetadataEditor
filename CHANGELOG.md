@@ -2,6 +2,15 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 117 — Phase 2 milestone: all child ViewModels WPF-free (except ICommand)
+
+- New `IClipboardService` abstraction (WPF implementation + headless null default). `MediaHealthViewModel`'s "copy report to clipboard" now goes through it instead of calling `System.Windows.Clipboard` directly.
+- **Milestone:** with this change, all five extracted child ViewModels — Search, Metadata, CopyMove, Duplicates, MediaHealth — now contain no direct WPF code references. Their only remaining WPF tie is the `System.Windows.Input.ICommand` interface, which is shared across WPF, Avalonia, and MAUI. Every Dispatcher, MessageBox, file/folder picker, clipboard, bitmap, and custom-window dependency has been routed through an abstraction (`IUiDispatcher`, `IDialogService`, `IClipboardService`, the command-requery seam) or a View-supplied callback.
+- `MainViewModel` remains intentionally WPF-aware as the application coordinator (per the Phase 2 plan). The next decision is whether to also abstract its ~90 remaining WPF touchpoints or keep it as the platform shell and proceed to scoping Phase 3 (the shared Core project + a second UI head).
+- Added a CI test for the null clipboard service. No behaviour change.
+
+---
+
 ## v1.4.0 Build 116 — Phase 2: DuplicatesViewModel fully decoupled + TV tree poster caching
 
 - **TV tree poster delay (partial fix):** show posters in the TV tree were decoded from JPEG synchronously on the UI thread, and a fresh decode happened every time the tree was rebuilt (filter, sort, or switching into Tree view). Decoded posters are now cached by the identity of their source bytes (via a ConditionalWeakTable), so repeated rebuilds and re-entry into Tree view reuse the already-decoded frozen bitmap instead of re-decoding. Known remaining cost: the `TvShowTree` getter still rebuilds all nodes and re-scans season folders for missing episodes on each access — that heavier rebuild is a separate, larger performance fix (caching the built tree and rebuilding only on real data change) planned for a future build.
