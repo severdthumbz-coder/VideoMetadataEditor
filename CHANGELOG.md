@@ -2,6 +2,13 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 119 — Write Diagnostic popup: Close button fix + lock during run
+
+- **Fixed the Close button.** The per-step UI updates in the Full Write Diagnostic window used a blocking Dispatcher.Invoke, which saturated the UI thread while the 16 checks ran and left the Close click queued until the run finished — so it appeared dead. Step updates now use non-blocking Dispatcher.BeginInvoke, and the stray IsCancel flag was removed.
+- **Buttons lock until the diagnostic completes.** Both Close and Export Log… now start disabled and are enabled together only when all checks finish. The title-bar X and Alt+F4 are blocked during the run as well, so the window can't be dismissed — and background work left orphaned — while checks are still running. The header notes the window stays open until complete, then switches to a completion message.
+
+---
+
 ## v1.4.0 Build 118 — Memory & lifetime audit
 
 A dedicated pass over event subscriptions, timers, disposables, and caches. Two genuine issues fixed; the rest of the audited areas were confirmed sound.

@@ -1330,7 +1330,7 @@ public partial class MainWindow : Window
 
         var header = new TextBlock
         {
-            Text = $"Running 16-step write diagnostic on a safe copy of:\n{filePath}",
+            Text = $"Running 16-step write diagnostic on a safe copy of:\n{filePath}\n\nThe window stays open until all checks finish — buttons unlock when complete.",
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 0, 0, 10),
             FontWeight = FontWeights.SemiBold
@@ -1358,7 +1358,11 @@ public partial class MainWindow : Window
 
         var btnPanel = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right };
         var exportBtn = new Button { Content = "💾 Export Log…", Padding = new Thickness(14, 7, 14, 7), Margin = new Thickness(0, 0, 8, 0), IsEnabled = false };
-        var closeBtn  = new Button { Content = "Close", Padding = new Thickness(14, 7, 14, 7), IsCancel = true };
+        var closeBtn  = new Button { Content = "Close", Padding = new Thickness(14, 7, 14, 7), IsEnabled = false };
+        // Both buttons stay disabled until the diagnostic finishes, so the user can't
+        // close the window (or export a partial log) while steps are still running in
+        // the background. They are enabled together when the run completes.
+        closeBtn.Click += (_, _) => win.Close();
         btnPanel.Children.Add(exportBtn);
         btnPanel.Children.Add(closeBtn);
         Grid.SetRow(btnPanel, 3);
@@ -1422,6 +1426,12 @@ public partial class MainWindow : Window
             }
         };
 
+        var closed = false;
+        var running = true;
+        win.Closed += (_, _) => closed = true;
+        // While the diagnostic is running, block the title-bar X / Alt+F4 too, so the
+        // window can't be dismissed (leaving background work orphaned) before it finishes.
+        win.Closing += (_, ce) => { if (running) ce.Cancel = true; };
         win.Show();
 
         // Run the engine off the UI thread, marshalling each step back for live display.
@@ -1429,16 +1439,22 @@ public partial class MainWindow : Window
         {
             var rep = Services.WriteSelfTest.Run(filePath, step =>
             {
-                Dispatcher.Invoke(() => AddStepRow(step));
+                if (closed) return;
+                // Non-blocking dispatch so the worker never stalls waiting on the UI thread.
+                Dispatcher.BeginInvoke(() => { if (!closed) AddStepRow(step); });
             });
-            Dispatcher.Invoke(() =>
+            Dispatcher.BeginInvoke(() =>
             {
+                running = false;            // run finished — closing is now permitted
+                if (closed) return;
                 report = rep;
+                header.Text = $"Write diagnostic complete for:\n{filePath}";
                 interpretation.Text = $"Result: {rep.Passed} passed, {rep.Failed} failed.\n\n{rep.Interpretation}";
                 interpretation.Foreground = rep.AllPassed
                     ? System.Windows.Media.Brushes.SeaGreen
                     : (System.Windows.Media.Brush)Application.Current.Resources["ForegroundBrush"];
-                exportBtn.IsEnabled = true;
+                exportBtn.IsEnabled = true;  // both buttons enabled together on completion
+                closeBtn.IsEnabled  = true;
             });
         });
     }

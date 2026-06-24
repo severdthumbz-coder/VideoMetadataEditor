@@ -5021,6 +5021,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 119 — Write Diagnostic popup: Close fix + lock during run
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        The Close button on the Full Write Diagnostic window appeared dead: per-step UI updates used a blocking dispatch that tied up the UI thread during the 16 checks, so the click only registered after the run ended. Step updates are now non-blocking. Both Close and Export Log… now stay disabled until every check finishes and unlock together — and the title-bar X is blocked during the run — so the window can't be dismissed (leaving work running in the background) before it's done.
+
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 118 — Memory &amp; lifetime audit
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         A dedicated pass over event handlers, timers, disposables, and caches. Fixed a real session-growing leak: each file added to the FILES list attached a property-change handler that was never removed when files were reloaded, so old files accumulated. Handlers are now detached on removal and before clearing the list. Also reduced rename-preview timer churn (one reused timer instead of a new one per keystroke). Audited and confirmed sound: the API cache (capped + expiring), the TV-tree poster cache (self-collecting), file-system watchers and cancellation sources (disposed on close), and the duplicate hash cache (cleared after edits). No behaviour change.
