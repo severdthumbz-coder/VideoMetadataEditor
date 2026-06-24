@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using System.Text.RegularExpressions;
 using VideoMetadataEditor.Models;
 
@@ -8,36 +9,31 @@ public class FileRenameService
 {
     private static readonly char[] InvalidChars = Path.GetInvalidFileNameChars();
 
+    // Token: {Name} or {Name:format}.  Conditional block: [ ... ] containing tokens/literals.
+    private static readonly Regex TokenRegex = new(
+        @"\{(?<name>[A-Za-z]+)(?::(?<fmt>[^}]+))?\}",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     /// <summary>
     /// Builds a new file name from a pattern.
     /// Supported tokens: {Title}, {Year}, {Genre}, {Director}, {Cast},
     ///                   {Rating}, {MPA}, {ImdbId}, {TmdbId}, {Resolution}, {Format}
     ///                   TV: {ShowTitle}, {Season}, {Episode}, {EpisodeTitle}, {Aired}
+    ///
+    /// Grammar extensions (Build 120):
+    ///   • Format spec  {Season:00} / {Episode:000} — zero-pad width. Default pad
+    ///     for Season/Episode remains 2 (D2) when no spec is given, so legacy
+    ///     patterns are unchanged.
+    ///   • Conditional block  [ ... ] — the entire bracketed segment (literals
+    ///     included) is emitted only if EVERY token inside resolved to non-empty.
+    ///     Example: "{ShowTitle}[ - {EpisodeTitle}]" drops " - " when no title.
+    ///   • Multi-episode range — when <paramref name="episodeEnd"/> is supplied and
+    ///     greater than meta.Episode, {Episode} renders as "01-03" (respecting pad).
     /// </summary>
     public string BuildFileName(string pattern, MovieMetadata meta, string extension,
-        string resolution = "", string format = "")
+        string resolution = "", string format = "", int? episodeEnd = null)
     {
-        var ratingStr = meta.Rating > 0
-            ? meta.Rating.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)
-            : string.Empty;
-        var name = pattern
-            .Replace("{Title}",    Sanitize(meta.Title))
-            .Replace("{Year}",     Sanitize(meta.Year))
-            .Replace("{Genre}",    Sanitize(meta.Genre))
-            .Replace("{Director}", Sanitize(meta.Director))
-            .Replace("{Cast}",     Sanitize(meta.Cast))
-            .Replace("{Rating}",   Sanitize(ratingStr))
-            .Replace("{MPA}",      Sanitize(meta.MpaRating))
-            .Replace("{ImdbId}",   Sanitize(meta.ImdbId))
-            .Replace("{TmdbId}",     Sanitize(meta.TmdbId))
-            .Replace("{Resolution}", Sanitize(resolution))
-            .Replace("{Format}",     Sanitize(format))
-            // TV / Episode tokens
-            .Replace("{ShowTitle}",    Sanitize(meta.ShowTitle))
-            .Replace("{Season}",       meta.Season.HasValue  ? meta.Season.Value.ToString("D2") : string.Empty)
-            .Replace("{Episode}",      meta.Episode.HasValue ? meta.Episode.Value.ToString("D2") : string.Empty)
-            .Replace("{EpisodeTitle}", Sanitize(meta.EpisodeTitle))
-            .Replace("{Aired}",        Sanitize(meta.AiredDate));
+        var name = RenderPattern(pattern, meta, resolution, format, episodeEnd);
 
         name = name.Trim(' ', '.', '-');
         if (string.IsNullOrWhiteSpace(name)) name = "Untitled";
@@ -50,13 +46,139 @@ public class FileRenameService
 
     /// <summary>Returns a preview of the new file name without renaming.</summary>
     public string Preview(string pattern, MovieMetadata meta, string extension,
-        string resolution = "", string format = "")
-        => BuildFileName(pattern, meta, extension, resolution, format);
+        string resolution = "", string format = "", int? episodeEnd = null)
+        => BuildFileName(pattern, meta, extension, resolution, format, episodeEnd);
+
+    // ── Pattern rendering ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Renders the pattern: walks conditional [ ] blocks first, then substitutes
+    /// tokens. A bracket block is kept only if every token inside it is non-empty.
+    /// Brackets are matched at a single nesting level (no nested [ ] supported —
+    /// 80/20 by design).
+    /// </summary>
+    private string RenderPattern(string pattern, MovieMetadata meta,
+        string resolution, string format, int? episodeEnd)
+    {
+        var sb = new StringBuilder(pattern.Length + 16);
+        int i = 0;
+        while (i < pattern.Length)
+        {
+            char c = pattern[i];
+            if (c == '[')
+            {
+                int close = pattern.IndexOf(']', i + 1);
+                if (close < 0)
+                {
+                    // Unbalanced '[' — treat the rest as a literal block with no closing.
+                    sb.Append(SubstituteTokens(pattern[(i + 1)..], meta, resolution, format, episodeEnd, out _));
+                    break;
+                }
+                var inner = pattern.Substring(i + 1, close - i - 1);
+                var rendered = SubstituteTokens(inner, meta, resolution, format, episodeEnd,
+                    out bool anyTokenEmpty);
+                // Keep the block only if it had no empty token. A block with no tokens
+                // at all is treated as a plain literal and always kept.
+                if (!anyTokenEmpty) sb.Append(rendered);
+                i = close + 1;
+            }
+            else
+            {
+                // Literal run up to the next '['
+                int next = pattern.IndexOf('[', i);
+                if (next < 0) next = pattern.Length;
+                var segment = pattern.Substring(i, next - i);
+                sb.Append(SubstituteTokens(segment, meta, resolution, format, episodeEnd, out _));
+                i = next;
+            }
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Substitutes every {Token} / {Token:fmt} in <paramref name="segment"/>.
+    /// Sets <paramref name="anyTokenEmpty"/> true if the segment contained at least
+    /// one token AND any token resolved to an empty string (used for [ ] blocks).
+    /// </summary>
+    private string SubstituteTokens(string segment, MovieMetadata meta,
+        string resolution, string format, int? episodeEnd, out bool anyTokenEmpty)
+    {
+        bool sawEmpty = false;
+        var result = TokenRegex.Replace(segment, m =>
+        {
+            var token = m.Groups["name"].Value;
+            var fmt   = m.Groups["fmt"].Success ? m.Groups["fmt"].Value : null;
+            var value = ResolveToken(token, fmt, meta, resolution, format, episodeEnd);
+            if (string.IsNullOrEmpty(value)) sawEmpty = true;
+            return value;
+        });
+        anyTokenEmpty = sawEmpty;
+        return result;
+    }
+
+    /// <summary>Resolves a single token name (+ optional pad format) to its value.</summary>
+    private string ResolveToken(string token, string? fmt, MovieMetadata meta,
+        string resolution, string format, int? episodeEnd)
+    {
+        switch (token)
+        {
+            case "Title":     return Sanitize(meta.Title);
+            case "Year":      return Sanitize(meta.Year);
+            case "Genre":     return Sanitize(meta.Genre);
+            case "Director":  return Sanitize(meta.Director);
+            case "Cast":      return Sanitize(meta.Cast);
+            case "Rating":
+                return Sanitize(meta.Rating > 0
+                    ? meta.Rating.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)
+                    : string.Empty);
+            case "MPA":        return Sanitize(meta.MpaRating);
+            case "ImdbId":     return Sanitize(meta.ImdbId);
+            case "TmdbId":     return Sanitize(meta.TmdbId);
+            case "Resolution": return Sanitize(resolution);
+            case "Format":     return Sanitize(format);
+
+            case "ShowTitle":    return Sanitize(meta.ShowTitle);
+            case "EpisodeTitle": return Sanitize(meta.EpisodeTitle);
+            case "Aired":        return Sanitize(meta.AiredDate);
+
+            case "Season":
+                return meta.Season.HasValue ? PadNumber(meta.Season.Value, fmt) : string.Empty;
+
+            case "Episode":
+                if (!meta.Episode.HasValue) return string.Empty;
+                var startEp = PadNumber(meta.Episode.Value, fmt);
+                if (episodeEnd.HasValue && episodeEnd.Value > meta.Episode.Value)
+                    return $"{startEp}-{PadNumber(episodeEnd.Value, fmt)}";
+                return startEp;
+
+            default:
+                // Unknown token — leave the original braces untouched so it's visible.
+                return fmt is null ? $"{{{token}}}" : $"{{{token}:{fmt}}}";
+        }
+    }
+
+    /// <summary>
+    /// Zero-pads an integer. A format like "00" / "000" sets the minimum width;
+    /// when no format is given, Season/Episode default to width 2 (legacy D2).
+    /// </summary>
+    private static string PadNumber(int value, string? fmt)
+    {
+        int width = 2; // legacy default
+        if (!string.IsNullOrEmpty(fmt))
+        {
+            // Accept "00" style (count of zeros) or a "D2"/"d3" style spec.
+            if (fmt.All(ch => ch == '0'))
+                width = fmt.Length;
+            else if ((fmt[0] == 'D' || fmt[0] == 'd') && int.TryParse(fmt[1..], out int w))
+                width = w;
+        }
+        return value.ToString("D" + width, System.Globalization.CultureInfo.InvariantCulture);
+    }
 
     /// <summary>Renames the file on disk.</summary>
     public async Task<(bool success, string newPath, string error)> RenameFileAsync(
         string oldPath, string pattern, MovieMetadata meta,
-        string resolution = "", string format = "",
+        string resolution = "", string format = "", int? episodeEnd = null,
         CancellationToken ct = default)
     {
         return await Task.Run(() =>
@@ -66,7 +188,7 @@ public class FileRenameService
                 ct.ThrowIfCancellationRequested();
                 var dir     = Path.GetDirectoryName(oldPath) ?? "";
                 var ext     = Path.GetExtension(oldPath);          // preserve case: .MP4 stays .MP4
-                var newName = BuildFileName(pattern, meta, ext, resolution, format);
+                var newName = BuildFileName(pattern, meta, ext, resolution, format, episodeEnd);
                 var newPath = Path.Combine(dir, newName);
 
                 // Exact same path — nothing to do

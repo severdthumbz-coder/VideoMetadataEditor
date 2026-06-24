@@ -2432,6 +2432,16 @@
                                             a movie even if TMDB returns a series result called &quot;Alien&quot;.
                                             Warnings are written to the Processing Log when a mismatch is corrected.
                                         </TextBlock>
+                                        <CheckBox Content="Detect multi-episode ranges from source filename (S01E01-E03 → 01-03)"
+                                                  IsChecked="{Binding DetectEpisodeRange}"
+                                                  Margin="0,10,0,4"
+                                                  ToolTip="When enabled, renaming a TV episode inspects the ORIGINAL filename for a multi-episode range (S01E01-E03, 1x01-1x03, consecutive ExxExx, or 01_02) and expands the {Episode} token to a range like 01-03. Off by default; single-episode naming is unchanged when disabled. Does not alter already-renamed files — only affects the next rename."/>
+                                        <TextBlock FontSize="11" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                   Margin="18,0,0,0">
+                                            Range is read from the source filename only (no container field stores it).
+                                            The end episode must be greater than the start, or the file is treated as single-episode.
+                                        </TextBlock>
                                     </StackPanel>
                                 </GroupBox>
                                 <GroupBox Header="🎬 Smart File Rename Pattern">
@@ -2474,6 +2484,8 @@
                                                    TextWrapping="Wrap">
                                             Movie tokens: {Title} {Year} {Genre} {Director} {Cast} {Rating} {MPA} {ImdbId} {TmdbId} {Resolution} {Format}
                                             &#x0A;TV tokens: {ShowTitle} {Season} {Episode} {EpisodeTitle} {Aired}
+                                            &#x0A;Zero-pad: {Season:00} {Episode:000} (default width 2 when no spec).
+                                            &#x0A;Conditional block: [ - {EpisodeTitle}] — the bracketed text is dropped entirely when its token is empty.
                                             &#x0A;Double-click a preset to apply it to the correct pattern.
                                             &#x0A;The active pattern is selected automatically based on the file type.
                                         </TextBlock>
@@ -5020,6 +5032,11 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 120 — Rename engine: conditional blocks, zero-pad control, multi-episode ranges
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        The filename builder is now a small tokenizer instead of a flat text replace. Three additions: (1) Conditional blocks — wrap text in square brackets, e.g. {ShowTitle}[ - {EpisodeTitle}], and the whole bracketed segment (separators included) disappears cleanly when its token is empty, so episodes without a title no longer leave a dangling " - ". (2) Zero-pad control — {Season:00} and {Episode:000} set the digit width; existing patterns are unchanged because Season/Episode still default to two digits with no spec. (3) Multi-episode ranges — a new "Detect multi-episode ranges from source filename" toggle in Settings → Rename Behaviour (off by default). When on, renaming a TV episode reads the ORIGINAL filename for a range (S01E01-E03, 1x01-1x03, consecutive ExxExx, or 01_02) and expands {Episode} to a range like 01-03. The range is read from the source name only; it never alters already-renamed files and has no effect when the toggle is off. All existing rename patterns produce byte-for-byte identical output.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 119 — Write Diagnostic popup: Close fix + lock during run
                                         ─────────────────────────────────────────────────────────────────────────────────────

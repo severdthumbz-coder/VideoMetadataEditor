@@ -2,6 +2,19 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 120 — Rename engine: conditional blocks, zero-pad control, multi-episode ranges
+
+The filename builder (`FileRenameService.BuildFileName`) was rewritten from a flat `.Replace()` token chain into a small tokenizer. Three grammar additions, all opt-in or backward-compatible — every existing rename pattern produces byte-for-byte identical output.
+
+- **Conditional blocks `[ … ]`.** A bracketed segment is emitted only when every `{token}` inside it resolves non-empty; otherwise the whole segment (including its literal separators) is dropped. Example: `{ShowTitle}[ - {EpisodeTitle}]` no longer leaves a dangling ` - ` for episodes with no title. A block with multiple tokens is dropped if *any* of them is empty. Brackets are single-level (no nesting — 80/20 by design).
+- **Zero-pad format control `{Token:00}`.** `{Season:00}`, `{Episode:000}` set the digit width. With no spec, Season/Episode keep the legacy width of 2, so old patterns are unchanged. Accepts both `00`-style (zero count) and `D2`/`d3`-style specs.
+- **Multi-episode range detection.** New Settings → Rename Behaviour toggle **"Detect multi-episode ranges from source filename"** (default **off**). When enabled, renaming a TV episode inspects the *original* filename for a range — `S01E01-E03`, `S01E01-03`, `1x01-1x03`, consecutive `S01E01E02E03`, or bare `01_02` — and expands `{Episode}` to a range like `01-03` (respecting the pad width). The end episode must be greater than the start or the file is treated as single-episode. The range is read from the source filename only (no container field stores it); it does **not** rename already-named files and has no effect while the toggle is off.
+- **Unknown tokens** (e.g. a typo'd `{Bogus}`) are now left intact in the output rather than silently dropped, making mistakes visible.
+
+New unit tests cover range parsing (`FilenameParser.ParseEpisodeRange`), conditional blocks, pad widths, range expansion, unknown-token passthrough, and regression of the legacy movie/TV patterns. All pure logic — fully CI-testable under `NO_WPF`.
+
+---
+
 ## v1.4.0 Build 119 — Write Diagnostic popup: Close button fix + lock during run
 
 - **Fixed the Close button.** The per-step UI updates in the Full Write Diagnostic window used a blocking Dispatcher.Invoke, which saturated the UI thread while the 16 checks ran and left the Close click queued until the run finished — so it appeared dead. Step updates now use non-blocking Dispatcher.BeginInvoke, and the stray IsCancel flag was removed.

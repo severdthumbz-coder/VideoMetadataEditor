@@ -1124,6 +1124,12 @@ public partial class MainViewModel : INotifyPropertyChanged
         set { Settings.ConfirmTypeMismatchRename = value; RaiseProperty(); _ = App.ConfigService.SaveAsync(); }
     }
 
+    public bool DetectEpisodeRange
+    {
+        get => Settings.DetectEpisodeRange;
+        set { Settings.DetectEpisodeRange = value; RaiseProperty(); _ = App.ConfigService.SaveAsync(); }
+    }
+
     // ── MKV Artwork Engine status ────────────────────────────────────────────────
     public string MkvPropEditStatus
     {

@@ -49,6 +49,10 @@ public class AppSettings
     // Rename
     public string RenamePattern   { get; set; } = "{Title} ({Year})";
     public string TvRenamePattern { get; set; } = "{ShowTitle} - S{Season}E{Episode} - {EpisodeTitle}";
+    // When true, the rename engine inspects the SOURCE filename for a multi-episode
+    // range (e.g. S01E01-E03) and expands {Episode} to "01-03". Off by default —
+    // single-episode naming is unchanged when disabled.
+    public bool   DetectEpisodeRange { get; set; } = false;
     public List<string> RenamePresets { get; set; } = new()
     {
         "{Title} ({Year})",

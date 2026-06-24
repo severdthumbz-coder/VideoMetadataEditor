@@ -241,6 +241,77 @@ public static class FilenameParser
         return (showTitle, season, episode);
     }
 
+    // ── Multi-episode range patterns ──────────────────────────────────────────
+    // Matches the END episode of a range. Tried in priority order:
+    //   S01E01-E03 / S01E01-03 / s1e1-e3   (dash range, optional E on the end)
+    //   1x01-1x03  / 1x01-03                (cross range, optional NxNN on the end)
+    //   S01E01E02E03 / E01E02E03            (consecutive Exx run — last number wins)
+    //   01_02 / 01-02                       (bare two-number pair, e.g. "Show 01_02")
+    private static readonly Regex RangeDashRegex = new(
+        @"(?i)S\d{1,2}E\d{1,3}\s*-\s*(?:S\d{1,2})?E?(\d{1,3})",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex RangeCrossRegex = new(
+        @"(?i)(\d{1,2})[xX](\d{2,3})\s*-\s*(?:\d{1,2}[xX])?(\d{2,3})",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex RangeConsecutiveRegex = new(
+        @"(?i)S\d{1,2}(E\d{1,3}){2,}",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex ConsecutiveEpRegex = new(
+        @"(?i)E(\d{1,3})",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex RangeBareRegex = new(
+        @"(?<![\dxXeE])(\d{1,3})[_\-](\d{1,3})(?![\dxX])",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Detects the END episode number of a multi-episode range in a source filename.
+    /// Returns the end episode (e.g. 3 for "S01E01-E03") only when it is strictly
+    /// greater than the start episode parsed by <see cref="ParseEpisode"/>; otherwise
+    /// returns null (no range, malformed range, or end ≤ start).
+    /// Pure function — used only when the DetectEpisodeRange setting is enabled.
+    /// </summary>
+    public static int? ParseEpisodeRange(string fileNameWithoutExtension)
+    {
+        var input = fileNameWithoutExtension ?? string.Empty;
+
+        // We need the start episode to validate that end > start.
+        var startParse = ParseEpisode(input);
+        if (startParse is null) return null;
+        int startEpisode = startParse.Value.episode;
+
+        // 1. S01E01-E03 style (most explicit; check first)
+        var dash = RangeDashRegex.Match(input);
+        if (dash.Success && int.TryParse(dash.Groups[1].Value, out int dashEnd))
+            return dashEnd > startEpisode ? dashEnd : (int?)null;
+
+        // 2. 1x01-1x03 style
+        var cross = RangeCrossRegex.Match(input);
+        if (cross.Success && int.TryParse(cross.Groups[3].Value, out int crossEnd))
+            return crossEnd > startEpisode ? crossEnd : (int?)null;
+
+        // 3. S01E01E02E03 consecutive run — last Exx wins
+        var consec = RangeConsecutiveRegex.Match(input);
+        if (consec.Success)
+        {
+            var eps = ConsecutiveEpRegex.Matches(consec.Value);
+            if (eps.Count >= 2 &&
+                int.TryParse(eps[^1].Groups[1].Value, out int consecEnd))
+                return consecEnd > startEpisode ? consecEnd : (int?)null;
+        }
+
+        // 4. Bare "01_02" / "01-02" pair (only when start episode appears as the
+        //    first number, to avoid matching years/resolutions/etc.)
+        foreach (Match bare in RangeBareRegex.Matches(input))
+        {
+            if (int.TryParse(bare.Groups[1].Value, out int bareStart) &&
+                int.TryParse(bare.Groups[2].Value, out int bareEnd) &&
+                bareStart == startEpisode && bareEnd > bareStart)
+                return bareEnd;
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// Returns the best search query string: "Title Year" if year known, else just "Title".
     /// </summary>

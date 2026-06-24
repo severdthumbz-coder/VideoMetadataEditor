@@ -260,8 +260,11 @@ public partial class MainViewModel
         var fmt        = targetFile.Extension ?? string.Empty;
 
         var pattern = meta.IsEpisode ? Settings.TvRenamePattern : Settings.RenamePattern;
+        int? episodeEnd = (Settings.DetectEpisodeRange && meta.IsEpisode)
+            ? FilenameParser.ParseEpisodeRange(Path.GetFileNameWithoutExtension(targetFile.FilePath))
+            : null;
         var (success, newPath, error) = await _renameService.RenameFileAsync(
-            targetFile.FilePath, pattern, meta, resolution, fmt, ct);
+            targetFile.FilePath, pattern, meta, resolution, fmt, episodeEnd, ct);
 
         if (success)
         {
@@ -408,7 +411,7 @@ public partial class MainViewModel
                     $"but TMDB returned a series result ('{meta.ShowTitle ?? meta.Title}'). " +
                     $"Using movie pattern instead. Check the metadata manually.");
                 return await _renameService.RenameFileAsync(
-                    vf.FilePath, Settings.RenamePattern, corrected, res, fmt, ct);
+                    vf.FilePath, Settings.RenamePattern, corrected, res, fmt, null, ct);
             }
 
             if (!metaSaysEpisode && fileHasEpCode)
@@ -427,7 +430,10 @@ public partial class MainViewModel
             }
         }
 
-        return await _renameService.RenameFileAsync(vf.FilePath, pattern, meta, res, fmt, ct);
+        int? episodeEnd = (Settings.DetectEpisodeRange && meta.IsEpisode)
+            ? FilenameParser.ParseEpisodeRange(Path.GetFileNameWithoutExtension(vf.FileName))
+            : null;
+        return await _renameService.RenameFileAsync(vf.FilePath, pattern, meta, res, fmt, episodeEnd, ct);
     }
 
     private async Task BatchProcessAsync()
@@ -1300,7 +1306,10 @@ public partial class MainViewModel
         var resolution = MediaInfo?.ResolutionDisplay ?? string.Empty;
         var fmt        = SelectedFile?.Extension ?? string.Empty;
         var pattern    = IsEpisodeMode ? Settings.TvRenamePattern : Settings.RenamePattern;
-        RenamePreview  = _renameService.Preview(pattern, EditingMetadata, "." + ext, resolution, fmt);
+        int? episodeEnd = (Settings.DetectEpisodeRange && IsEpisodeMode && SelectedFile != null)
+            ? FilenameParser.ParseEpisodeRange(Path.GetFileNameWithoutExtension(SelectedFile.FilePath))
+            : null;
+        RenamePreview  = _renameService.Preview(pattern, EditingMetadata, "." + ext, resolution, fmt, episodeEnd);
     }
 
     // ── Key Validation ────────────────────────────────────────────────────────

@@ -228,7 +228,10 @@ public class MetadataViewModel : ViewModelBase
                 var resolution = string.Empty;
                 var fmt        = _selectedFile.Extension ?? string.Empty;
                 var pattern    = IsEpisodeMode ? _settings.TvRenamePattern : _settings.RenamePattern;
-                RenamePreview  = _renameService.Preview(pattern, EditingMetadata, "." + ext, resolution, fmt);
+                int? episodeEnd = (_settings.DetectEpisodeRange && IsEpisodeMode)
+                    ? FilenameParser.ParseEpisodeRange(System.IO.Path.GetFileNameWithoutExtension(_selectedFile.FilePath))
+                    : null;
+                RenamePreview  = _renameService.Preview(pattern, EditingMetadata, "." + ext, resolution, fmt, episodeEnd);
             });
         }, ct);
     }
