@@ -5021,6 +5021,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 118 — Memory &amp; lifetime audit
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        A dedicated pass over event handlers, timers, disposables, and caches. Fixed a real session-growing leak: each file added to the FILES list attached a property-change handler that was never removed when files were reloaded, so old files accumulated. Handlers are now detached on removal and before clearing the list. Also reduced rename-preview timer churn (one reused timer instead of a new one per keystroke). Audited and confirmed sound: the API cache (capped + expiring), the TV-tree poster cache (self-collecting), file-system watchers and cancellation sources (disposed on close), and the duplicate hash cache (cleared after edits). No behaviour change.
+
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 117 — Phase 2 milestone: child ViewModels are WPF-free
                                         ─────────────────────────────────────────────────────────────────────────────────────
                                         Internal refactor, no behaviour change. Adds an IClipboardService abstraction (the Health Check "copy report" now routes through it). With this, all five extracted child ViewModels — Search, Metadata, Copy/Move, Duplicates, Media Health — contain no direct WPF code; their only WPF tie is the shared ICommand interface. Every dispatcher, dialog, picker, clipboard, bitmap, and custom-window use now goes through an abstraction or a View callback. MainViewModel stays the WPF-aware coordinator by design.

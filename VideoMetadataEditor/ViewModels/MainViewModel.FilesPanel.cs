@@ -75,7 +75,7 @@ public partial class MainViewModel
 
         MediaPlayerStopRequested?.Invoke(this, EventArgs.Empty);
         SelectedFile = null;
-        Files.Clear();
+        ClearFiles();
         ClearEditing();
 
         // Update status so user knows the watcher has stopped
@@ -94,7 +94,7 @@ public partial class MainViewModel
 
         StatusText = $"Refreshing {paths.Count} file(s)…";
         MediaPlayerStopRequested?.Invoke(this, EventArgs.Empty);
-        Files.Clear();
+        ClearFiles();
         ClearEditing();
 
         int total = paths.Count;

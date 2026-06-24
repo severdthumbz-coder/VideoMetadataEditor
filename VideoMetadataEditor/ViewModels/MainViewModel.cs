@@ -448,18 +448,41 @@ public partial class MainViewModel : INotifyPropertyChanged
             RaiseProperty(nameof(SelectedFileCount));
             RaiseProperty(nameof(CanCopyMove));
 
-            // Also hook any newly added files' property changes
+            // Unhook removed files so they (and their captured handlers) can be collected.
+            if (e.OldItems != null)
+                foreach (VideoFile vf in e.OldItems)
+                    vf.PropertyChanged -= OnFileItemPropertyChanged;
+
+            // On a Reset (Clear()), OldItems is null — nothing to detach individually here;
+            // callers use ClearFiles() which detaches first (see below).
+
+            // Hook newly added files' property changes via a named handler so they can be
+            // detached on removal (an anonymous lambda could never be unsubscribed).
             if (e.NewItems == null) return;
             foreach (VideoFile vf in e.NewItems)
-                vf.PropertyChanged += (__, pe) =>
-                {
-                    if (pe.PropertyName == nameof(VideoFile.IsSelected))
-                    {
-                        RaiseProperty(nameof(SelectedFileCount));
-                        RaiseProperty(nameof(CanCopyMove));
-                    }
-                };
+                vf.PropertyChanged += OnFileItemPropertyChanged;
         };
+    }
+
+    private void OnFileItemPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs pe)
+    {
+        if (pe.PropertyName == nameof(VideoFile.IsSelected))
+        {
+            RaiseProperty(nameof(SelectedFileCount));
+            RaiseProperty(nameof(CanCopyMove));
+        }
+    }
+
+    /// <summary>
+    /// Clears the Files collection, detaching each file's PropertyChanged handler first.
+    /// ObservableCollection.Clear() raises a Reset (OldItems == null), so per-item
+    /// detach must happen here rather than in the CollectionChanged handler.
+    /// </summary>
+    public void ClearFiles()
+    {
+        foreach (var vf in Files)
+            vf.PropertyChanged -= OnFileItemPropertyChanged;
+        Files.Clear();
     }
 
     private VideoFile? _selectedFile;

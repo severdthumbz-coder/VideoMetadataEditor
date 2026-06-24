@@ -1281,19 +1281,26 @@ public partial class MainViewModel
 
     private void UpdateRenamePreview()
     {
-        _renamePreviewDebounce?.Stop();
-        _renamePreviewDebounce = new System.Windows.Threading.DispatcherTimer
-            { Interval = TimeSpan.FromMilliseconds(150) };
-        _renamePreviewDebounce.Tick += (_, _) =>
+        // Reuse a single timer + handler rather than allocating a new DispatcherTimer
+        // and Tick closure on every keystroke.
+        if (_renamePreviewDebounce == null)
         {
-            _renamePreviewDebounce.Stop();
-            var ext        = SelectedFile?.Extension?.ToLowerInvariant() ?? "mp4";
-            var resolution = MediaInfo?.ResolutionDisplay ?? string.Empty;
-            var fmt        = SelectedFile?.Extension ?? string.Empty;
-            var pattern    = IsEpisodeMode ? Settings.TvRenamePattern : Settings.RenamePattern;
-            RenamePreview  = _renameService.Preview(pattern, EditingMetadata, "." + ext, resolution, fmt);
-        };
+            _renamePreviewDebounce = new System.Windows.Threading.DispatcherTimer
+                { Interval = TimeSpan.FromMilliseconds(150) };
+            _renamePreviewDebounce.Tick += RenamePreviewDebounce_Tick;
+        }
+        _renamePreviewDebounce.Stop();
         _renamePreviewDebounce.Start();
+    }
+
+    private void RenamePreviewDebounce_Tick(object? sender, EventArgs e)
+    {
+        _renamePreviewDebounce?.Stop();
+        var ext        = SelectedFile?.Extension?.ToLowerInvariant() ?? "mp4";
+        var resolution = MediaInfo?.ResolutionDisplay ?? string.Empty;
+        var fmt        = SelectedFile?.Extension ?? string.Empty;
+        var pattern    = IsEpisodeMode ? Settings.TvRenamePattern : Settings.RenamePattern;
+        RenamePreview  = _renameService.Preview(pattern, EditingMetadata, "." + ext, resolution, fmt);
     }
 
     // ── Key Validation ────────────────────────────────────────────────────────

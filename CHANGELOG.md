@@ -2,6 +2,18 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 118 — Memory & lifetime audit
+
+A dedicated pass over event subscriptions, timers, disposables, and caches. Two genuine issues fixed; the rest of the audited areas were confirmed sound.
+
+- **Fixed a session-growing leak in the FILES panel.** Each file added to the Files collection got a PropertyChanged handler via an anonymous lambda capturing the MainViewModel, and that handler was never removed when files left the collection. Every folder reload therefore left the previous files reachable and uncollectable. The handler is now a named method, detached when items are removed, and a new ClearFiles() detaches every handler before clearing (ObservableCollection.Clear raises a Reset with no OldItems, so per-item detach must be explicit). All Files.Clear() call sites route through ClearFiles().
+- **Reduced rename-preview timer churn.** UpdateRenamePreview created a brand-new DispatcherTimer and Tick closure on every keystroke; it now reuses a single timer and a named handler.
+- **Audited and confirmed sound (no change needed):** the API metadata cache is bounded (500-entry cap + lazy expiry eviction); the TV-tree poster cache uses a ConditionalWeakTable (self-collecting); FileSystemWatcher and CancellationTokenSource instances are disposed (watch services on window close, CTSs at their call sites); the per-file subscriptions inside the Duplicates group/file view models form a self-contained object island that GC reclaims together; and the duplicate hash cache is cleared after embeds and scans. The child-VM event wiring in the window shares the application lifetime, so it is collected as a unit at shutdown.
+
+No behaviour change.
+
+---
+
 ## v1.4.0 Build 117 — Phase 2 milestone: all child ViewModels WPF-free (except ICommand)
 
 - New `IClipboardService` abstraction (WPF implementation + headless null default). `MediaHealthViewModel`'s "copy report to clipboard" now goes through it instead of calling `System.Windows.Clipboard` directly.
