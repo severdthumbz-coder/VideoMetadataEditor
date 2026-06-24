@@ -263,8 +263,9 @@ public partial class MainViewModel
         int? episodeEnd = (Settings.DetectEpisodeRange && meta.IsEpisode)
             ? FilenameParser.ParseEpisodeRange(Path.GetFileNameWithoutExtension(targetFile.FilePath))
             : null;
+        int? absoluteEpisode = await ResolveAbsoluteEpisodeAsync(targetFile.FilePath, meta, ct);
         var (success, newPath, error) = await _renameService.RenameFileAsync(
-            targetFile.FilePath, pattern, meta, resolution, fmt, episodeEnd, ct);
+            targetFile.FilePath, pattern, meta, resolution, fmt, episodeEnd, absoluteEpisode, ct);
 
         if (success)
         {
@@ -411,7 +412,7 @@ public partial class MainViewModel
                     $"but TMDB returned a series result ('{meta.ShowTitle ?? meta.Title}'). " +
                     $"Using movie pattern instead. Check the metadata manually.");
                 return await _renameService.RenameFileAsync(
-                    vf.FilePath, Settings.RenamePattern, corrected, res, fmt, null, ct);
+                    vf.FilePath, Settings.RenamePattern, corrected, res, fmt, null, null, ct);
             }
 
             if (!metaSaysEpisode && fileHasEpCode)
@@ -433,7 +434,39 @@ public partial class MainViewModel
         int? episodeEnd = (Settings.DetectEpisodeRange && meta.IsEpisode)
             ? FilenameParser.ParseEpisodeRange(Path.GetFileNameWithoutExtension(vf.FileName))
             : null;
-        return await _renameService.RenameFileAsync(vf.FilePath, pattern, meta, res, fmt, episodeEnd, ct);
+        int? absoluteEpisode = await ResolveAbsoluteEpisodeAsync(vf.FilePath, meta, ct);
+        return await _renameService.RenameFileAsync(vf.FilePath, pattern, meta, res, fmt, episodeEnd, absoluteEpisode, ct);
+    }
+
+    /// <summary>
+    /// Resolves the absolute episode number for {AbsoluteEpisode}, when the
+    /// AniListAutoDetectAbsolute setting is on and the file is a TV episode.
+    /// Filename parse first (cheap, offline); AniList relations-graph fallback only
+    /// when the filename has no absolute number AND an AniList ID is present.
+    /// Returns null otherwise — the token then resolves empty. Never throws.
+    /// </summary>
+    private async Task<int?> ResolveAbsoluteEpisodeAsync(
+        string filePath, MovieMetadata meta, CancellationToken ct)
+    {
+        if (!Settings.AniListAutoDetectAbsolute || !meta.IsEpisode) return null;
+
+        // 1. Primary: parse an absolute number from the source filename.
+        var fromName = FilenameParser.ParseAbsoluteEpisode(
+            Path.GetFileNameWithoutExtension(filePath));
+        if (fromName.HasValue) return fromName;
+
+        // 2. Fallback: AniList relations-graph sum, only if we have an AniList ID and
+        //    a concrete in-season episode to add. Best-effort; null on any uncertainty.
+        if (!string.IsNullOrWhiteSpace(meta.AniListId) && meta.Episode.HasValue)
+        {
+            try
+            {
+                return await _aniListService.ComputeAbsoluteEpisodeAsync(
+                    meta.AniListId, meta.Episode.Value, ct);
+            }
+            catch { return null; }
+        }
+        return null;
     }
 
     private async Task BatchProcessAsync()
@@ -1309,7 +1342,10 @@ public partial class MainViewModel
         int? episodeEnd = (Settings.DetectEpisodeRange && IsEpisodeMode && SelectedFile != null)
             ? FilenameParser.ParseEpisodeRange(Path.GetFileNameWithoutExtension(SelectedFile.FilePath))
             : null;
-        RenamePreview  = _renameService.Preview(pattern, EditingMetadata, "." + ext, resolution, fmt, episodeEnd);
+        int? absoluteEpisode = (Settings.AniListAutoDetectAbsolute && IsEpisodeMode && SelectedFile != null)
+            ? FilenameParser.ParseAbsoluteEpisode(Path.GetFileNameWithoutExtension(SelectedFile.FilePath))
+            : null;
+        RenamePreview  = _renameService.Preview(pattern, EditingMetadata, "." + ext, resolution, fmt, episodeEnd, absoluteEpisode);
     }
 
     // ── Key Validation ────────────────────────────────────────────────────────

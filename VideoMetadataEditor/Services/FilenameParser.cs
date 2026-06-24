@@ -312,6 +312,75 @@ public static class FilenameParser
         return null;
     }
 
+    // ── Absolute episode number patterns (anime fansub conventions) ────────────
+    // Conservative: only fire on the well-known fansub layouts, and NEVER when a
+    // season/episode code (S01E01 / 1x01) is present — those are season-relative.
+    //   [Group] Show Name - 153 [1080p]      → 153
+    //   Show Name - 153 (1080p)              → 153
+    //   Show Name - 153                       → 153
+    //   [Group] Show Name 153 [BD]           → 153  (space-separated, bracketed tail)
+    //   Show Name E153 / Show Name Ep153      → 153
+    // The number must be 1–4 digits and not look like a year (1900–2099) or a
+    // resolution height (480/576/720/1080/2160) appearing in a quality tag.
+    private static readonly Regex AbsoluteDashRegex = new(
+        @"(?i)\s-\s*(?:E|Ep|Episode\s*)?(\d{1,4})(?=\s*(?:[\[(]|$))",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex AbsoluteEpPrefixRegex = new(
+        @"(?i)(?:^|[\s._])(?:E|Ep|Episode)\s*(\d{1,4})(?=[\s._\[(]|$)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex AbsoluteBracketTailRegex = new(
+        @"(?i)\s(\d{1,4})\s*(?:\[[^\]]*\]|\([^)]*\))\s*$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex ResolutionHeightRegex = new(
+        @"^(?:480|576|720|1080|1440|2160)$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Detects an ABSOLUTE episode number from common anime fansub filename layouts.
+    /// Returns null when no absolute number is found, when a season/episode code
+    /// (S01E01 / 1x01) is present (those are season-relative, not absolute), or when
+    /// the only candidate looks like a year or a resolution height.
+    /// Pure function — used as the primary source for {AbsoluteEpisode}.
+    /// </summary>
+    public static int? ParseAbsoluteEpisode(string fileNameWithoutExtension)
+    {
+        var input = fileNameWithoutExtension;
+        if (string.IsNullOrWhiteSpace(input)) return null;
+
+        // If a season/episode code is present, the number is season-relative — not
+        // an absolute number. Bail so we never mistake S01E05 for absolute 5.
+        if (EpisodeRegex.IsMatch(input)) return null;
+
+        // Try " - 153" / " - E153" first (most explicit fansub layout).
+        var dash = AbsoluteDashRegex.Match(input);
+        if (dash.Success && TryAcceptAbsolute(dash.Groups[1].Value, out int dashAbs))
+            return dashAbs;
+
+        // Then "E153" / "Ep153" / "Episode 153".
+        var prefix = AbsoluteEpPrefixRegex.Match(input);
+        if (prefix.Success && TryAcceptAbsolute(prefix.Groups[1].Value, out int prefixAbs))
+            return prefixAbs;
+
+        // Then a trailing "153 [1080p]" / "153 (BD)" bracketed-tail layout.
+        var tail = AbsoluteBracketTailRegex.Match(input);
+        if (tail.Success && TryAcceptAbsolute(tail.Groups[1].Value, out int tailAbs))
+            return tailAbs;
+
+        return null;
+    }
+
+    /// <summary>Accepts a candidate absolute number unless it looks like a year or resolution.</summary>
+    private static bool TryAcceptAbsolute(string raw, out int value)
+    {
+        value = 0;
+        if (!int.TryParse(raw, out int n) || n <= 0) return false;
+        // Reject obvious non-episode numbers.
+        if (n >= 1900 && n <= 2099) return false;        // year
+        if (ResolutionHeightRegex.IsMatch(raw)) return false; // 720/1080/etc
+        value = n;
+        return true;
+    }
+
     /// <summary>
     /// Returns the best search query string: "Title Year" if year known, else just "Title".
     /// </summary>

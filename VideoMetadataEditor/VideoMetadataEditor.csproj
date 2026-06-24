@@ -6,15 +6,22 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <AssemblyName>VideoMetadataEditor v1.4.0.119</AssemblyName>
     <RootNamespace>VideoMetadataEditor</RootNamespace>
     <ApplicationIcon>Resources\app.ico</ApplicationIcon>
     <StartupObject>VideoMetadataEditor.App</StartupObject>
 
-    <!-- Version shown in title bar, Help tab, status bar, and file properties -->
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <!-- SINGLE SOURCE OF TRUTH for the build-numbered version.                -->
+    <!-- Bump FullVersion ONLY; AssemblyName, AssemblyVersion and FileVersion  -->
+    <!-- all derive from it, so the EXE filename can never drift again.        -->
+    <!-- (The other version locations — SplashScreen.xaml, MainWindow.xaml     -->
+    <!--  changelog/revision, and CHANGELOG.md — are separate by design.)      -->
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <FullVersion>1.4.0.121</FullVersion>
     <Version>1.4.0</Version>
-    <AssemblyVersion>1.4.0.120</AssemblyVersion>
-    <FileVersion>1.4.0.120</FileVersion>
+    <AssemblyVersion>$(FullVersion)</AssemblyVersion>
+    <FileVersion>$(FullVersion)</FileVersion>
+    <AssemblyName>VideoMetadataEditor v$(FullVersion)</AssemblyName>
 
     <!-- File properties (visible in Windows Explorer → Properties → Details) -->
     <Product>Video Metadata Editor</Product>

@@ -1130,6 +1130,12 @@ public partial class MainViewModel : INotifyPropertyChanged
         set { Settings.DetectEpisodeRange = value; RaiseProperty(); _ = App.ConfigService.SaveAsync(); }
     }
 
+    public bool AniListAutoDetectAbsolute
+    {
+        get => Settings.AniListAutoDetectAbsolute;
+        set { Settings.AniListAutoDetectAbsolute = value; RaiseProperty(); _ = App.ConfigService.SaveAsync(); }
+    }
+
     // ── MKV Artwork Engine status ────────────────────────────────────────────────
     public string MkvPropEditStatus
     {

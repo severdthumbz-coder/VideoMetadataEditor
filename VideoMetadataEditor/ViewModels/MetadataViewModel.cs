@@ -231,7 +231,12 @@ public class MetadataViewModel : ViewModelBase
                 int? episodeEnd = (_settings.DetectEpisodeRange && IsEpisodeMode)
                     ? FilenameParser.ParseEpisodeRange(System.IO.Path.GetFileNameWithoutExtension(_selectedFile.FilePath))
                     : null;
-                RenamePreview  = _renameService.Preview(pattern, EditingMetadata, "." + ext, resolution, fmt, episodeEnd);
+                // Preview uses the cheap filename parse only — the AniList fallback is
+                // async/network and runs at rename time, not in live preview.
+                int? absoluteEpisode = (_settings.AniListAutoDetectAbsolute && IsEpisodeMode)
+                    ? FilenameParser.ParseAbsoluteEpisode(System.IO.Path.GetFileNameWithoutExtension(_selectedFile.FilePath))
+                    : null;
+                RenamePreview  = _renameService.Preview(pattern, EditingMetadata, "." + ext, resolution, fmt, episodeEnd, absoluteEpisode);
             });
         }, ct);
     }

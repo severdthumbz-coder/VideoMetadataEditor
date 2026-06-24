@@ -2385,6 +2385,16 @@
                                         <CheckBox Content="Include AniList as fallback metadata source for anime"
                                                   IsChecked="{Binding Settings.UseAniList}"
                                                   ToolTip="When enabled, AniList is queried if TMDB and OMDB both return no result. No API key required."/>
+                                        <CheckBox Content="Auto-detect absolute episode number for {AbsoluteEpisode}"
+                                                  IsChecked="{Binding AniListAutoDetectAbsolute}"
+                                                  Margin="0,8,0,0"
+                                                  ToolTip="Populates the {AbsoluteEpisode} rename token for TV episodes. First reads an absolute number from the source filename (anime fansub layouts like &quot;[Group] Show - 153&quot;); if the name has none and the file is AniList-matched, falls back to computing it from the AniList relations graph (sum of prior seasons' episode counts). Off by default. The AniList fallback is best-effort — when the relation chain is ambiguous it leaves the token empty rather than guessing."/>
+                                        <TextBlock FontSize="11" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                   Margin="18,2,0,0">
+                                            Add {AbsoluteEpisode} (or {AbsoluteEpisode:000}) to your TV rename pattern to use it.
+                                            Live preview shows the filename-derived number; the AniList fallback runs at rename time.
+                                        </TextBlock>
                                         <TextBlock FontSize="11" TextWrapping="Wrap"
                                                    Foreground="{DynamicResource ForegroundMutedBrush}"
                                                    Margin="0,6,0,0">
@@ -2483,7 +2493,7 @@
                                         <TextBlock Foreground="{DynamicResource ForegroundMutedBrush}" FontSize="11"
                                                    TextWrapping="Wrap">
                                             Movie tokens: {Title} {Year} {Genre} {Director} {Cast} {Rating} {MPA} {ImdbId} {TmdbId} {Resolution} {Format}
-                                            &#x0A;TV tokens: {ShowTitle} {Season} {Episode} {EpisodeTitle} {Aired}
+                                            &#x0A;TV tokens: {ShowTitle} {Season} {Episode} {EpisodeTitle} {Aired} {AbsoluteEpisode}
                                             &#x0A;Zero-pad: {Season:00} {Episode:000} (default width 2 when no spec).
                                             &#x0A;Conditional block: &lt; - {EpisodeTitle}&gt; — the angle-bracketed text is dropped entirely when its token is empty. (Square brackets [ ] stay literal.)
                                             &#x0A;Double-click a preset to apply it to the correct pattern.
@@ -5032,6 +5042,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 121 — {AbsoluteEpisode} token + EXE filename now tracks the version
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        New rename token {AbsoluteEpisode} for anime absolute (series-wide) episode numbering. A new "Auto-detect absolute episode number" toggle in Settings → 🎌 AniList (off by default) populates it: first by reading an absolute number from the source filename (fansub layouts like "[Group] Show - 153", "Show E153", "Show 153 [BD]"), and if the name has none and the file is AniList-matched, by computing it from the AniList relations graph (summing prior seasons' episode counts via the PREQUEL chain). The AniList fallback is best-effort and runs only at rename time — when the relation chain is ambiguous (a fork, a cycle, or a missing episode count) it leaves the token empty rather than emitting a wrong number. Live preview shows the filename-derived value. The token honours pad specs ({AbsoluteEpisode:000}) and conditional blocks, and never fires when a season/episode code (S01E01) is present, since that number is season-relative.
+                                        Also fixed: the published EXE filename was hardcoded to "v1.4.0.119" and would not have matched newer builds. The assembly name now derives from a single FullVersion property in the project file, so the EXE filename, assembly version, and file version always agree.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 120 — Rename engine: conditional blocks, zero-pad control, multi-episode ranges
                                         ─────────────────────────────────────────────────────────────────────────────────────

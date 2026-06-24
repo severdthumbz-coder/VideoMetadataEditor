@@ -53,6 +53,11 @@ public class AppSettings
     // range (e.g. S01E01-E03) and expands {Episode} to "01-03". Off by default —
     // single-episode naming is unchanged when disabled.
     public bool   DetectEpisodeRange { get; set; } = false;
+    // When true, the {AbsoluteEpisode} token is populated for TV episodes: first by
+    // parsing an absolute number from the SOURCE filename (fansub layouts like
+    // "[Group] Show - 153"), and if absent, by an AniList relations-graph lookup when
+    // the file is AniList-matched. Off by default.
+    public bool   AniListAutoDetectAbsolute { get; set; } = false;
     public List<string> RenamePresets { get; set; } = new()
     {
         "{Title} ({Year})",
@@ -260,6 +265,11 @@ public class MovieMetadata : INotifyPropertyChanged
     public string TmdbSeriesId { get => _tmdbSeriesId; set => Set(ref _tmdbSeriesId, value); }
     private string _tmdbSeriesId = string.Empty;
 
+    /// <summary>AniList media ID (anime). Retained so {AbsoluteEpisode} can use the
+    /// AniList relations-graph fallback at rename time. Empty for non-AniList sources.</summary>
+    public string AniListId { get => _aniListId; set => Set(ref _aniListId, value); }
+    private string _aniListId = string.Empty;
+
     /// <summary>Displayed in the mode toggle: "Movie" or "TV Episode".</summary>
     public string ContentTypeDisplay => _isEpisode ? "TV Episode" : "Movie";
 
@@ -299,7 +309,7 @@ public class MovieMetadata : INotifyPropertyChanged
         Rating = Rating, RatingVotes = RatingVotes, MpaRating = MpaRating,
             IsEpisode = IsEpisode, ShowTitle = ShowTitle, Season = Season,
             Episode = Episode, EpisodeTitle = EpisodeTitle, AiredDate = AiredDate,
-            TvdbId = TvdbId, TmdbSeriesId = TmdbSeriesId, IsWatched = IsWatched
+            TvdbId = TvdbId, TmdbSeriesId = TmdbSeriesId, AniListId = AniListId, IsWatched = IsWatched
     };
 
     public event PropertyChangedEventHandler? PropertyChanged;

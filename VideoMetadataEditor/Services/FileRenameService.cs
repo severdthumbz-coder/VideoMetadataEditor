@@ -32,9 +32,10 @@ public class FileRenameService
     ///     greater than meta.Episode, {Episode} renders as "01-03" (respecting pad).
     /// </summary>
     public string BuildFileName(string pattern, MovieMetadata meta, string extension,
-        string resolution = "", string format = "", int? episodeEnd = null)
+        string resolution = "", string format = "", int? episodeEnd = null,
+        int? absoluteEpisode = null)
     {
-        var name = RenderPattern(pattern, meta, resolution, format, episodeEnd);
+        var name = RenderPattern(pattern, meta, resolution, format, episodeEnd, absoluteEpisode);
 
         name = name.Trim(' ', '.', '-');
         if (string.IsNullOrWhiteSpace(name)) name = "Untitled";
@@ -47,8 +48,9 @@ public class FileRenameService
 
     /// <summary>Returns a preview of the new file name without renaming.</summary>
     public string Preview(string pattern, MovieMetadata meta, string extension,
-        string resolution = "", string format = "", int? episodeEnd = null)
-        => BuildFileName(pattern, meta, extension, resolution, format, episodeEnd);
+        string resolution = "", string format = "", int? episodeEnd = null,
+        int? absoluteEpisode = null)
+        => BuildFileName(pattern, meta, extension, resolution, format, episodeEnd, absoluteEpisode);
 
     // ── Pattern rendering ──────────────────────────────────────────────────────
 
@@ -59,7 +61,7 @@ public class FileRenameService
     /// 80/20 by design).
     /// </summary>
     private string RenderPattern(string pattern, MovieMetadata meta,
-        string resolution, string format, int? episodeEnd)
+        string resolution, string format, int? episodeEnd, int? absoluteEpisode)
     {
         var sb = new StringBuilder(pattern.Length + 16);
         int i = 0;
@@ -72,11 +74,11 @@ public class FileRenameService
                 if (close < 0)
                 {
                     // Unbalanced '<' — treat the rest as a literal block with no closing.
-                    sb.Append(SubstituteTokens(pattern[(i + 1)..], meta, resolution, format, episodeEnd, out _));
+                    sb.Append(SubstituteTokens(pattern[(i + 1)..], meta, resolution, format, episodeEnd, absoluteEpisode, out _));
                     break;
                 }
                 var inner = pattern.Substring(i + 1, close - i - 1);
-                var rendered = SubstituteTokens(inner, meta, resolution, format, episodeEnd,
+                var rendered = SubstituteTokens(inner, meta, resolution, format, episodeEnd, absoluteEpisode,
                     out bool anyTokenEmpty);
                 // Keep the block only if it had no empty token. A block with no tokens
                 // at all is treated as a plain literal and always kept.
@@ -90,7 +92,7 @@ public class FileRenameService
                 int next = pattern.IndexOf('<', i);
                 if (next < 0) next = pattern.Length;
                 var segment = pattern.Substring(i, next - i);
-                sb.Append(SubstituteTokens(segment, meta, resolution, format, episodeEnd, out _));
+                sb.Append(SubstituteTokens(segment, meta, resolution, format, episodeEnd, absoluteEpisode, out _));
                 i = next;
             }
         }
@@ -103,14 +105,14 @@ public class FileRenameService
     /// one token AND any token resolved to an empty string (used for < > blocks).
     /// </summary>
     private string SubstituteTokens(string segment, MovieMetadata meta,
-        string resolution, string format, int? episodeEnd, out bool anyTokenEmpty)
+        string resolution, string format, int? episodeEnd, int? absoluteEpisode, out bool anyTokenEmpty)
     {
         bool sawEmpty = false;
         var result = TokenRegex.Replace(segment, m =>
         {
             var token = m.Groups["name"].Value;
             var fmt   = m.Groups["fmt"].Success ? m.Groups["fmt"].Value : null;
-            var value = ResolveToken(token, fmt, meta, resolution, format, episodeEnd);
+            var value = ResolveToken(token, fmt, meta, resolution, format, episodeEnd, absoluteEpisode);
             if (string.IsNullOrEmpty(value)) sawEmpty = true;
             return value;
         });
@@ -120,7 +122,7 @@ public class FileRenameService
 
     /// <summary>Resolves a single token name (+ optional pad format) to its value.</summary>
     private string ResolveToken(string token, string? fmt, MovieMetadata meta,
-        string resolution, string format, int? episodeEnd)
+        string resolution, string format, int? episodeEnd, int? absoluteEpisode)
     {
         switch (token)
         {
@@ -153,6 +155,14 @@ public class FileRenameService
                     return $"{startEp}-{PadNumber(episodeEnd.Value, fmt)}";
                 return startEp;
 
+            case "AbsoluteEpisode":
+                // Absolute (series-wide) episode number. Empty when unknown, so it
+                // disappears inside a conditional < > block. Default pad width 2;
+                // override with {AbsoluteEpisode:000} for long-runners.
+                return absoluteEpisode.HasValue
+                    ? PadNumber(absoluteEpisode.Value, fmt)
+                    : string.Empty;
+
             default:
                 // Unknown token — leave the original braces untouched so it's visible.
                 return fmt is null ? $"{{{token}}}" : $"{{{token}:{fmt}}}";
@@ -181,7 +191,7 @@ public class FileRenameService
     public async Task<(bool success, string newPath, string error)> RenameFileAsync(
         string oldPath, string pattern, MovieMetadata meta,
         string resolution = "", string format = "", int? episodeEnd = null,
-        CancellationToken ct = default)
+        int? absoluteEpisode = null, CancellationToken ct = default)
     {
         return await Task.Run(() =>
         {
@@ -190,7 +200,7 @@ public class FileRenameService
                 ct.ThrowIfCancellationRequested();
                 var dir     = Path.GetDirectoryName(oldPath) ?? "";
                 var ext     = Path.GetExtension(oldPath);          // preserve case: .MP4 stays .MP4
-                var newName = BuildFileName(pattern, meta, ext, resolution, format, episodeEnd);
+                var newName = BuildFileName(pattern, meta, ext, resolution, format, episodeEnd, absoluteEpisode);
                 var newPath = Path.Combine(dir, newName);
 
                 // Exact same path — nothing to do

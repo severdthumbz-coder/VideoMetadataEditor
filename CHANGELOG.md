@@ -2,6 +2,21 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 121 — {AbsoluteEpisode} rename token + version-tracked EXE filename
+
+Adds anime absolute (series-wide) episode numbering to the rename engine, plus a fix so the published EXE filename can never drift from the build number again.
+
+- **New `{AbsoluteEpisode}` token.** Renders the absolute episode number; honours pad specs (`{AbsoluteEpisode:000}`) and disappears inside a conditional `< >` block when unknown.
+- **New Settings toggle — "Auto-detect absolute episode number"** in Settings → 🎌 AniList (default **off**). When enabled, `{AbsoluteEpisode}` is populated for TV episodes by a two-stage lookup:
+  1. **Filename parse (primary, offline).** `FilenameParser.ParseAbsoluteEpisode` reads an absolute number from common fansub layouts — `[Group] Show - 153 [1080p]`, `Show - 153`, `Show E153` / `Ep153` / `Episode 153`, and trailing `Show 153 [BD]`. It never fires when a season/episode code (`S01E01` / `1x01`) is present (that number is season-relative), and rejects candidates that look like a year (1900–2099) or a resolution height (480/576/720/1080/1440/2160).
+  2. **AniList relations-graph fallback (best-effort, network).** Only when the filename has no absolute number *and* the file is AniList-matched. `AniListApiService.ComputeAbsoluteEpisodeAsync` walks the `PREQUEL` relation chain backwards, summing each earlier entry's `episodes` count, and adds the in-season episode. On any uncertainty — a fork in the chain, a cycle, a missing episode count, or a network error — it returns null and the token resolves empty rather than emitting a confidently-wrong number. Runs only at rename time; live preview shows the filename-derived value.
+- **`MovieMetadata.AniListId`** added (with Clone support) so the AniList ID is retained from search through to rename, enabling the fallback.
+- **Fixed: EXE filename drift.** The project's `<AssemblyName>` was hardcoded to `v1.4.0.119`, so newer builds still published as that filename. The version is now defined once via a `<FullVersion>` property; `AssemblyName`, `AssemblyVersion`, and `FileVersion` all derive from it.
+
+New unit tests cover absolute-number parsing (including the year/resolution/season-code guards) and `{AbsoluteEpisode}` token rendering, padding, conditional-block behaviour, and coexistence with multi-episode ranges. The AniList relations-graph walk is a live-network path and is intentionally not unit-tested.
+
+---
+
 ## v1.4.0 Build 120 — Rename engine: conditional blocks, zero-pad control, multi-episode ranges
 
 The filename builder (`FileRenameService.BuildFileName`) was rewritten from a flat `.Replace()` token chain into a small tokenizer. Three grammar additions, all opt-in or backward-compatible — every existing rename pattern produces byte-for-byte identical output.
