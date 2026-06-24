@@ -373,7 +373,8 @@ public partial class MainViewModel
             });
 
             var ct = BeginOperation();
-            var (ok, failed) = await Services.NfoExportService.ExportAsync(pairs, progress, ct);
+            var (ok, failed) = await Services.NfoExportService.ExportAsync(
+                pairs, progress, ct, writeTvShowNfo: Settings.WriteTvShowNfo);
             StatusText = $"NFO export: {ok} ok, {failed} failed.";
             Log( $"[{DateTime.Now:HH:mm:ss}] NFO export: {ok} written.");
         }

@@ -2962,6 +2962,26 @@
                                         </StackPanel>
                                     </StackPanel>
                                 </GroupBox>
+                                <GroupBox Header="📄 NFO Export (Kodi / Plex / Jellyfin)">
+                                    <StackPanel>
+                                        <TextBlock FontSize="11" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                   Margin="0,0,0,8">
+                                            "📄 Export NFO" writes a Kodi-format .nfo sidecar next to each video
+                                            (movie → &lt;movie&gt;, episode → &lt;episodedetails&gt;). The Kodi format is
+                                            read by Plex's NFO Agent, Jellyfin, and Emby.
+                                        </TextBlock>
+                                        <CheckBox Content="Also write tvshow.nfo into each show folder when exporting episodes"
+                                                  IsChecked="{Binding WriteTvShowNfo}"
+                                                  ToolTip="When exporting NFOs for TV episodes, also writes a series-level tvshow.nfo into each episode's folder (once per folder). Contains the show title, plot, genres, and series IDs. Off by default."/>
+                                        <TextBlock FontSize="11" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                   Margin="18,2,0,0">
+                                            tvshow.nfo is written from the episode's metadata (show title, genres, series IDs).
+                                            For best results, place each show's episodes in their own folder.
+                                        </TextBlock>
+                                    </StackPanel>
+                                </GroupBox>
                                 <GroupBox Header="📦 Move / Copy — Saved Settings">
                                     <StackPanel>
                                         <TextBlock FontSize="11"
@@ -5042,6 +5062,11 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 122 — NFO export overhaul: tvshow.nfo, multi-episode blocks, stricter Kodi format
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        The .nfo sidecar exporter was reworked into pure, unit-tested XML builders and brought fully in line with the Kodi/XBMC format that Plex (NFO Agent), Jellyfin, and Emby all read. New: an optional tvshow.nfo (Settings → 📄 NFO Export) written once per show folder when exporting episode NFOs; multi-episode files now emit one &lt;episodedetails&gt; block per episode in the range; &lt;originaltitle&gt;, proper &lt;uniqueid&gt; default flagging (first id marked default="true"), &lt;ratings&gt; with value+votes, and &lt;actor&gt; with &lt;order&gt;. Genres and cast are split into individual elements. The XML declaration now matches the spec (UTF-8, standalone="yes") and apostrophes are escaped. The "📄 Export NFO" button and batch/library export are unchanged in how they're used; only the output quality improved. Existing patterns and all prior behaviour are preserved.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 121 — {AbsoluteEpisode} token + EXE filename now tracks the version
                                         ─────────────────────────────────────────────────────────────────────────────────────

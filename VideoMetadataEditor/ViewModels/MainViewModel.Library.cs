@@ -1292,7 +1292,8 @@ public partial class MainViewModel
         var progress = new System.Progress<(int done, int total)>(p =>
             LibraryScanStatus = $"Exporting NFO… {p.done}/{p.total}");
 
-        var result = await Services.NfoExportService.ExportAsync(pairs, progress);
+        var result = await Services.NfoExportService.ExportAsync(
+            pairs, progress, default, writeTvShowNfo: Settings.WriteTvShowNfo);
         int ok     = result.ok;
         int failed = result.failed;
 

@@ -2,6 +2,19 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 122 — NFO export overhaul: tvshow.nfo, multi-episode blocks, stricter Kodi format
+
+The `.nfo` sidecar exporter (`NfoExportService`) was reworked into pure, unit-tested XML builders (`BuildMovieNfo`, `BuildEpisodeNfo`, `BuildTvShowNfo`) and brought fully in line with the Kodi/XBMC NFO format — the common standard read by Plex's NFO Agent, Jellyfin, and Emby. The `📄 Export NFO` button, batch export, and library export are unchanged in how they're invoked; the output quality improved and gained new capabilities.
+
+- **Optional `tvshow.nfo`.** A new Settings → 📄 NFO Export toggle ("Also write tvshow.nfo into each show folder", default **off**). When exporting episode NFOs, a series-level `<tvshow>` file is written once per distinct show folder, carrying the show title, plot, genres, premiered date, and series unique IDs.
+- **Multi-episode files.** A file covering a range now emits one `<episodedetails>` block per episode in that range (the Plex/Kodi multi-episode convention), instead of a single block.
+- **Format correctness.** XML declaration now matches the spec (`UTF-8`, `standalone="yes"`); `<originaltitle>` added for movies; `<uniqueid>` elements now flag the first ID `default="true"` (tmdb → imdb → tvdb precedence); `<ratings>` carries `<value>` and `<votes>`; `<actor>` now includes `<order>`. Genres and cast are split into individual `<genre>`/`<actor>` elements. Apostrophes are now escaped alongside the other XML entities. Empty fields are omitted rather than written as empty tags.
+- **Flavour switch.** A `NfoFlavour` (Kodi/Plex/Jellyfin) selects minor per-target differences — currently, Jellyfin also receives `<played>` alongside `<watched>`. Default is Kodi (universal).
+
+New unit tests assert well-formed XML, field mapping, genre/actor splitting, uniqueid default flagging, the ratings block, multi-episode block counts, XML escaping (including `&`, `<`, `>`, `"`, `'`), empty-field omission, and the watched/played flavour difference. The file-writing wrapper is exercised indirectly; its path helpers are tested directly.
+
+---
+
 ## v1.4.0 Build 121 — {AbsoluteEpisode} rename token + version-tracked EXE filename
 
 Adds anime absolute (series-wide) episode numbering to the rename engine, plus a fix so the published EXE filename can never drift from the build number again.

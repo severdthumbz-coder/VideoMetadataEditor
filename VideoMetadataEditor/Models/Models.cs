@@ -58,6 +58,9 @@ public class AppSettings
     // "[Group] Show - 153"), and if absent, by an AniList relations-graph lookup when
     // the file is AniList-matched. Off by default.
     public bool   AniListAutoDetectAbsolute { get; set; } = false;
+    // When true, exporting episode NFOs also writes a tvshow.nfo into each episode's
+    // show folder (once per folder). Off by default.
+    public bool   WriteTvShowNfo { get; set; } = false;
     public List<string> RenamePresets { get; set; } = new()
     {
         "{Title} ({Year})",
