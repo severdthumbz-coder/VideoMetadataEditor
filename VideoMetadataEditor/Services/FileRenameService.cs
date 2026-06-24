@@ -9,7 +9,7 @@ public class FileRenameService
 {
     private static readonly char[] InvalidChars = Path.GetInvalidFileNameChars();
 
-    // Token: {Name} or {Name:format}.  Conditional block: [ ... ] containing tokens/literals.
+    // Token: {Name} or {Name:format}.  Conditional block: < ... > containing tokens/literals (square brackets stay literal).
     private static readonly Regex TokenRegex = new(
         @"\{(?<name>[A-Za-z]+)(?::(?<fmt>[^}]+))?\}",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -24,9 +24,10 @@ public class FileRenameService
     ///   • Format spec  {Season:00} / {Episode:000} — zero-pad width. Default pad
     ///     for Season/Episode remains 2 (D2) when no spec is given, so legacy
     ///     patterns are unchanged.
-    ///   • Conditional block  [ ... ] — the entire bracketed segment (literals
-    ///     included) is emitted only if EVERY token inside resolved to non-empty.
-    ///     Example: "{ShowTitle}[ - {EpisodeTitle}]" drops " - " when no title.
+    ///   • Conditional block  &lt; ... &gt; — the entire angle-bracketed segment
+    ///     (literals included) is emitted only if EVERY token inside resolved to
+    ///     non-empty. Example: "{ShowTitle}&lt; - {EpisodeTitle}&gt;" drops " - " when
+    ///     no title. Square brackets [ ] are always literal (the {ImdbId}/{MPA} idiom).
     ///   • Multi-episode range — when <paramref name="episodeEnd"/> is supplied and
     ///     greater than meta.Episode, {Episode} renders as "01-03" (respecting pad).
     /// </summary>
@@ -65,12 +66,12 @@ public class FileRenameService
         while (i < pattern.Length)
         {
             char c = pattern[i];
-            if (c == '[')
+            if (c == '<')
             {
-                int close = pattern.IndexOf(']', i + 1);
+                int close = pattern.IndexOf('>', i + 1);
                 if (close < 0)
                 {
-                    // Unbalanced '[' — treat the rest as a literal block with no closing.
+                    // Unbalanced '<' — treat the rest as a literal block with no closing.
                     sb.Append(SubstituteTokens(pattern[(i + 1)..], meta, resolution, format, episodeEnd, out _));
                     break;
                 }
@@ -84,8 +85,9 @@ public class FileRenameService
             }
             else
             {
-                // Literal run up to the next '['
-                int next = pattern.IndexOf('[', i);
+                // Literal run up to the next '<'. Square brackets [ ] are plain literals
+                // (the common {ImdbId}/{MPA} bracket idiom), NOT conditional delimiters.
+                int next = pattern.IndexOf('<', i);
                 if (next < 0) next = pattern.Length;
                 var segment = pattern.Substring(i, next - i);
                 sb.Append(SubstituteTokens(segment, meta, resolution, format, episodeEnd, out _));
@@ -98,7 +100,7 @@ public class FileRenameService
     /// <summary>
     /// Substitutes every {Token} / {Token:fmt} in <paramref name="segment"/>.
     /// Sets <paramref name="anyTokenEmpty"/> true if the segment contained at least
-    /// one token AND any token resolved to an empty string (used for [ ] blocks).
+    /// one token AND any token resolved to an empty string (used for < > blocks).
     /// </summary>
     private string SubstituteTokens(string segment, MovieMetadata meta,
         string resolution, string format, int? episodeEnd, out bool anyTokenEmpty)

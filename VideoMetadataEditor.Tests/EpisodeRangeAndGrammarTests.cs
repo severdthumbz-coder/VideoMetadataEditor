@@ -105,7 +105,7 @@ public class EpisodeRangeAndGrammarTests
     [Fact]
     public void Conditional_DroppedWhenTokenEmpty()
     {
-        var result = Svc.BuildFileName("{ShowTitle} S{Season}E{Episode}[ - {EpisodeTitle}]",
+        var result = Svc.BuildFileName("{ShowTitle} S{Season}E{Episode}< - {EpisodeTitle}>",
             Episode(1, 1, epTitle: ""), ".mkv");
         Assert.Equal("Breaking Bad S01E01.mkv", result);
     }
@@ -113,7 +113,7 @@ public class EpisodeRangeAndGrammarTests
     [Fact]
     public void Conditional_KeptWhenTokenPresent()
     {
-        var result = Svc.BuildFileName("{ShowTitle} S{Season}E{Episode}[ - {EpisodeTitle}]",
+        var result = Svc.BuildFileName("{ShowTitle} S{Season}E{Episode}< - {EpisodeTitle}>",
             Episode(1, 1, epTitle: "Pilot"), ".mkv");
         Assert.Equal("Breaking Bad S01E01 - Pilot.mkv", result);
     }
@@ -126,7 +126,7 @@ public class EpisodeRangeAndGrammarTests
             IsEpisode = true, ShowTitle = "Show", Season = 1, Episode = 2,
             EpisodeTitle = "", AiredDate = "2020-01-01"
         };
-        var result = Svc.BuildFileName("{ShowTitle}[ - {EpisodeTitle}][ ({Aired})]", meta, ".mkv");
+        var result = Svc.BuildFileName("{ShowTitle}< - {EpisodeTitle}>< ({Aired})>", meta, ".mkv");
         Assert.Equal("Show (2020-01-01).mkv", result);
     }
 
@@ -139,7 +139,7 @@ public class EpisodeRangeAndGrammarTests
             Director = "", Year = "2020"
         };
         // Block needs BOTH Director and Year; Director empty → whole block dropped
-        var result = Svc.BuildFileName("{ShowTitle}[ - {Director} {Year}]", meta, ".mkv");
+        var result = Svc.BuildFileName("{ShowTitle}< - {Director} {Year}>", meta, ".mkv");
         Assert.Equal("Show.mkv", result);
     }
 
@@ -179,5 +179,23 @@ public class EpisodeRangeAndGrammarTests
         var meta = new MovieMetadata { Title = "X" };
         var result = Svc.BuildFileName("{Title} {Bogus}", meta, ".mp4");
         Assert.Equal("X {Bogus}.mp4", result);
+    }
+
+    // ── Regression: literal square brackets are NOT conditional delimiters ───────
+
+    [Fact]
+    public void LiteralSquareBrackets_MpaIdiom_Preserved()
+    {
+        var meta = new MovieMetadata { Title = "Test Movie", Year = "2024", MpaRating = "PG-13" };
+        var result = Svc.BuildFileName("{Title} ({Year}) [{MPA}]", meta, ".mp4");
+        Assert.Equal("Test Movie (2024) [PG-13].mp4", result);
+    }
+
+    [Fact]
+    public void LiteralSquareBrackets_ImdbIdiom_Preserved()
+    {
+        var meta = new MovieMetadata { Title = "Test Movie", Year = "2024", ImdbId = "tt1234567" };
+        var result = Svc.BuildFileName("{Title} ({Year}) [{ImdbId}]", meta, ".mkv");
+        Assert.Equal("Test Movie (2024) [tt1234567].mkv", result);
     }
 }
