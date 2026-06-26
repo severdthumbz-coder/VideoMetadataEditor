@@ -1,0 +1,152 @@
+<Window x:Class="VideoMetadataEditor.Views.BatchEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Batch Edit Fields"
+        Width="560" MinWidth="480"
+        SizeToContent="Height"
+        MaxHeight="720"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResizeWithGrip"
+        ShowInTaskbar="False"
+        Background="{DynamicResource SurfaceBrush}"
+        Foreground="{DynamicResource ForegroundBrush}">
+
+    <Window.Resources>
+        <Style TargetType="CheckBox" x:Key="FieldCheck">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="MinWidth" Value="120"/>
+        </Style>
+        <Style TargetType="TextBox" x:Key="FieldInput">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="4,3"/>
+        </Style>
+        <Style TargetType="Button" x:Key="DlgBtn">
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="MinWidth" Value="88"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock x:Name="HeaderText"
+                       FontSize="14" FontWeight="SemiBold"
+                       Text="Apply shared field values to selected files"/>
+            <TextBlock FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
+                       Foreground="{DynamicResource ForegroundMutedBrush}"
+                       Text="Tick a field to change it across all selected files. Unticked fields are left untouched. Per-file values like Title, Episode, IDs and plot are intentionally not editable here. This change can be reverted with ↩ Undo Batch."/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1">
+            <!-- Genre (multi-value, mode) -->
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <CheckBox Grid.Column="0" x:Name="GenreCheck" Content="Genre" Style="{StaticResource FieldCheck}"/>
+                <TextBox  Grid.Column="1" x:Name="GenreInput" Style="{StaticResource FieldInput}"
+                          IsEnabled="{Binding IsChecked, ElementName=GenreCheck}"/>
+                <ComboBox Grid.Column="2" x:Name="GenreMode" Width="100" Margin="6,0,0,0"
+                          VerticalAlignment="Center"
+                          IsEnabled="{Binding IsChecked, ElementName=GenreCheck}"
+                          SelectedIndex="0">
+                    <ComboBoxItem Content="Replace"/>
+                    <ComboBoxItem Content="Append"/>
+                </ComboBox>
+            </Grid>
+
+            <!-- Cast (multi-value, mode) -->
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <CheckBox Grid.Column="0" x:Name="CastCheck" Content="Cast" Style="{StaticResource FieldCheck}"/>
+                <TextBox  Grid.Column="1" x:Name="CastInput" Style="{StaticResource FieldInput}"
+                          IsEnabled="{Binding IsChecked, ElementName=CastCheck}"/>
+                <ComboBox Grid.Column="2" x:Name="CastMode" Width="100" Margin="6,0,0,0"
+                          VerticalAlignment="Center"
+                          IsEnabled="{Binding IsChecked, ElementName=CastCheck}"
+                          SelectedIndex="0">
+                    <ComboBoxItem Content="Replace"/>
+                    <ComboBoxItem Content="Append"/>
+                </ComboBox>
+            </Grid>
+
+            <!-- Director (replace) -->
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <CheckBox Grid.Column="0" x:Name="DirectorCheck" Content="Director" Style="{StaticResource FieldCheck}"/>
+                <TextBox  Grid.Column="1" x:Name="DirectorInput" Style="{StaticResource FieldInput}"
+                          IsEnabled="{Binding IsChecked, ElementName=DirectorCheck}"/>
+            </Grid>
+
+            <!-- MPA rating (replace) -->
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <CheckBox Grid.Column="0" x:Name="MpaCheck" Content="MPA rating" Style="{StaticResource FieldCheck}"/>
+                <TextBox  Grid.Column="1" x:Name="MpaInput" Style="{StaticResource FieldInput}"
+                          IsEnabled="{Binding IsChecked, ElementName=MpaCheck}"/>
+            </Grid>
+
+            <!-- Year (replace) -->
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <CheckBox Grid.Column="0" x:Name="YearCheck" Content="Year" Style="{StaticResource FieldCheck}"/>
+                <TextBox  Grid.Column="1" x:Name="YearInput" Style="{StaticResource FieldInput}"
+                          IsEnabled="{Binding IsChecked, ElementName=YearCheck}"/>
+            </Grid>
+
+            <!-- Show title (replace, episodes) -->
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <CheckBox Grid.Column="0" x:Name="ShowTitleCheck" Content="Show title" Style="{StaticResource FieldCheck}"/>
+                <TextBox  Grid.Column="1" x:Name="ShowTitleInput" Style="{StaticResource FieldInput}"
+                          IsEnabled="{Binding IsChecked, ElementName=ShowTitleCheck}"/>
+            </Grid>
+
+            <!-- Watched (tri-state) -->
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <CheckBox Grid.Column="0" x:Name="WatchedCheck" Content="Watched" Style="{StaticResource FieldCheck}"/>
+                <ComboBox Grid.Column="1" x:Name="WatchedMode" VerticalAlignment="Center"
+                          IsEnabled="{Binding IsChecked, ElementName=WatchedCheck}"
+                          SelectedIndex="0">
+                    <ComboBoxItem Content="Set watched"/>
+                    <ComboBoxItem Content="Set unwatched"/>
+                </ComboBox>
+            </Grid>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Cancel" Style="{StaticResource DlgBtn}" Click="Cancel_Click" IsCancel="True"/>
+            <Button Content="Apply"  Style="{StaticResource DlgBtn}" Click="Apply_Click" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

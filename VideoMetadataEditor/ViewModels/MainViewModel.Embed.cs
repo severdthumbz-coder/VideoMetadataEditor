@@ -469,6 +469,119 @@ public partial class MainViewModel
         return null;
     }
 
+    /// <summary>
+    /// Batch field editing: apply one or more SHARED field values across all selected
+    /// files. Opens the batch-edit dialog, applies the chosen edits to each file's
+    /// existing metadata, writes through the normal metadata-write path, and records an
+    /// Undo Batch snapshot so the whole operation can be reverted with ↩ Undo Batch.
+    /// Does NOT rename (this only touches embedded fields) and preserves existing artwork.
+    /// </summary>
+    private async Task BatchEditFieldsAsync()
+    {
+        var selected = Files.Where(f => f.IsSelected && !f.IsSeparator).ToList();
+        if (selected.Count == 0) return;
+
+        // Collect the edits via the dialog (UI thread).
+        var owner = System.Windows.Application.Current?.MainWindow;
+        var dlg = new Views.BatchEditDialog(selected.Count, owner);
+        if (dlg.ShowDialog() != true || dlg.Result is null) return;
+        var edits = dlg.Result;
+
+        // Warn before discarding a previous undo snapshot (same contract as BatchProcess).
+        if (_batchUndoFiles.Count > 0)
+        {
+            var proceed = System.Windows.MessageBox.Show(
+                $"Starting a batch edit will clear the Undo Batch snapshot for the previous {_batchUndoFiles.Count} file(s).\n\n" +
+                "If you want to undo the previous batch first, click No and use the ↩ Undo Batch button.\n\n" +
+                "Continue with the batch edit?",
+                "Previous Undo Batch will be cleared",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning,
+                System.Windows.MessageBoxResult.Yes);
+            if (proceed != System.Windows.MessageBoxResult.Yes) return;
+        }
+
+        var ct = BeginOperation();
+        IsBusy = true;
+        _batchUndoFiles.Clear();
+        RaiseProperty(nameof(CanUndoBatch));
+
+        var progress = new System.Progress<string>(msg =>
+        {
+            Log($"[{DateTime.Now:HH:mm:ss}] {msg}");
+            StatusText = msg;
+        });
+
+        int done = 0, ok = 0, fail = 0;
+        try
+        {
+            foreach (var vf in selected)
+            {
+                if (ct.IsCancellationRequested) break;
+                done++;
+                StatusText = $"Batch edit {done}/{selected.Count}: {Path.GetFileName(vf.FilePath)}";
+
+                try
+                {
+                    // Start from the file's current on-disk metadata (source of truth),
+                    // clone it, and apply only the ticked field edits.
+                    var edited = vf.EmbeddedMetadata.Clone();
+
+                    // Preserve existing artwork so a field-only edit never drops the poster.
+                    if (edited.ArtworkBytes is not { Length: > 0 }
+                        && vf.EmbeddedMetadata.ArtworkBytes is { Length: > 0 })
+                        edited.ArtworkBytes = vf.EmbeddedMetadata.ArtworkBytes;
+
+                    Services.BatchFieldEditService.ApplyEdits(edited, edits);
+
+                    var writeResult = await _metadataService.WriteMetadataDetailedAsync(
+                        vf.FilePath, edited, Settings, progress, ct: ct);
+
+                    if (writeResult.Success)
+                    {
+                        // Undo snapshot BEFORE we overwrite the in-memory metadata.
+                        vf.UndoFilePath = vf.FilePath;
+                        vf.UndoMetadata = vf.EmbeddedMetadata.Clone();
+                        lock (_batchUndoFiles) _batchUndoFiles.Add(vf);
+
+                        // Reflect the change in the UI/model.
+                        vf.EmbeddedMetadata = edited;
+                        vf.PendingMetadata  = edited.Clone();
+                        if (SelectedFile == vf) CopyMetadataTo(edited, EditingMetadata);
+                        vf.WriteStatus = Models.WriteStatus.Success;
+                        _libraryScanService?.MarkAsEmbedded(vf.FilePath);
+                        ok++;
+                    }
+                    else
+                    {
+                        vf.WriteStatus = Models.WriteStatus.Failed;
+                        var why = writeResult.AttemptErrors.Count > 0
+                            ? string.Join("; ", writeResult.AttemptErrors)
+                            : "write failed";
+                        Log($"[{DateTime.Now:HH:mm:ss}] Batch edit failed: {Path.GetFileName(vf.FilePath)} — {why}");
+                        fail++;
+                    }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    vf.WriteStatus = Models.WriteStatus.Failed;
+                    Log($"[{DateTime.Now:HH:mm:ss}] Batch edit error: {Path.GetFileName(vf.FilePath)} — {ex.Message}");
+                    fail++;
+                }
+            }
+        }
+        catch (OperationCanceledException) { /* user cancelled — keep partial results */ }
+        finally
+        {
+            RaiseProperty(nameof(CanUndoBatch));
+            StatusText = $"Batch edit complete: {ok} updated, {fail} failed.";
+            Log($"[{DateTime.Now:HH:mm:ss}] Batch edit complete: {ok} updated, {fail} failed.");
+            EndOperation();
+            IsBusy = false;
+        }
+    }
+
     private async Task BatchProcessAsync()
     {
         var selected = Files.Where(f => f.IsSelected && !f.IsSeparator).ToList();

@@ -124,6 +124,11 @@
                             Command="{Binding BatchRenameOnlyCommand}"
                             ToolTip="Rename all selected files using the pattern. No metadata tags are written."
                             Padding="10,6" Margin="8,0,0,0"/>
+                    <Button Content="✎ Batch Edit Fields"
+                            Style="{StaticResource SecondaryButton}"
+                            Command="{Binding BatchEditFieldsCommand}"
+                            Padding="10,6" Margin="8,0,0,0"
+                            ToolTip="Apply one or more shared field values (Genre, Cast, Director, MPA, Year, Show title, Watched) across all selected files at once. Per-file values like Title, Episode and IDs are not changed. Revertible with ↩ Undo Batch."/>
                     <Button Content="{Binding CancelButtonLabel}"
                             Style="{StaticResource SecondaryButton}"
                             Command="{Binding CancelOperationCommand}"
@@ -5062,6 +5067,11 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 123 — Batch field editing
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        New "✎ Batch Edit Fields" button (top toolbar, enabled when files are selected) applies one or more shared field values across every selected file in a single operation. A checkbox dialog lets you change only the fields you tick: Genre, Cast, Director, MPA rating, Year, Show title, and Watched. Genre and Cast support Replace or Append (Append merges and de-duplicates case-insensitively). Per-file-unique fields — Title, Episode title, Season/Episode, plot, aired date, IDs, and rating — are intentionally NOT batch-editable, so a shared value can never overwrite them. Each file is written through the normal metadata-write path, existing artwork is preserved, and the whole operation is recorded as an Undo Batch snapshot, so "↩ Undo Batch" reverts every changed file at once. Batch editing does not rename files.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 122 — NFO export overhaul: tvshow.nfo, multi-episode blocks, stricter Kodi format
                                         ─────────────────────────────────────────────────────────────────────────────────────

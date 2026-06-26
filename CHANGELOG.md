@@ -2,6 +2,19 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 123 — Batch field editing
+
+Adds the ability to apply shared field values across many files at once — the last of the originally planned enhancements.
+
+- **New "✎ Batch Edit Fields" button** in the top toolbar (enabled when one or more files are selected). Opens a checkbox dialog; only ticked fields are changed, everything else is left untouched.
+- **Editable fields:** Genre, Cast, Director, MPA rating, Year, Show title, and Watched (set watched / set unwatched). Genre and Cast support **Replace** or **Append** — Append merges the new values into the existing list, de-duplicated case-insensitively, preserving order.
+- **Safety by design:** per-file-unique fields (Title, Episode title, Season, Episode, plot, aired date, IMDb/TMDB/AniList IDs, rating/votes) are intentionally not batch-editable, so a single shared value can never overwrite data that must differ per file.
+- **Reuses existing infrastructure:** each file is written through the normal `WriteMetadataDetailedAsync` path, existing artwork is preserved (a field-only edit never drops the poster), and the operation is captured as an Undo Batch snapshot — "↩ Undo Batch" reverts all changed files together. Batch editing does not rename files.
+
+The merge logic lives in a pure, unit-tested `BatchFieldEditService` (`ApplyEdits`, `CombineCsv`); the dialog and write loop are the only UI/disk-touching parts. New tests cover opt-in field selection, single-value replaces, Replace vs Append (including case-insensitive de-dup and empty-existing/empty-replace edges), the watched tri-state, the HasAnyChange gate, and null-safety.
+
+---
+
 ## v1.4.0 Build 122 — NFO export overhaul: tvshow.nfo, multi-episode blocks, stricter Kodi format
 
 The `.nfo` sidecar exporter (`NfoExportService`) was reworked into pure, unit-tested XML builders (`BuildMovieNfo`, `BuildEpisodeNfo`, `BuildTvShowNfo`) and brought fully in line with the Kodi/XBMC NFO format — the common standard read by Plex's NFO Agent, Jellyfin, and Emby. The `📄 Export NFO` button, batch export, and library export are unchanged in how they're invoked; the output quality improved and gained new capabilities.
