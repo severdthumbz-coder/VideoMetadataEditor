@@ -54,7 +54,7 @@ public static class NfoImportService
 
     private static MovieMetadata ParseMovie(XElement root)
     {
-        var m = new MovieMetadata { IsEpisode = false, Source = "NFO" };
+        var m = new MovieMetadata { IsEpisode = false };
         m.Title       = Str(root, "title", "originaltitle");
         m.Year        = Str(root, "year");
         m.Description = Str(root, "plot", "outline");
@@ -70,7 +70,7 @@ public static class NfoImportService
 
     private static MovieMetadata ParseEpisode(XElement root)
     {
-        var m = new MovieMetadata { IsEpisode = true, Source = "NFO" };
+        var m = new MovieMetadata { IsEpisode = true };
         m.EpisodeTitle = Str(root, "title");
         m.ShowTitle    = Str(root, "showtitle");
         m.Season       = Int(root, "season");
@@ -89,7 +89,7 @@ public static class NfoImportService
 
     private static MovieMetadata ParseTvShow(XElement root)
     {
-        var m = new MovieMetadata { IsEpisode = true, Source = "NFO" };
+        var m = new MovieMetadata { IsEpisode = true };
         m.ShowTitle   = Str(root, "title");
         m.Description = Str(root, "plot", "outline");
         m.MpaRating   = Str(root, "mpaa");
