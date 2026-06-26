@@ -41,6 +41,7 @@
     <Compile Include="../VideoMetadataEditor/Services/SubtitleDetector.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/NfoExportService.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/BatchFieldEditService.cs"/>
+    <Compile Include="../VideoMetadataEditor/Services/ArtworkSidecarService.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/Models.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/LibraryModels.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/SubtitleModels.cs"/>

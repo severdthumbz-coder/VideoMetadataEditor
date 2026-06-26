@@ -61,6 +61,10 @@ public class AppSettings
     // When true, exporting episode NFOs also writes a tvshow.nfo into each episode's
     // show folder (once per folder). Off by default.
     public bool   WriteTvShowNfo { get; set; } = false;
+    // Artwork sidecar export. ExportArtworkSidecars enables the "Export Artwork" action;
+    // ArtworkNamingStyle: 0 = Kodi (<video>-poster.jpg), 1 = Plex/Jellyfin (poster.jpg).
+    public bool   ExportArtworkSidecars { get; set; } = false;
+    public int    ArtworkNamingStyle    { get; set; } = 0;
     public List<string> RenamePresets { get; set; } = new()
     {
         "{Title} ({Year})",

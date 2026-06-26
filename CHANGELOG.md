@@ -2,6 +2,21 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 124 — Artwork sidecar export
+
+Adds the ability to write poster artwork as sidecar image files next to the media, completing the on-disk sidecar story alongside NFO export. Plex, Jellyfin, Emby, and Kodi all read these.
+
+- **New "🖼 Export Artwork" button** (Metadata tab action row; applies to all selected files). Writes the poster image to disk next to each video.
+- **Two naming styles** (Settings → 🖼 Artwork Export):
+  - **Kodi** (default) — `<video basename>-poster.jpg`; TV episodes use `-thumb.jpg`. Works even when multiple videos share a folder.
+  - **Plex / Jellyfin** — a single `poster.jpg` in the video's folder.
+- **Artwork source chain:** in-memory metadata → embedded tag (`ReadArtworkOnly`) → TMDB download (when a TMDB ID is present). Files with no obtainable image are skipped and counted, not failed.
+- The path/naming logic lives in a pure, unit-tested `ArtworkSidecarService`; the write wrapper handles no-art and overwrite cases. New tests cover Kodi/Plex naming for movies and episodes, the show-folder poster path, and the write wrapper (no-art, empty-art, write-to-path, overwrite on/off).
+
+Poster-only for this build; fanart/backdrop is planned for a later build (the metadata model carries no backdrop URL yet).
+
+---
+
 ## v1.4.0 Build 123 — Batch field editing
 
 Adds the ability to apply shared field values across many files at once — the last of the originally planned enhancements.

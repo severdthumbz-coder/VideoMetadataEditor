@@ -311,6 +311,95 @@ public partial class MainViewModel
         finally { EndOperation(); }
     }
 
+    /// <summary>
+    /// Writes poster artwork as sidecar image files next to each selected video, using
+    /// the naming style from Settings (Kodi &lt;video&gt;-poster.jpg, or Plex/Jellyfin
+    /// poster.jpg). For each file the artwork is taken from in-memory metadata, else read
+    /// from the embedded tag, else downloaded via TMDB when a TmdbId is present. Files
+    /// with no obtainable artwork are skipped (counted, not failed).
+    /// </summary>
+    private async Task ExportArtworkAsync()
+    {
+        var selected = Files.Where(f => f.IsSelected && !f.IsSeparator).ToList();
+        if (selected.Count == 0) return;
+
+        var naming = Settings.ArtworkNamingStyle == 1
+            ? Services.ArtworkSidecarService.ArtworkNaming.PlexJellyfin
+            : Services.ArtworkSidecarService.ArtworkNaming.Kodi;
+
+        var ct = BeginOperation();
+        IsBusy = true;
+        int done = 0, ok = 0, skipped = 0, failed = 0;
+        StatusText = $"Exporting artwork for {selected.Count} file(s)…";
+        ProgressValue = 0;
+
+        try
+        {
+            foreach (var vf in selected)
+            {
+                if (ct.IsCancellationRequested) break;
+                done++;
+                ProgressValue = (int)((double)done / selected.Count * 100);
+                StatusText = $"Exporting artwork {done}/{selected.Count}: {Path.GetFileName(vf.FilePath)}";
+
+                try
+                {
+                    // 1. In-memory bytes (already loaded/downloaded).
+                    byte[]? art = vf.EmbeddedMetadata.ArtworkBytes is { Length: > 0 }
+                        ? vf.EmbeddedMetadata.ArtworkBytes
+                        : vf.PendingMetadata.ArtworkBytes is { Length: > 0 }
+                            ? vf.PendingMetadata.ArtworkBytes
+                            : null;
+
+                    // 2. Read embedded artwork from the file.
+                    if (art is null)
+                        art = await Task.Run(() => _metadataService.ReadArtworkOnly(vf.FilePath), ct);
+
+                    // 3. Download from TMDB if we have an ID and still no art.
+                    if (art is null && !string.IsNullOrWhiteSpace(vf.EmbeddedMetadata.TmdbId))
+                    {
+                        var (meta, _) = await _apiService.GetTmdbDetailsAsync(
+                            vf.EmbeddedMetadata.TmdbId, TmdbKey, ct);
+                        if (meta?.ArtworkBytes is { Length: > 0 })
+                        {
+                            art = meta.ArtworkBytes;
+                            vf.EmbeddedMetadata.ArtworkBytes = art; // cache for reuse
+                        }
+                    }
+
+                    if (art is not { Length: > 0 })
+                    {
+                        skipped++;
+                        Log($"[{DateTime.Now:HH:mm:ss}] Artwork export skipped (no image): {Path.GetFileName(vf.FilePath)}");
+                        continue;
+                    }
+
+                    var (wOk, path, err) = await Services.ArtworkSidecarService.WriteSidecarAsync(
+                        vf.FilePath, art, naming, vf.EmbeddedMetadata.IsEpisode, overwrite: true, ct: ct);
+                    if (wOk)
+                    {
+                        ok++;
+                        Log($"[{DateTime.Now:HH:mm:ss}] Artwork → {Path.GetFileName(path)}");
+                    }
+                    else
+                    {
+                        failed++;
+                        Log($"[{DateTime.Now:HH:mm:ss}] Artwork export failed: {Path.GetFileName(vf.FilePath)} — {err}");
+                    }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    failed++;
+                    Log($"[{DateTime.Now:HH:mm:ss}] Artwork export error: {Path.GetFileName(vf.FilePath)} — {ex.Message}");
+                }
+            }
+            StatusText = $"Artwork export: {ok} written, {skipped} skipped, {failed} failed.";
+        }
+        catch (OperationCanceledException) { /* keep partial results */ }
+        finally { EndOperation(); IsBusy = false; }
+    }
+
     // ── Export CSV ───────────────────────────────────────────────────────────
 
     private async Task ExportCsvAsync()

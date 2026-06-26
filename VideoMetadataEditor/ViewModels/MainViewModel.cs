@@ -1142,6 +1142,18 @@ public partial class MainViewModel : INotifyPropertyChanged
         set { Settings.WriteTvShowNfo = value; RaiseProperty(); _ = App.ConfigService.SaveAsync(); }
     }
 
+    public bool ExportArtworkSidecars
+    {
+        get => Settings.ExportArtworkSidecars;
+        set { Settings.ExportArtworkSidecars = value; RaiseProperty(); _ = App.ConfigService.SaveAsync(); }
+    }
+
+    public int ArtworkNamingStyle
+    {
+        get => Settings.ArtworkNamingStyle;
+        set { Settings.ArtworkNamingStyle = value; RaiseProperty(); _ = App.ConfigService.SaveAsync(); }
+    }
+
     // ── MKV Artwork Engine status ────────────────────────────────────────────────
     public string MkvPropEditStatus
     {
@@ -1387,6 +1399,7 @@ public partial class MainViewModel : INotifyPropertyChanged
     public ICommand UndoLastEmbedCommand    { get; }
     public ICommand BatchProcessCommand     { get; }
     public ICommand BatchEditFieldsCommand  { get; }
+    public ICommand ExportArtworkCommand    { get; }
     public ICommand BatchTvCommand          { get; private set; } = null!;
     public ICommand BatchRenameOnlyCommand  { get; }
     public ICommand RenameCurrentFileCommand { get; private set; } = null!;
@@ -1526,6 +1539,7 @@ public partial class MainViewModel : INotifyPropertyChanged
             _ => Files.Any(f => f.IsSelected && !f.IsSeparator) && !IsBusy);
         BatchProcessCommand      = new AsyncRelayCommand(BatchProcessAsync, _ => Files.Any(f => f.IsSelected && !f.IsSeparator) && !IsBusy);
         BatchEditFieldsCommand   = new AsyncRelayCommand(BatchEditFieldsAsync, _ => Files.Any(f => f.IsSelected && !f.IsSeparator) && !IsBusy);
+        ExportArtworkCommand     = new AsyncRelayCommand(ExportArtworkAsync, _ => Files.Any(f => f.IsSelected && !f.IsSeparator) && !IsBusy);
         BatchRenameOnlyCommand   = new AsyncRelayCommand(BatchRenameOnlyAsync,
             _ => Files.Any(f => f.IsSelected && !f.IsSeparator) && !IsBusy && !string.IsNullOrWhiteSpace(Settings.RenamePattern));
         CancelOperationCommand       = new RelayCommand(_ => RequestCancel(), _ => IsBusy && !IsCancelling);

@@ -926,6 +926,11 @@
                                                 Command="{Binding ExportNfoCommand}"
                                                 Padding="10,6" Margin="0,0,6,0"
                                                 ToolTip="Export Kodi/Plex compatible .nfo sidecar file alongside this video. All selected files in the Files panel will be exported."/>
+                                        <Button Content="🖼 Export Artwork"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Command="{Binding ExportArtworkCommand}"
+                                                Padding="10,6" Margin="0,0,6,0"
+                                                ToolTip="Write the poster as a sidecar image (e.g. Movie-poster.jpg, or poster.jpg in folder style) next to each selected video, for Plex/Jellyfin/Kodi to read from disk. Naming style is set in Settings → 🖼 Artwork Export. Artwork is taken from the loaded metadata, the embedded tag, or downloaded via TMDB."/>
                                         <Button Content="💾 Apply + Embed + Rename"
                                                 Style="{StaticResource PrimaryButton}"
                                                 Command="{Binding ApplyMetadataCommand}"
@@ -2984,6 +2989,29 @@
                                                    Margin="18,2,0,0">
                                             tvshow.nfo is written from the episode's metadata (show title, genres, series IDs).
                                             For best results, place each show's episodes in their own folder.
+                                        </TextBlock>
+                                    </StackPanel>
+                                </GroupBox>
+                                <GroupBox Header="🖼 Artwork Export">
+                                    <StackPanel>
+                                        <TextBlock FontSize="11" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                   Margin="0,0,0,8">
+                                            "🖼 Export Artwork" writes the poster as an image file next to each selected
+                                            video, so Plex, Jellyfin, Emby, and Kodi can read it from disk. The poster is
+                                            taken from the loaded metadata, the embedded tag, or downloaded via TMDB.
+                                        </TextBlock>
+                                        <TextBlock Text="Sidecar naming style:" Margin="0,0,0,4"/>
+                                        <ComboBox SelectedIndex="{Binding ArtworkNamingStyle}" Width="320" HorizontalAlignment="Left">
+                                            <ComboBoxItem Content="Kodi — &lt;video&gt;-poster.jpg (universal, default)"/>
+                                            <ComboBoxItem Content="Plex / Jellyfin — poster.jpg in the folder"/>
+                                        </ComboBox>
+                                        <TextBlock FontSize="11" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                   Margin="0,6,0,0">
+                                            Kodi style names the image after the video (TV episodes use -thumb.jpg) and works
+                                            even when multiple videos share a folder. Folder style writes a single poster.jpg
+                                            per folder — best when each movie/show has its own folder.
                                         </TextBlock>
                                     </StackPanel>
                                 </GroupBox>
@@ -5067,6 +5095,11 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 124 — Artwork sidecar export
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        New "🖼 Export Artwork" button writes the poster as an image file next to each selected video, so Plex, Jellyfin, Emby, and Kodi can read it from disk (not just from the embedded tag). Two naming styles, chosen in Settings → 🖼 Artwork Export: Kodi style names the image after the video (&lt;video&gt;-poster.jpg; TV episodes use -thumb.jpg) and works even when several videos share a folder; Plex/Jellyfin folder style writes a single poster.jpg per folder. The poster is sourced from the already-loaded metadata, then the embedded tag, then downloaded via TMDB when an ID is present; files with no obtainable image are skipped (counted, not failed). This build is poster-only — fanart/backdrop is planned for a later build.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 123 — Batch field editing
                                         ─────────────────────────────────────────────────────────────────────────────────────
