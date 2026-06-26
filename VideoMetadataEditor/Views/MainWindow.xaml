@@ -919,26 +919,28 @@
                                         </Grid>
                                     </Border>
 
-                                    <!-- Action buttons -->
-                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <!-- Action buttons (WrapPanel so they reflow to a second
+                                         row instead of clipping when the window is narrow) -->
+                                    <WrapPanel Orientation="Horizontal" Margin="0,4,0,0">
                                         <Button Content="📄 Export NFO"
                                                 Style="{StaticResource SecondaryButton}"
                                                 Command="{Binding ExportNfoCommand}"
-                                                Padding="10,6" Margin="0,0,6,0"
+                                                Padding="10,6" Margin="0,0,6,6"
                                                 ToolTip="Export Kodi/Plex compatible .nfo sidecar file alongside this video. All selected files in the Files panel will be exported."/>
                                         <Button Content="🖼 Export Artwork"
                                                 Style="{StaticResource SecondaryButton}"
                                                 Command="{Binding ExportArtworkCommand}"
-                                                Padding="10,6" Margin="0,0,6,0"
+                                                Padding="10,6" Margin="0,0,6,6"
                                                 ToolTip="Write the poster as a sidecar image (e.g. Movie-poster.jpg, or poster.jpg in folder style) next to each selected video, for Plex/Jellyfin/Kodi to read from disk. Naming style is set in Settings → 🖼 Artwork Export. Artwork is taken from the loaded metadata, the embedded tag, or downloaded via TMDB."/>
                                         <Button Content="📥 Import NFO"
                                                 Style="{StaticResource SecondaryButton}"
                                                 Command="{Binding ImportNfoCommand}"
-                                                Padding="10,6" Margin="0,0,6,0"
+                                                Padding="10,6" Margin="0,0,6,6"
                                                 ToolTip="Read the .nfo sidecar next to each selected video and load its metadata into the editable fields for review. Nothing is written to the file until you click Apply + Embed. Reads Kodi/Plex/Jellyfin NFOs including legacy ID and rating formats."/>
                                         <Button Content="💾 Apply + Embed + Rename"
                                                 Style="{StaticResource PrimaryButton}"
                                                 Command="{Binding ApplyMetadataCommand}"
+                                                Margin="0,0,6,6"
                                                 ToolTip="Embed the fields shown above into the file and rename it"/>
                                         <!-- Warning when auto-rename is off —only affects Batch operations -->
                                         <TextBlock Text="ⓘ Auto-rename is OFF — Batch Process and Watch Folder will not rename files. Manual rename buttons still work."
@@ -960,16 +962,16 @@
                                                 Style="{StaticResource SecondaryButton}"
                                                 Command="{Binding RenameCurrentFileCommand}"
                                                 ToolTip="Rename this file using the current pattern without embedding any metadata tags"
-                                                Margin="8,0,0,0"/>
+                                                Margin="0,0,6,6"/>
 
                                         <Button Content="📋 Use Retrieved"
                                                 Style="{StaticResource SecondaryButton}"
                                                 Command="{Binding ApplyRetrievedCommand}"
                                                 ToolTip="Copy metadata from Retrieved Data tab into this form"
-                                                Margin="8,0,0,0"/>
+                                                Margin="0,0,6,6"/>
                                         <!-- Lock / Unlock toggle for current file -->
                                         <Button Command="{Binding ToggleLockCommand}"
-                                                Margin="8,0,0,0" Padding="10,7"
+                                                Margin="0,0,6,6" Padding="10,7"
                                                 ToolTip="{Binding SelectedFile.LockToolTip}"
                                                 Cursor="Hand">
                                             <Button.Style>
@@ -985,7 +987,7 @@
                                                 </Style>
                                             </Button.Style>
                                         </Button>
-                                    </StackPanel>
+                                    </WrapPanel>
                                 </StackPanel>
 
                                 <!-- Right: Artwork + Media Player + Technical Info -->
@@ -5100,6 +5102,11 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 126 — Fix: Raw Data action buttons no longer clip
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        The bottom action row on the Raw Data tab (Export NFO, Export Artwork, Import NFO, Apply + Embed + Rename, Rename Only, Use Retrieved, Lock/Unlock) was a single horizontal row that ran past the window edge once Export Artwork and Import NFO were added in builds 124–125, clipping the rightmost buttons even when maximised. The row is now a WrapPanel: when there isn't enough width, buttons reflow onto a second line instead of being cut off. No behaviour change — purely layout.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 125 — NFO import
                                         ─────────────────────────────────────────────────────────────────────────────────────

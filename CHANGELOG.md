@@ -2,6 +2,12 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 126 — Fix: Raw Data action buttons no longer clip
+
+The bottom action-button row on the Raw Data tab (Export NFO, Export Artwork, Import NFO, Apply + Embed + Rename, Rename Only, Use Retrieved, Lock/Unlock) was laid out as a single non-wrapping horizontal row. After Export Artwork (build 124) and Import NFO (build 125) were added, the row exceeded the available width and the rightmost buttons were clipped at the window edge, with no way to reveal them even when the window was maximised. The row is now a `WrapPanel`, so buttons reflow onto a second line when width is constrained instead of being cut off. Layout-only change; no behaviour difference.
+
+---
+
 ## v1.4.0 Build 125 — NFO import
 
 Adds reading on-disk `.nfo` files back into VME — the inverse of the build-122 exporter, and the bidirectional counterpart that brings VME in line with tools like TinyMediaManager.
