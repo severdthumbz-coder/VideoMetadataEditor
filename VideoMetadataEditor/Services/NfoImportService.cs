@@ -28,17 +28,7 @@ public static class NfoImportService
     {
         if (string.IsNullOrWhiteSpace(xml)) return null;
 
-        XElement root;
-        try
-        {
-            // Some NFOs carry trailing junk or multiple roots; wrap defensively only if needed.
-            var doc = XDocument.Parse(xml);
-            root = doc.Root!;
-        }
-        catch
-        {
-            return null;
-        }
+        var root = ParseRoot(xml);
         if (root is null) return null;
 
         return root.Name.LocalName.ToLowerInvariant() switch
@@ -48,6 +38,51 @@ public static class NfoImportService
             "tvshow"         => ParseTvShow(root),
             _                => null,
         };
+    }
+
+    /// <summary>
+    /// Returns the root element to parse. Handles the standard single-root document and
+    /// the multi-episode case, where a .nfo legitimately contains several sibling
+    /// &lt;episodedetails&gt; blocks with no shared root (which is not valid standalone XML).
+    /// In that case the content is wrapped in a synthetic root and the first recognised
+    /// NFO element (movie / episodedetails / tvshow) is returned.
+    /// </summary>
+    private static XElement? ParseRoot(string xml)
+    {
+        // 1. Try as a normal single-root document.
+        try
+        {
+            return XDocument.Parse(xml).Root;
+        }
+        catch
+        {
+            // fall through to multi-root handling
+        }
+
+        // 2. Multi-root: strip any XML declaration, wrap, and take the first known element.
+        try
+        {
+            var body = StripXmlDeclaration(xml);
+            var wrapped = XDocument.Parse("<vme_nfo_root>" + body + "</vme_nfo_root>");
+            return wrapped.Root!
+                .Elements()
+                .FirstOrDefault(e =>
+                {
+                    var n = e.Name.LocalName.ToLowerInvariant();
+                    return n is "movie" or "episodedetails" or "tvshow";
+                });
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Removes a leading &lt;?xml ... ?&gt; declaration so the content can be wrapped.</summary>
+    private static string StripXmlDeclaration(string xml)
+    {
+        int close = xml.IndexOf("?>", StringComparison.Ordinal);
+        return close >= 0 ? xml[(close + 2)..] : xml;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
