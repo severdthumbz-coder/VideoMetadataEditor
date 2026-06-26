@@ -2,6 +2,24 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 125 — NFO import
+
+Adds reading on-disk `.nfo` files back into VME — the inverse of the build-122 exporter, and the bidirectional counterpart that brings VME in line with tools like TinyMediaManager.
+
+- **New "📥 Import NFO" button** (Metadata tab action row). Reads the `.nfo` sidecar next to each selected video and loads its metadata into the editable fields **for review** — nothing is written to the video until you explicitly Apply + Embed.
+- **Single + batch scope.** A single selected file loads straight into the editor; a multi-file selection populates each file's pending/retrieved metadata from its own sidecar.
+- **Real-world tolerance** (`NfoImportService.ParseNfo`, pure and fully unit-tested):
+  - IDs: modern `<uniqueid type="imdb">` **and** legacy flat `<imdbid>` / `<tmdbid>` / `<tvdbid>` / bare `<id>` (IMDb when `tt`-prefixed, else TMDB).
+  - Ratings: modern `<ratings><rating><value>` (honouring `default="true"`) **and** legacy flat `<rating>`; votes with comma separators are normalised.
+  - Multiple `<genre>` and `<actor><name>` elements collapse to VME's comma lists (actors de-duplicated, order preserved).
+  - Jellyfin `<played>` maps to watched; `<plot>`/`<outline>`, `<aired>`/`<premiered>`, `<mpaa>` map to their fields.
+  - Recognises `<movie>`, `<episodedetails>` (first block of a multi-episode file), and `<tvshow>` roots (a series id is stored as the series TMDB id). Tag casing and surrounding whitespace are tolerated.
+  - Malformed XML or an unrecognised root returns null; such files are skipped and counted, never failing the run. Existing artwork on the file is preserved (NFO carries none).
+
+New tests cover an export→import round-trip for movies and episodes, legacy flat-ID/rating formats, the bare-`<id>` heuristic, `default="true"` rating selection, multi-genre/actor joining and de-dup, the `<tvshow>` root, Jellyfin `<played>`, and a range of malformed/edge inputs.
+
+---
+
 ## v1.4.0 Build 124 — Artwork sidecar export
 
 Adds the ability to write poster artwork as sidecar image files next to the media, completing the on-disk sidecar story alongside NFO export. Plex, Jellyfin, Emby, and Kodi all read these.

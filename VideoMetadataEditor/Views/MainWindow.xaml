@@ -931,6 +931,11 @@
                                                 Command="{Binding ExportArtworkCommand}"
                                                 Padding="10,6" Margin="0,0,6,0"
                                                 ToolTip="Write the poster as a sidecar image (e.g. Movie-poster.jpg, or poster.jpg in folder style) next to each selected video, for Plex/Jellyfin/Kodi to read from disk. Naming style is set in Settings → 🖼 Artwork Export. Artwork is taken from the loaded metadata, the embedded tag, or downloaded via TMDB."/>
+                                        <Button Content="📥 Import NFO"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Command="{Binding ImportNfoCommand}"
+                                                Padding="10,6" Margin="0,0,6,0"
+                                                ToolTip="Read the .nfo sidecar next to each selected video and load its metadata into the editable fields for review. Nothing is written to the file until you click Apply + Embed. Reads Kodi/Plex/Jellyfin NFOs including legacy ID and rating formats."/>
                                         <Button Content="💾 Apply + Embed + Rename"
                                                 Style="{StaticResource PrimaryButton}"
                                                 Command="{Binding ApplyMetadataCommand}"
@@ -5095,6 +5100,11 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 125 — NFO import
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        New "📥 Import NFO" button reads the .nfo sidecar next to each selected video and loads its metadata into the editable fields for review — nothing is written to the file until you click Apply + Embed. The inverse of Export NFO, built to tolerate real-world variation: modern &lt;uniqueid type="..."&gt; AND legacy flat &lt;imdbid&gt;/&lt;tmdbid&gt;/&lt;id&gt;; the modern &lt;ratings&gt;&lt;rating&gt;&lt;value&gt; block AND a legacy flat &lt;rating&gt;; multiple &lt;genre&gt;/&lt;actor&gt; elements collapse to the comma lists; Jellyfin &lt;played&gt; maps to watched; tag casing and surrounding whitespace are handled. Recognises &lt;movie&gt;, &lt;episodedetails&gt; (first block of a multi-episode file), and &lt;tvshow&gt; roots. Single selection loads straight into the editor; a multi-file selection populates each file's pending metadata from its own sidecar. Files with no sidecar or unparseable XML are skipped and counted, never failing the run.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 124 — Artwork sidecar export
                                         ─────────────────────────────────────────────────────────────────────────────────────

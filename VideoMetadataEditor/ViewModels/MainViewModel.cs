@@ -1400,6 +1400,7 @@ public partial class MainViewModel : INotifyPropertyChanged
     public ICommand BatchProcessCommand     { get; }
     public ICommand BatchEditFieldsCommand  { get; }
     public ICommand ExportArtworkCommand    { get; }
+    public ICommand ImportNfoCommand        { get; }
     public ICommand BatchTvCommand          { get; private set; } = null!;
     public ICommand BatchRenameOnlyCommand  { get; }
     public ICommand RenameCurrentFileCommand { get; private set; } = null!;
@@ -1540,6 +1541,7 @@ public partial class MainViewModel : INotifyPropertyChanged
         BatchProcessCommand      = new AsyncRelayCommand(BatchProcessAsync, _ => Files.Any(f => f.IsSelected && !f.IsSeparator) && !IsBusy);
         BatchEditFieldsCommand   = new AsyncRelayCommand(BatchEditFieldsAsync, _ => Files.Any(f => f.IsSelected && !f.IsSeparator) && !IsBusy);
         ExportArtworkCommand     = new AsyncRelayCommand(ExportArtworkAsync, _ => Files.Any(f => f.IsSelected && !f.IsSeparator) && !IsBusy);
+        ImportNfoCommand         = new AsyncRelayCommand(ImportNfoAsync, _ => Files.Any(f => f.IsSelected && !f.IsSeparator) && !IsBusy);
         BatchRenameOnlyCommand   = new AsyncRelayCommand(BatchRenameOnlyAsync,
             _ => Files.Any(f => f.IsSelected && !f.IsSeparator) && !IsBusy && !string.IsNullOrWhiteSpace(Settings.RenamePattern));
         CancelOperationCommand       = new RelayCommand(_ => RequestCancel(), _ => IsBusy && !IsCancelling);

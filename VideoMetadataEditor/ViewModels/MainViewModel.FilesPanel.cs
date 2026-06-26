@@ -400,6 +400,88 @@ public partial class MainViewModel
         finally { EndOperation(); IsBusy = false; }
     }
 
+    /// <summary>
+    /// Imports .nfo sidecar metadata for the selected file(s) into the editable fields
+    /// for review — nothing is written to the video until the user explicitly embeds.
+    /// For a single selected file the parsed data is loaded into the editor; for multiple
+    /// files each file's pending/retrieved metadata is populated from its own sidecar.
+    /// Files with no sidecar or an unparseable one are skipped (counted, not failed).
+    /// </summary>
+    private async Task ImportNfoAsync()
+    {
+        var selected = Files.Where(f => f.IsSelected && !f.IsSeparator).ToList();
+        if (selected.Count == 0) return;
+
+        var ct = BeginOperation();
+        IsBusy = true;
+        int done = 0, ok = 0, skipped = 0, failed = 0;
+        StatusText = $"Importing NFO for {selected.Count} file(s)…";
+        ProgressValue = 0;
+
+        // Keep a reference to the single-file case so we can load it into the editor after.
+        VideoFile? singleTarget = selected.Count == 1 ? selected[0] : null;
+
+        try
+        {
+            foreach (var vf in selected)
+            {
+                if (ct.IsCancellationRequested) break;
+                done++;
+                ProgressValue = (int)((double)done / selected.Count * 100);
+                StatusText = $"Importing NFO {done}/{selected.Count}: {Path.GetFileName(vf.FilePath)}";
+
+                try
+                {
+                    var nfoPath = Services.NfoExportService.SidecarPathFor(vf.FilePath);
+                    if (!File.Exists(nfoPath))
+                    {
+                        skipped++;
+                        Log($"[{DateTime.Now:HH:mm:ss}] NFO import skipped (no sidecar): {Path.GetFileName(vf.FilePath)}");
+                        continue;
+                    }
+
+                    var xml = await File.ReadAllTextAsync(nfoPath, ct);
+                    var parsed = Services.NfoImportService.ParseNfo(xml);
+                    if (parsed is null)
+                    {
+                        failed++;
+                        Log($"[{DateTime.Now:HH:mm:ss}] NFO import failed (unparseable): {Path.GetFileName(nfoPath)}");
+                        continue;
+                    }
+
+                    // Preserve the file's existing artwork — NFO carries none.
+                    if (vf.EmbeddedMetadata.ArtworkBytes is { Length: > 0 })
+                        parsed.ArtworkBytes = vf.EmbeddedMetadata.ArtworkBytes;
+
+                    // Load into the file's metadata for review (NOT written to disk).
+                    vf.RetrievedMetadata = parsed;
+                    CopyMetadataTo(parsed, vf.PendingMetadata);
+                    ok++;
+                    Log($"[{DateTime.Now:HH:mm:ss}] NFO imported: {Path.GetFileName(nfoPath)}");
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    failed++;
+                    Log($"[{DateTime.Now:HH:mm:ss}] NFO import error: {Path.GetFileName(vf.FilePath)} — {ex.Message}");
+                }
+            }
+
+            // Single-file: surface the imported data in the editable fields right away.
+            if (singleTarget?.RetrievedMetadata != null && SelectedFile == singleTarget)
+            {
+                RetrievedMetadata = singleTarget.RetrievedMetadata;
+                ApplyRetrievedToEditing();
+            }
+
+            StatusText = ok > 0
+                ? $"NFO import: {ok} loaded for review, {skipped} skipped, {failed} failed. Review, then Embed to write."
+                : $"NFO import: {skipped} skipped, {failed} failed.";
+        }
+        catch (OperationCanceledException) { /* keep partial results */ }
+        finally { EndOperation(); IsBusy = false; }
+    }
+
     // ── Export CSV ───────────────────────────────────────────────────────────
 
     private async Task ExportCsvAsync()
