@@ -217,8 +217,26 @@ public partial class MainViewModel
                     targetFile.WriteErrorDetail = detail;
                     Log( $"[{DateTime.Now:HH:mm:ss}] WRITE FAILED — {targetFile.FileName}");
                     Log( $"[{DateTime.Now:HH:mm:ss}]   {diag.Reasons.FirstOrDefault()}");
-                    if (Settings.VerboseWriteErrors)
+
+                    // Container-level failure (not access/permission/volume) on an MP4-family
+                    // file: offer a lossless remux, which often rebuilds a container TagLib#
+                    // can write into. On success the write is retried automatically.
+                    if (Services.RemuxSuggestionService.ShouldSuggestRemux(diag.Category, targetFile.FilePath))
+                    {
+                        bool retried = await TryRemuxAndRetryWriteAsync(targetFile, metadataToWrite, ct);
+                        if (retried)
+                        {
+                            ok = targetFile.WriteStatus == Models.WriteStatus.Success;
+                        }
+                        else if (Settings.VerboseWriteErrors)
+                        {
+                            WriteFailedDetailed?.Invoke(this, (targetFile, detail));
+                        }
+                    }
+                    else if (Settings.VerboseWriteErrors)
+                    {
                         WriteFailedDetailed?.Invoke(this, (targetFile, detail));
+                    }
                 }
             }
         }
@@ -900,6 +918,107 @@ public partial class MainViewModel
             ArtworkImage = img;
         }
         catch { ArtworkImage = null; }
+    }
+
+    // ── Remux-to-fix on container-level write failure ─────────────────────────
+
+    /// <summary>
+    /// Offers a lossless remux when a metadata write failed at the container level, and
+    /// — if the user accepts and the remux succeeds — adopts the clean file and retries
+    /// the write once. Returns true if a retry was attempted (regardless of its outcome),
+    /// false if the user declined or remux/ffmpeg was unavailable. On a successful retry
+    /// the target file's WriteStatus is set to Success and its path points at the new file.
+    /// </summary>
+    private async Task<bool> TryRemuxAndRetryWriteAsync(
+        Models.VideoFile targetFile, Models.MovieMetadata metadataToWrite,
+        CancellationToken ct)
+    {
+        if (!Services.FfmpegService.IsAvailable)
+        {
+            // No ffmpeg → can't remux; fall back to the normal diagnostic surface.
+            Log( $"[{DateTime.Now:HH:mm:ss}] Remux suggested but ffmpeg is not available — skipping.");
+            return false;
+        }
+
+        var prompt = System.Windows.MessageBox.Show(
+            $"Metadata couldn't be written into this file's container:\n\n" +
+            $"  {targetFile.FileName}\n\n" +
+            "This usually means the MP4 container is structured in a way the tag writer " +
+            "can't update in place. A lossless remux rebuilds the container from the same " +
+            "streams — no re-encoding, no quality loss — and typically fixes it.\n\n" +
+            "Remux this file now and retry the write?\n\n" +
+            "(The original is replaced only after the remux succeeds.)",
+            "Remux may fix this write",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Question,
+            System.Windows.MessageBoxResult.Yes);
+        if (prompt != System.Windows.MessageBoxResult.Yes) return false;
+
+        var originalPath = targetFile.FilePath;
+        StatusText = $"Remuxing {targetFile.FileName} to a clean container…";
+        Log( $"[{DateTime.Now:HH:mm:ss}] Remuxing (write-fix): {targetFile.FileName}");
+
+        // Remux to a clean MP4 candidate (<stem>.remux.mp4) alongside the original.
+        var remux = await Services.FfmpegService.RemuxAsync(originalPath, ".mp4", ct);
+        if (!remux.Success || string.IsNullOrWhiteSpace(remux.OutputPath))
+        {
+            StatusText = $"Remux failed: {remux.Message}";
+            Log( $"[{DateTime.Now:HH:mm:ss}] Remux failed: {remux.Message}");
+            System.Windows.MessageBox.Show(
+                $"The remux did not complete:\n\n{remux.Message}\n\nThe original file is unchanged.",
+                "Remux failed",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            return false;
+        }
+
+        // Adopt the clean candidate in place of the original (non-destructive commit).
+        var commit = Services.RemuxCommitService.ReplaceOriginal(remux.OutputPath, originalPath);
+        if (!commit.Success || string.IsNullOrWhiteSpace(commit.FinalPath))
+        {
+            StatusText = $"Remux commit failed: {commit.Message}";
+            Log( $"[{DateTime.Now:HH:mm:ss}] Remux commit failed: {commit.Message}");
+            System.Windows.MessageBox.Show(
+                $"The remuxed copy was created but could not replace the original:\n\n" +
+                $"{commit.Message}\n\nBoth files may still be present; check the folder.",
+                "Remux commit failed",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            return false;
+        }
+
+        // Point the file at the committed container and retry the write once.
+        targetFile.FilePath = commit.FinalPath;
+        if (SelectedFile == targetFile)
+            OriginalFileName = targetFile.FileName;
+        Log( $"[{DateTime.Now:HH:mm:ss}] Remux committed → {Path.GetFileName(commit.FinalPath)}; retrying write…");
+        StatusText = $"Remux done. Retrying write for {targetFile.FileName}…";
+
+        var retry = await _metadataService.WriteMetadataDetailedAsync(
+            commit.FinalPath, metadataToWrite, Settings, ct: ct);
+
+        if (retry.Success)
+        {
+            targetFile.WriteStatus  = Models.WriteStatus.Success;
+            targetFile.WriteErrorDetail = string.Empty;
+            CopyMetadataTo(metadataToWrite, targetFile.EmbeddedMetadata);
+            CopyMetadataTo(metadataToWrite, targetFile.PendingMetadata);
+            _libraryScanService?.MarkAsEmbedded(commit.FinalPath);
+            StatusText = $"Write succeeded after remux: {targetFile.FileName}";
+            Log( $"[{DateTime.Now:HH:mm:ss}] ✓ Write succeeded after remux: {targetFile.FileName}");
+            EmbedSucceeded?.Invoke(this, new EmbedEventArgs(targetFile.FileName, false));
+        }
+        else
+        {
+            targetFile.WriteStatus = Models.WriteStatus.Failed;
+            var why = retry.Diagnosis != null
+                ? BuildDiagnosticMessage(targetFile.FileName, retry.Diagnosis)
+                : "Write still failed after remux.";
+            targetFile.WriteErrorDetail = why;
+            StatusText = $"Write still failed after remux: {targetFile.FileName}";
+            Log( $"[{DateTime.Now:HH:mm:ss}] ✗ Write still failed after remux: {targetFile.FileName}");
+            if (Settings.VerboseWriteErrors)
+                WriteFailedDetailed?.Invoke(this, (targetFile, why));
+        }
+        return true;
     }
 
     // ── Theme ─────────────────────────────────────────────────────────────────

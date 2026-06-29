@@ -2,6 +2,19 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 127 — Suggest remux when a write fails at the container level
+
+When a single-file metadata write (Apply + Embed + Rename) fails because the MP4 container can't be updated in place — a diagnosis category of `FormatUnsupported` or `Unknown`, as opposed to read-only / locked / permission / network-volume failures that a remux can't help — the app now offers a one-click fix.
+
+- **Prompt → remux → auto-retry.** On a container-level failure for an MP4-family file (`.mp4`, `.m4v`, `.mov`), a dialog explains that a lossless remux often fixes it and offers to do it now. If accepted, the file is remuxed to a clean container (no re-encode, no quality loss), the clean copy replaces the original only after the remux succeeds, and the metadata write is retried once on the new file.
+- **Reuses existing machinery.** The remux runs through the existing `FfmpegService.RemuxAsync` and `RemuxCommitService.ReplaceOriginal`; nothing new in the remux path itself. Requires ffmpeg (Settings → External Tools) — if it isn't installed, the app logs the suggestion and falls back to the normal write-error diagnostic.
+- **Scope.** Applies to the single-file Apply + Embed + Rename path only. Batch operations are intentionally unaffected, since a per-file modal prompt shouldn't interrupt a batch run.
+- The decision of whether to offer a remux is a pure, unit-tested `RemuxSuggestionService.ShouldSuggestRemux` (category is container-level AND extension is remuxable). New tests cover both triggering categories on MP4-family files, all five non-container categories (no suggestion), non-remuxable extensions (`.mkv`/`.avi`/`.webm`/none), and null/empty paths.
+
+This is the inverse of the write self-test insight: when the encoded write and verify steps pass but a specific file still won't embed, the container is the suspect, and remux is the remedy — now surfaced automatically instead of relying on the user to discover it.
+
+---
+
 ## v1.4.0 Build 126 — Fix: Raw Data action buttons no longer clip
 
 The bottom action-button row on the Raw Data tab (Export NFO, Export Artwork, Import NFO, Apply + Embed + Rename, Rename Only, Use Retrieved, Lock/Unlock) was laid out as a single non-wrapping horizontal row. After Export Artwork (build 124) and Import NFO (build 125) were added, the row exceeded the available width and the rightmost buttons were clipped at the window edge, with no way to reveal them even when the window was maximised. The row is now a `WrapPanel`, so buttons reflow onto a second line when width is constrained instead of being cut off. Layout-only change; no behaviour difference.

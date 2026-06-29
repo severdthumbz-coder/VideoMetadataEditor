@@ -43,6 +43,7 @@
     <Compile Include="../VideoMetadataEditor/Services/BatchFieldEditService.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/ArtworkSidecarService.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/NfoImportService.cs"/>
+    <Compile Include="../VideoMetadataEditor/Services/RemuxSuggestionService.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/Models.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/LibraryModels.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/SubtitleModels.cs"/>
