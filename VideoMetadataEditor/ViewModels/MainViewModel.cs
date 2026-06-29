@@ -83,7 +83,7 @@ public partial class MainViewModel : INotifyPropertyChanged
     public MediaHealthViewModel MediaHealthVM { get; } = new(new Services.WpfDialogService(), new Services.WpfClipboardService());
 
     // ── Watch Folder (Files panel) ───────────────────────────────────────────
-    private readonly Services.WatchFolderService _watchFolderService = new();
+    private readonly Services.MultiWatchFolderService _watchFolderService = new();
 
     // ── Library Watch ─────────────────────────────────────────────────────────
     private readonly Services.MultiWatchFolderService _libraryWatchService = new();

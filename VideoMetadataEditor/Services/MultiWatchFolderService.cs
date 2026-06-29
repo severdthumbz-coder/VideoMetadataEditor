@@ -16,7 +16,7 @@ public sealed class MultiWatchFolderService : IDisposable
 
     public bool IsActive => _watchers.Any(w => w.IsActive);
 
-    public void Start(IEnumerable<string> folders, IEnumerable<string> existingPaths, int pollMinutes)
+    public void Start(IEnumerable<string> folders, IEnumerable<string> existingPaths, int pollMinutes, bool recursive = true)
     {
         Stop();
         var existing = existingPaths.ToList();
@@ -25,7 +25,7 @@ public sealed class MultiWatchFolderService : IDisposable
             var w = new WatchFolderService();
             w.FileDetected += path => FileDetected?.Invoke(path);
             w.WatcherError += msg  => WatcherError?.Invoke(msg);
-            w.Start(folder, existing, pollMinutes);
+            w.Start(folder, existing, pollMinutes, recursive);
             _watchers.Add(w);
         }
     }

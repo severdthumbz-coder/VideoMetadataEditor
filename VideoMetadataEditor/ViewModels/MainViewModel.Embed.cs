@@ -1629,14 +1629,40 @@ public partial class MainViewModel
     public void ApplyWatchFolderSetting()
     {
         _watchFolderService.Stop();
-        if (!Settings.WatchFolderEnabled || string.IsNullOrWhiteSpace(Settings.LastFolderPath))
+        if (!Settings.WatchFolderEnabled)
             return;
+
+        // Watch every distinct folder the loaded files actually came from — not just
+        // Settings.LastFolderPath. This covers "Add Files", files added from several
+        // folders, and mixed loads, so a new sibling of ANY loaded file is detected.
+        var folders = Files
+            .Where(f => !f.IsSeparator && !string.IsNullOrWhiteSpace(f.FilePath))
+            .Select(f => Path.GetDirectoryName(f.FilePath))
+            .Where(d => !string.IsNullOrWhiteSpace(d) && Directory.Exists(d))
+            .Select(d => d!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        // Fall back to the last loaded folder if no files are currently listed
+        // (e.g. the user enabled the toggle before adding files).
+        if (folders.Count == 0
+            && !string.IsNullOrWhiteSpace(Settings.LastFolderPath)
+            && Directory.Exists(Settings.LastFolderPath))
+        {
+            folders.Add(Settings.LastFolderPath);
+        }
+
+        if (folders.Count == 0) return;
+
         var existingPaths = Files.Where(f => !f.IsSeparator).Select(f => f.FilePath);
-        _watchFolderService.Start(Settings.LastFolderPath, existingPaths,
+        _watchFolderService.Start(folders, existingPaths,
             Settings.WatchFolderPollMinutes, Settings.WatchFolderRecursive);
 
-        // Scan the watched folder for orphans from a previous crashed session
-        CheckForRecovery(new[] { Settings.LastFolderPath });
+        // Scan the watched folders for orphans from a previous crashed session.
+        CheckForRecovery(folders);
+
+        var names = string.Join(", ", folders.Select(Path.GetFileName));
+        Log( $"[{DateTime.Now:HH:mm:ss}] 📁 Watch folder active on {folders.Count} folder(s): {names}");
     }
 
     /// <summary>

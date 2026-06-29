@@ -2,6 +2,18 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 128 — Watch Folder monitors every folder your files came from
+
+The Files-panel Watch Folder previously monitored only a single folder — `Settings.LastFolderPath`, the last one loaded. Files added via "Add Files", or loaded from several different folders, came from directories the watch never saw, so a new sibling dropped into one of those folders was never auto-detected.
+
+- **Multi-folder watch.** `ApplyWatchFolderSetting` now derives the watch set from the distinct directories of all currently loaded files, and starts one watcher per folder through the existing `MultiWatchFolderService` (the same component the Library watch already uses). A new file appearing in *any* of those folders is detected.
+- **Auto-extends on add.** Because the folder set is recomputed from the loaded files each time the watch is (re)applied — which already happens after Add Files and Add Folder — pulling in files from a new folder automatically widens the watch to include it.
+- **Settings preserved.** The recursive toggle and poll interval are honored across all watched folders (`MultiWatchFolderService.Start` gained a `recursive` parameter, defaulting to true so the Library watch is unaffected). If Watch Folder is enabled before any files are loaded, it falls back to the last loaded folder as before.
+
+No change to the detection mechanism itself (dual FileSystemWatcher + poll), the new-file highlight, or the auto-embed behavior — only the breadth of what's watched.
+
+---
+
 ## v1.4.0 Build 127 — Suggest remux when a write fails at the container level
 
 When a single-file metadata write (Apply + Embed + Rename) fails because the MP4 container can't be updated in place — a diagnosis category of `FormatUnsupported` or `Unknown`, as opposed to read-only / locked / permission / network-volume failures that a remux can't help — the app now offers a one-click fix.
