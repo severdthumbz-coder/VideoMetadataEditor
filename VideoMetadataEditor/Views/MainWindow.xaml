@@ -4764,9 +4764,13 @@
                                     <TextBlock Style="{StaticResource BaseText}">• Write engine: temp-copy → tag write → atomic File.Replace → backup cleanup</TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}">• Artwork preserved in batch for files never manually selected</TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}">• Undo Last Embed — restores previous tags and filename in one click</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">• Export .nfo sidecar (Jellyfin/Kodi) with IMDB + TMDB IDs and &lt;mpaa&gt; content rating</TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}">• Export .nfo sidecar (Kodi format, read by Plex/Jellyfin/Emby) — movie, episode, and optional tvshow.nfo; multi-episode blocks; &lt;uniqueid&gt; (tmdb/imdb/tvdb), &lt;ratings&gt; with votes, &lt;actor&gt; order, &lt;mpaa&gt;</TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}">• Import .nfo sidecar (📥 Import NFO) — reads movie/episode/tvshow NFOs (modern + legacy ID and rating formats) into the editable fields for review; nothing written until you Apply + Embed; single + batch</TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}">• Batch Edit Fields (✎) — apply shared Genre, Cast (Replace or Append, de-duplicated), Director, MPA, Year, Show title, or Watched across all selected files at once; per-file-unique fields excluded; reversible via Undo Batch; fields that don't apply to the selection are greyed</TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}">• Export Artwork (🖼) — writes the poster as a sidecar image next to each file (Kodi &lt;video&gt;-poster.jpg or Plex/Jellyfin folder poster.jpg, chosen in Settings); source chain in-memory → embedded → TMDB</TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,8,0,4">📁 File Management</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">• Rename tokens: {Title} {Year} {Genre} {Director} {Cast} {Rating} {MPA} {ImdbId} {TmdbId} {Resolution} {Format}</TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}">• Rename tokens: {Title} {Year} {Genre} {Director} {Cast} {Rating} {MPA} {ImdbId} {TmdbId} {Resolution} {Format} {Season} {Episode} {AbsoluteEpisode} {ShowTitle} {EpisodeTitle}</TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}">• Rename grammar: conditional blocks &lt; &gt; (dropped if any token inside is empty), zero-padding {Episode:00}, multi-episode range expansion (S01E01-E03), and {AbsoluteEpisode} for anime (filename-first, AniList fallback)</TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}">• Colon → " - " (Mission: Impossible → Mission - Impossible)</TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}">• Move/Copy: FastCopy or multi-threaded Custom Fast; disk space check; conflict modes; destination and conflict mode auto-saved; Smart Organisation routes Movies and TV Episodes to separate subfolders automatically</TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}">• Lock/Unlock read-only attribute; Delete with confirmation</TextBlock>
@@ -4780,7 +4784,7 @@
                                     <TextBlock Style="{StaticResource BaseText}">• Double-click or multi-select Load Selected; separator rows on mixed loads</TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}">• Library entry syncs in-place after embed — no re-scan required</TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,8,0,4">📁 Watch Folder · Library Watch</TextBlock>
-                                    <TextBlock Style="{StaticResource BaseText}">• FILES panel: FileSystemWatcher (instant) + background poll; FSW auto-restarts on error</TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}">• FILES panel: FileSystemWatcher (instant) + background poll; FSW auto-restarts on error; monitors every folder your loaded files came from (not just one), so new files in any source folder are detected</TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}">• New files highlighted yellow; clears after embed; .vme_tmp_* always hidden</TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}">• Library Watch: monitors Library folder — new files added to grid automatically</TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}">• Library Watch builds full LibraryEntry (tags + codec + artwork) without re-scan</TextBlock>
@@ -4822,6 +4826,7 @@
                                     <TextBlock Style="{StaticResource BaseText}">• EXEs receive the failed file path as their first argument (e.g. TagScanner, MediaInfo Lite)</TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}">• Non-EXE files opened via Windows shell association (e.g. .xlsx report template)</TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}">• Fallback app path persisted in config.json; cleared with the ✕ button in Settings</TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}">• Remux-to-fix suggestion — when a single-file write fails at the container level (not a read-only/locked/permission/network issue) on an MP4-family file, the app offers a lossless remux and, on success, retries the write automatically. Requires ffmpeg</TextBlock>
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,8,0,4">📺 TV Shows Library Tree View</TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}">• Toggle in Settings → Library Display — switches TV Shows tab to a collapsible tree</TextBlock>
@@ -4909,10 +4914,11 @@
                                         <TextBlock Style="{StaticResource BaseText}">3. Go to RETRIEVED DATA tab — search auto-runs; or type a title and press Search</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}">4. Click the correct result → click "⬇ Apply to Raw Data Tab" to copy into the editor fields</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}">5. Review fields in RAW DATA, adjust if needed, then click "Apply + Embed + Rename"</TextBlock>
-                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">6. ✅ row = success. ❌ row (pink) = write failed — hover for reason, then use the write failure popup to Remux → .mp4 or .mkv, which fixes most persistent write failures</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">6. ✅ row = success. ❌ row (pink) = write failed — hover for reason. On a container-level failure for an MP4-family file the app now offers to remux and retry the write automatically; you can also right-click → Remux → .mp4 or .mkv to fix persistent write failures manually</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}">7. After a successful embed, "↺ Undo Last Embed" becomes active — click it to restore the file's previous tags and filename in one step</TextBlock>
-                                        <TextBlock Style="{StaticResource BaseText}">8. To download subtitles: RETRIEVED DATA tab → expand 🗒 Subtitles → Search → select result → ⬇ Download Selected. Requires OpenSubtitles API key in Settings</TextBlock>
-                                        <TextBlock Style="{StaticResource BaseText}">9. To mark as watched: click the "Watched / Unwatched" toggle in RAW DATA. If Trakt is connected, this syncs automatically</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">8. Already have a .nfo next to the file (from Kodi, TinyMediaManager, etc.)? Click "📥 Import NFO" to load it into the editor for review, then Apply + Embed. Or click "📄 Export NFO" / "🖼 Export Artwork" to write sidecars for your existing tags</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">9. To download subtitles: RETRIEVED DATA tab → expand 🗒 Subtitles → Search → select result → ⬇ Download Selected. Requires OpenSubtitles API key in Settings</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">10. To mark as watched: click the "Watched / Unwatched" toggle in RAW DATA. If Trakt is connected, this syncs automatically</TextBlock>
                                     </StackPanel>
 
                                     <!-- ── 1: Batch workflow ────────────────────────────────────── -->
@@ -4935,6 +4941,7 @@
                                         <TextBlock Style="{StaticResource BaseText}">6. Review failures in the completion banner; retry individually if needed</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">7. After batch completes, click "↩ Undo Batch" (in the completion banner chip OR the permanent button in the RAW DATA tab) to revert ALL files that succeeded — restores tags and renames. Only available until the next batch run</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">8. For files that failed to write (pink rows): click the pink row to select it, then right-click or use the write failure popup to Remux → .mp4 or .mkv — this fixes most container-related write failures without re-encoding</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" TextWrapping="Wrap">9. To set a shared value across many files (e.g. tag a whole season's Genre or Show title, or mark all Watched): select them, click "✎ Batch Edit Fields", tick only the fields to change, Apply. Reversible with ↩ Undo Batch. Fields that don't fit the selection are greyed</TextBlock>
                                     </StackPanel>
 
                                     <!-- ── 2: Library workflow ──────────────────────────────────── -->
@@ -4971,7 +4978,7 @@
                                                 </Style.Triggers>
                                             </Style>
                                         </StackPanel.Style>
-                                        <TextBlock Style="{StaticResource BaseText}">1. Enable Watch Folder in SETTINGS — monitors the loaded folder for new arrivals</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">1. Enable Watch Folder in SETTINGS — monitors every folder your loaded files came from (Add Files or multiple folders all count), so a new arrival in any of them is caught</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}">2. New files appear highlighted yellow in the FILES panel; existing files are never re-reported</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}">3. Temp files (.vme_tmp_*) are hidden automatically — they won't appear as false positives</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}">4. Process yellow-highlighted files like any other file — select, search, embed</TextBlock>
@@ -5065,9 +5072,11 @@
                                         <TextBlock Style="{StaticResource BaseText}">5. Settings → Trakt.tv → Connect → authorise in your browser (device code flow)</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}">6. The ♥ Watched toggle on each file syncs to Trakt in real time</TextBlock>
                                         <TextBlock Style="{StaticResource BaseText}" Margin="0,0,0,8">7. Trakt → Sync Now pulls your full watch history in bulk. Token auto-refreshes before expiry</TextBlock>
-                                        <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,4">NFO export (Kodi / Jellyfin)</TextBlock>
-                                        <TextBlock Style="{StaticResource BaseText}">8. Select files → FILES panel → 📄 Export NFO generates Kodi-compatible .nfo sidecars</TextBlock>
-                                        <TextBlock Style="{StaticResource BaseText}">9. Sidecars include IMDB/TMDB IDs and MPAA rating — useful when the media server prefers sidecars over embedded tags</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,4">NFO &amp; artwork sidecars (Kodi / Plex / Jellyfin)</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">8. Select files → 📄 Export NFO generates Kodi-format .nfo sidecars (movie / episode); enable tvshow.nfo in Settings → NFO Export to also write a series file per show folder</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">9. Sidecars include &lt;uniqueid&gt; (tmdb/imdb/tvdb), &lt;ratings&gt; with votes, cast and MPAA — useful when the media server prefers sidecars over embedded tags</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">10. 🖼 Export Artwork writes the poster next to each file — Kodi &lt;video&gt;-poster.jpg or Plex/Jellyfin folder poster.jpg (choose in Settings → Artwork Export)</TextBlock>
+                                        <TextBlock Style="{StaticResource BaseText}">11. 📥 Import NFO reads an existing .nfo (from Kodi, TinyMediaManager, MediaElch, etc.) back into the editable fields for review — modern and legacy ID/rating formats both supported. Nothing is written until you Apply + Embed</TextBlock>
                                     </StackPanel>
 
                                     <!-- ── 8: Recovery ──────────────────────────────────────────── -->
@@ -5102,6 +5111,11 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 129 — Selection-aware Batch Edit + Help docs refreshed
+                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                        The Batch Edit Fields dialog now adapts to the selection: when every selected file is a movie, the Show title field is greyed out (it's TV-only); when every selected file is a TV episode, the Year field is greyed out (episodes use their aired date). A mixed selection leaves all fields available. Fields shared by both types (Genre, Cast, Director, MPA, Watched) are never greyed. Also: the Help tab's Features list and Recommended Workflow were brought up to date with everything added in builds 120–128 — the rename grammar (conditionals, padding, episode ranges, {AbsoluteEpisode}), the NFO export overhaul and NFO import, batch field editing, artwork sidecar export, the remux-to-fix suggestion on container-level write failures, and the multi-folder Watch Folder.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 128 — Watch Folder now monitors every folder your files came from
                                         ─────────────────────────────────────────────────────────────────────────────────────

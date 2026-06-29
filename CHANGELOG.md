@@ -2,6 +2,13 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 129 — Selection-aware Batch Edit + Help docs refreshed
+
+- **Selection-aware Batch Edit Fields.** The dialog now greys out fields that don't apply to the current selection: Show title is disabled for an all-movie selection (it's TV-only), and Year is disabled for an all-episode selection (episodes use their aired date, which isn't batch-editable). A mixed selection leaves everything available; fields shared by both types (Genre, Cast, Director, MPA, Watched) are never greyed. The greying is computed in the ViewModel from the selection's content-type composition and applied in the dialog — the underlying `BatchFieldEditService` logic is unchanged.
+- **Help tab brought up to date.** The Features list and Recommended Workflow had drifted — they predated the 120–128 arc. Both now document the rename grammar (conditional `< >` blocks, zero-padding, multi-episode ranges, `{AbsoluteEpisode}`), the NFO export overhaul (tvshow.nfo, multi-episode blocks, uniqueid/ratings/actor), NFO import, batch field editing, artwork sidecar export, the remux-to-fix suggestion on container-level write failures, and the multi-folder Watch Folder.
+
+---
+
 ## v1.4.0 Build 128 — Watch Folder monitors every folder your files came from
 
 The Files-panel Watch Folder previously monitored only a single folder — `Settings.LastFolderPath`, the last one loaded. Files added via "Add Files", or loaded from several different folders, came from directories the watch never saw, so a new sibling dropped into one of those folders was never auto-detected.

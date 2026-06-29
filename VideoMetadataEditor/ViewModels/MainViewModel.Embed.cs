@@ -499,9 +499,19 @@ public partial class MainViewModel
         var selected = Files.Where(f => f.IsSelected && !f.IsSeparator).ToList();
         if (selected.Count == 0) return;
 
+        // Determine the selection's content-type composition so the dialog can grey out
+        // fields that don't apply (Show title for movies, Year for episodes).
+        bool anyEpisode = selected.Any(f => f.EmbeddedMetadata.IsEpisode);
+        bool anyMovie   = selected.Any(f => !f.EmbeddedMetadata.IsEpisode);
+        var kind = anyEpisode && anyMovie
+            ? Views.BatchEditDialog.SelectionKind.Mixed
+            : anyEpisode
+                ? Views.BatchEditDialog.SelectionKind.AllEpisodes
+                : Views.BatchEditDialog.SelectionKind.AllMovies;
+
         // Collect the edits via the dialog (UI thread).
         var owner = System.Windows.Application.Current?.MainWindow;
-        var dlg = new Views.BatchEditDialog(selected.Count, owner);
+        var dlg = new Views.BatchEditDialog(selected.Count, kind, owner);
         if (dlg.ShowDialog() != true || dlg.Result is null) return;
         var edits = dlg.Result;
 
