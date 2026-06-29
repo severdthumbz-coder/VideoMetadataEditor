@@ -6,6 +6,7 @@ All notable changes to Video Metadata Editor are documented here.
 
 - **Selection-aware Batch Edit Fields.** The dialog now greys out fields that don't apply to the current selection: Show title is disabled for an all-movie selection (it's TV-only), and Year is disabled for an all-episode selection (episodes use their aired date, which isn't batch-editable). A mixed selection leaves everything available; fields shared by both types (Genre, Cast, Director, MPA, Watched) are never greyed. The greying is computed in the ViewModel from the selection's content-type composition and applied in the dialog — the underlying `BatchFieldEditService` logic is unchanged.
 - **Help tab brought up to date.** The Features list and Recommended Workflow had drifted — they predated the 120–128 arc. Both now document the rename grammar (conditional `< >` blocks, zero-padding, multi-episode ranges, `{AbsoluteEpisode}`), the NFO export overhaul (tvshow.nfo, multi-episode blocks, uniqueid/ratings/actor), NFO import, batch field editing, artwork sidecar export, the remux-to-fix suggestion on container-level write failures, and the multi-folder Watch Folder.
+- **Fix: long help text no longer clips.** The shared body-text style (`BaseText`) did not set `TextWrapping`, so it defaulted to `NoWrap` — long lines in the Features list and Workflow ran off the right edge and were cut off even with the window maximised. `BaseText` now wraps; every body-text line across the app reflows to fit its panel. TextBlocks that already set `TextWrapping` inline are unaffected.
 
 ---
 

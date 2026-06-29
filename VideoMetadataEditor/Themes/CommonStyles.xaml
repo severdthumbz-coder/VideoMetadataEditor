@@ -17,6 +17,7 @@
         <Setter Property="Foreground"  Value="{DynamicResource ForegroundBrush}"/>
         <Setter Property="FontFamily"  Value="Segoe UI"/>
         <Setter Property="FontSize"    Value="13"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
     <Style x:Key="MutedText" TargetType="TextBlock" BasedOn="{StaticResource BaseText}">
         <Setter Property="Foreground" Value="{DynamicResource ForegroundMutedBrush}"/>
