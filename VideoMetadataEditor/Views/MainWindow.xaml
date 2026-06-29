@@ -5112,308 +5112,227 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
-                                        v1.4.0  ·  Build 129 — Selection-aware Batch Edit + Help docs refreshed
-                                        ─────────────────────────────────────────────────────────────────────────────────────
-                                        The Batch Edit Fields dialog now adapts to the selection: when every selected file is a movie, the Show title field is greyed out (it's TV-only); when every selected file is a TV episode, the Year field is greyed out (episodes use their aired date). A mixed selection leaves all fields available. Fields shared by both types (Genre, Cast, Director, MPA, Watched) are never greyed. Also: the Help tab's Features list and Recommended Workflow were brought up to date with everything added in builds 120–128 — the rename grammar (conditionals, padding, episode ranges, {AbsoluteEpisode}), the NFO export overhaul and NFO import, batch field editing, artwork sidecar export, the remux-to-fix suggestion on container-level write failures, and the multi-folder Watch Folder. Fix: the shared body-text style now wraps long lines, so Features and Workflow entries that previously ran off the right edge (clipped even when maximised) now wrap correctly. Also hardened ApplyRetrievedToEditing: two ID assignments that used the live SelectedFile now use the file snapshot like the rest of the method, closing a rare null-crash on fast deselect and clearing two compiler warnings. Fix: moving files into a watched folder no longer re-adds them to the panel — Move seeds destination paths into the watch's known-set so relocated files aren't re-detected as new arrivals.
+                                        v1.4.0  ·  Build 129 — Selection-aware Batch Edit, Help refresh, and a cluster of fixes
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Batch Edit Fields is now selection-aware: when every selected file is a movie the Show title field is greyed out (TV-only), and when every selected file is a TV episode the Year field is greyed out (episodes use their aired date); a mixed selection leaves all fields available, and fields shared by both types (Genre, Cast, Director, MPA, Watched) are never greyed. The Help tab's Features list and Recommended Workflow were brought up to date with the whole 120–128 arc — the rename grammar (conditional blocks, zero-padding, multi-episode ranges, {AbsoluteEpisode}), the NFO export overhaul, NFO import, batch field editing, artwork sidecar export, the remux-to-fix suggestion, and the multi-folder Watch Folder. Fixes bundled into this build: (1) the shared body-text style now wraps long lines, so Features and Workflow entries that previously ran off the right edge (clipped even when maximised) now reflow correctly; (2) ApplyRetrievedToEditing was hardened — two ID assignments (ImdbId, TvdbId) that used the live SelectedFile now use the same null-guarded file snapshot as the rest of the method, closing a rare NullReferenceException on fast deselect and clearing two compiler warnings; (3) moving files into a watched folder no longer re-adds them to the Files panel — Move now seeds each destination path into the Watch Folder's known-set so relocated files aren't re-detected as new arrivals (a regression from the build-128 multi-folder watch); and (4) the revision history below was reformatted so builds 89–129 match the two-line title/detail style used by build 88 and earlier.
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 128 — Watch Folder now monitors every folder your files came from
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         Previously the Files-panel Watch Folder monitored only a single folder (the last one loaded), so new files dropped into a different source folder — common after "Add Files" or loading from several folders — weren't detected. It now watches every distinct folder among the currently loaded files (one watcher per folder, via the same MultiWatchFolderService the Library watch uses). Adding more files from a new folder automatically extends the watch to cover it. Honors the existing recursive and poll-interval settings. If the toggle is enabled before any files are loaded, it falls back to the last loaded folder as before.
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 127 — Suggest remux when a write fails at the container level
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         When embedding metadata fails because the MP4 container is structured in a way the tag writer can't update in place (a failure category of FormatUnsupported or Unknown — not read-only, locked, permission, or network/volume issues, which a remux wouldn't fix), the app now offers to losslessly remux the file to a clean container and automatically retry the write. No re-encode, no quality loss; the original is replaced only after the remux succeeds, then the write is retried once on the new file. Requires ffmpeg (Settings → External Tools); if it's not installed the app falls back to the normal write-error diagnostic. The decision of whether to offer the remux lives in a pure, unit-tested RemuxSuggestionService; the remux itself reuses the existing FfmpegService + RemuxCommitService machinery. Applies to the single-file Apply + Embed + Rename path (batch operations are unaffected, since they shouldn't pause on per-file prompts).
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 126 — Fix: Raw Data action buttons no longer clip
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         The bottom action row on the Raw Data tab (Export NFO, Export Artwork, Import NFO, Apply + Embed + Rename, Rename Only, Use Retrieved, Lock/Unlock) was a single horizontal row that ran past the window edge once Export Artwork and Import NFO were added in builds 124–125, clipping the rightmost buttons even when maximised. The row is now a WrapPanel: when there isn't enough width, buttons reflow onto a second line instead of being cut off. No behaviour change — purely layout.
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 125 — NFO import
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         New "📥 Import NFO" button reads the .nfo sidecar next to each selected video and loads its metadata into the editable fields for review — nothing is written to the file until you click Apply + Embed. The inverse of Export NFO, built to tolerate real-world variation: modern &lt;uniqueid type="..."&gt; AND legacy flat &lt;imdbid&gt;/&lt;tmdbid&gt;/&lt;id&gt;; the modern &lt;ratings&gt;&lt;rating&gt;&lt;value&gt; block AND a legacy flat &lt;rating&gt;; multiple &lt;genre&gt;/&lt;actor&gt; elements collapse to the comma lists; Jellyfin &lt;played&gt; maps to watched; tag casing and surrounding whitespace are handled. Recognises &lt;movie&gt;, &lt;episodedetails&gt; (first block of a multi-episode file), and &lt;tvshow&gt; roots. Single selection loads straight into the editor; a multi-file selection populates each file's pending metadata from its own sidecar. Files with no sidecar or unparseable XML are skipped and counted, never failing the run.
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 124 — Artwork sidecar export
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         New "🖼 Export Artwork" button writes the poster as an image file next to each selected video, so Plex, Jellyfin, Emby, and Kodi can read it from disk (not just from the embedded tag). Two naming styles, chosen in Settings → 🖼 Artwork Export: Kodi style names the image after the video (&lt;video&gt;-poster.jpg; TV episodes use -thumb.jpg) and works even when several videos share a folder; Plex/Jellyfin folder style writes a single poster.jpg per folder. The poster is sourced from the already-loaded metadata, then the embedded tag, then downloaded via TMDB when an ID is present; files with no obtainable image are skipped (counted, not failed). This build is poster-only — fanart/backdrop is planned for a later build.
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 123 — Batch field editing
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         New "✎ Batch Edit Fields" button (top toolbar, enabled when files are selected) applies one or more shared field values across every selected file in a single operation. A checkbox dialog lets you change only the fields you tick: Genre, Cast, Director, MPA rating, Year, Show title, and Watched. Genre and Cast support Replace or Append (Append merges and de-duplicates case-insensitively). Per-file-unique fields — Title, Episode title, Season/Episode, plot, aired date, IDs, and rating — are intentionally NOT batch-editable, so a shared value can never overwrite them. Each file is written through the normal metadata-write path, existing artwork is preserved, and the whole operation is recorded as an Undo Batch snapshot, so "↩ Undo Batch" reverts every changed file at once. Batch editing does not rename files.
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 122 — NFO export overhaul: tvshow.nfo, multi-episode blocks, stricter Kodi format
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         The .nfo sidecar exporter was reworked into pure, unit-tested XML builders and brought fully in line with the Kodi/XBMC format that Plex (NFO Agent), Jellyfin, and Emby all read. New: an optional tvshow.nfo (Settings → 📄 NFO Export) written once per show folder when exporting episode NFOs; multi-episode files now emit one &lt;episodedetails&gt; block per episode in the range; &lt;originaltitle&gt;, proper &lt;uniqueid&gt; default flagging (first id marked default="true"), &lt;ratings&gt; with value+votes, and &lt;actor&gt; with &lt;order&gt;. Genres and cast are split into individual elements. The XML declaration now matches the spec (UTF-8, standalone="yes") and apostrophes are escaped. The "📄 Export NFO" button and batch/library export are unchanged in how they're used; only the output quality improved. Existing patterns and all prior behaviour are preserved.
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 121 — {AbsoluteEpisode} token + EXE filename now tracks the version
-                                        ─────────────────────────────────────────────────────────────────────────────────────
-                                        New rename token {AbsoluteEpisode} for anime absolute (series-wide) episode numbering. A new "Auto-detect absolute episode number" toggle in Settings → 🎌 AniList (off by default) populates it: first by reading an absolute number from the source filename (fansub layouts like "[Group] Show - 153", "Show E153", "Show 153 [BD]"), and if the name has none and the file is AniList-matched, by computing it from the AniList relations graph (summing prior seasons' episode counts via the PREQUEL chain). The AniList fallback is best-effort and runs only at rename time — when the relation chain is ambiguous (a fork, a cycle, or a missing episode count) it leaves the token empty rather than emitting a wrong number. Live preview shows the filename-derived value. The token honours pad specs ({AbsoluteEpisode:000}) and conditional blocks, and never fires when a season/episode code (S01E01) is present, since that number is season-relative.
-                                        Also fixed: the published EXE filename was hardcoded to "v1.4.0.119" and would not have matched newer builds. The assembly name now derives from a single FullVersion property in the project file, so the EXE filename, assembly version, and file version always agree.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        New rename token {AbsoluteEpisode} for anime absolute (series-wide) episode numbering. A new "Auto-detect absolute episode number" toggle in Settings → 🎌 AniList (off by default) populates it: first by reading an absolute number from the source filename (fansub layouts like "[Group] Show - 153", "Show E153", "Show 153 [BD]"), and if the name has none and the file is AniList-matched, by computing it from the AniList relations graph (summing prior seasons' episode counts via the PREQUEL chain). The AniList fallback is best-effort and runs only at rename time — when the relation chain is ambiguous (a fork, a cycle, or a missing episode count) it leaves the token empty rather than emitting a wrong number. Live preview shows the filename-derived value. The token honours pad specs ({AbsoluteEpisode:000}) and conditional blocks, and never fires when a season/episode code (S01E01) is present, since that number is season-relative. Also fixed: the published EXE filename was hardcoded to "v1.4.0.119" and would not have matched newer builds. The assembly name now derives from a single FullVersion property in the project file, so the EXE filename, assembly version, and file version always agree.
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 120 — Rename engine: conditional blocks, zero-pad control, multi-episode ranges
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         The filename builder is now a small tokenizer instead of a flat text replace. Three additions: (1) Conditional blocks — wrap text in angle brackets, e.g. {ShowTitle}&lt; - {EpisodeTitle}&gt;, and the whole segment (separators included) disappears cleanly when its token is empty, so episodes without a title no longer leave a dangling " - ". Square brackets [ ] remain literal, so the common {ImdbId}/{MPA} bracket idiom still works. (2) Zero-pad control — {Season:00} and {Episode:000} set the digit width; existing patterns are unchanged because Season/Episode still default to two digits with no spec. (3) Multi-episode ranges — a new "Detect multi-episode ranges from source filename" toggle in Settings → Rename Behaviour (off by default). When on, renaming a TV episode reads the ORIGINAL filename for a range (S01E01-E03, 1x01-1x03, consecutive ExxExx, or 01_02) and expands {Episode} to a range like 01-03. The range is read from the source name only; it never alters already-renamed files and has no effect when the toggle is off. All existing rename patterns produce byte-for-byte identical output.
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 119 — Write Diagnostic popup: Close fix + lock during run
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         The Close button on the Full Write Diagnostic window appeared dead: per-step UI updates used a blocking dispatch that tied up the UI thread during the 16 checks, so the click only registered after the run ended. Step updates are now non-blocking. Both Close and Export Log… now stay disabled until every check finishes and unlock together — and the title-bar X is blocked during the run — so the window can't be dismissed (leaving work running in the background) before it's done.
-
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 118 — Memory &amp; lifetime audit
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         A dedicated pass over event handlers, timers, disposables, and caches. Fixed a real session-growing leak: each file added to the FILES list attached a property-change handler that was never removed when files were reloaded, so old files accumulated. Handlers are now detached on removal and before clearing the list. Also reduced rename-preview timer churn (one reused timer instead of a new one per keystroke). Audited and confirmed sound: the API cache (capped + expiring), the TV-tree poster cache (self-collecting), file-system watchers and cancellation sources (disposed on close), and the duplicate hash cache (cleared after edits). No behaviour change.
-
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 117 — Phase 2 milestone: child ViewModels are WPF-free
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         Internal refactor, no behaviour change. Adds an IClipboardService abstraction (the Health Check "copy report" now routes through it). With this, all five extracted child ViewModels — Search, Metadata, Copy/Move, Duplicates, Media Health — contain no direct WPF code; their only WPF tie is the shared ICommand interface. Every dispatcher, dialog, picker, clipboard, bitmap, and custom-window use now goes through an abstraction or a View callback. MainViewModel stays the WPF-aware coordinator by design.
-
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 116 — TV tree poster caching + DuplicatesViewModel fully decoupled
-                                        ─────────────────────────────────────────────────────────────────────────────────────
-                                        Performance: show posters in the TV tree were re-decoded from JPEG on the UI thread every time the tree rebuilt (filtering, sorting, or switching into Tree view), causing a noticeable delay when entering the tree. Decoded posters are now cached by their source bytes, so rebuilds and re-entry reuse the already-decoded image. (The tree getter still re-scans season folders on each rebuild — a larger separate optimisation is planned.)
-                                        Phase 2 (internal, no behaviour change): DuplicatesViewModel is now fully decoupled from WPF — its scan progress updates route through IUiDispatcher, and the side-by-side compare window is supplied by the View via a callback rather than created in the ViewModel. It now references WPF only through the cross-platform ICommand interface.
-
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Performance: show posters in the TV tree were re-decoded from JPEG on the UI thread every time the tree rebuilt (filtering, sorting, or switching into Tree view), causing a noticeable delay when entering the tree. Decoded posters are now cached by their source bytes, so rebuilds and re-entry reuse the already-decoded image. (The tree getter still re-scans season folders on each rebuild — a larger separate optimisation is planned.) Phase 2 (internal, no behaviour change): DuplicatesViewModel is now fully decoupled from WPF — its scan progress updates route through IUiDispatcher, and the side-by-side compare window is supplied by the View via a callback rather than created in the ViewModel. It now references WPF only through the cross-platform ICommand interface.
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 115 — Phase 2: DuplicatesViewModel migrated to dialog abstraction
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         Internal refactor, no behaviour change. DuplicatesViewModel now routes all its standard dialogs through the IDialogService abstraction from Build 114: the source/destination folder pickers, all six message boxes (batch and single delete/move confirms, the network permanent-delete warning, partial-failure and error notices, and the cache import merge/replace prompt), and the three file pickers (reference file, cache export, cache import). Identical prompts and buttons. It now touches WPF only via ICommand, one batched-UI Dispatcher block, and the custom side-by-side compare window — the latter two deferred to their own follow-ups.
-
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 114 — Phase 2: dialog abstraction (Health Check migrated)
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         Internal refactor, no behaviour change. Introduces IDialogService — a platform-neutral abstraction over message boxes and file/folder pickers — so ViewModels no longer call WPF's MessageBox or Microsoft.Win32 dialogs directly. The WPF-backed implementation stays in the app; a headless fallback auto-cancels (and never auto-confirms a destructive prompt) for tests. MediaHealthViewModel is migrated first: all its confirmation and result dialogs (faststart confirm, fix-complete summary, remux complete/failed, ffmpeg-missing, the re-embed confirm) now go through the abstraction, with identical prompts and buttons. DuplicatesViewModel (which also has file/folder pickers) follows next. Added CI tests for the headless dialog service.
-
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 113 — Phase 2: command framework decoupled from WPF CommandManager
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         The keystone Phase 2 change. Behaviour is identical to before — this changes coupling, not function. The RelayCommand / AsyncRelayCommand family no longer references WPF's CommandManager directly; CanExecute re-evaluation is routed through a new platform-neutral seam (CommandRequery / ICommandRequeryProvider). On WPF the app installs a CommandManager-backed provider at startup (before any ViewModel is built), so the automatic enable/disable behaviour every button relies on — Search enabling when you type, Embed/Apply enabling on selection, async buttons disabling while running — is preserved exactly. The one remaining WPF tie in the command classes and the cleaned child ViewModels is the cross-platform ICommand interface itself, which Avalonia shares. Added CI tests for the seam.
-
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 112 — Phase 2: MetadataViewModel imaging cleanup + debounce disposal
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         Internal refactor, no behaviour change. Removed a dead, unused BitmapSource artwork property (and its System.Windows.Media.Imaging import) from MetadataViewModel — it was a leftover from the earlier ViewModel extraction and nothing bound to it; the live artwork display binds to MainViewModel.ArtworkImage and to RetrievedMetadata.ArtworkBytes via the existing bytes-to-image converter, both untouched. MetadataViewModel now references WPF only through ICommand. Also tightened the Build 111 rename-preview debounce to dispose the previous CancellationTokenSource when it is replaced, so rapid typing no longer accumulates undisposed token sources.
-
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 111 — Phase 2: MetadataViewModel timer decoupling
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         Internal refactor, no behaviour change. The rename-preview field in the metadata editor updates after a short pause as you type (a 150ms debounce). That debounce previously used WPF's DispatcherTimer; it now uses a platform-agnostic Task.Delay plus cancellation, with the result marshalled back to the UI thread through the IUiDispatcher abstraction from Build 110. Same debounce interval, same preview output — only the underlying timer mechanism changed, removing another WPF dependency from the ViewModel.
-
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 110 — Phase 2: UI-dispatcher abstraction (cross-platform prep)
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         Internal refactor, no behaviour change. The first step of Phase 2's goal: purifying the extracted ViewModels of direct WPF dependencies so they can move into a shared, platform-agnostic core project (the foundation for a future Mac/Linux build). Introduces IUiDispatcher — an abstraction over the UI-thread marshaller — with a WPF-backed implementation that stays in the app and a headless no-op fallback for tests. SearchViewModel is the proof-of-pattern: it no longer calls Application.Current.Dispatcher or CommandManager directly, instead routing through the abstraction. The remaining ViewModels follow in later builds. Added CI tests for the null dispatcher.
-
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 109 — Re-embed semicolon-flagged files from Health Check
-                                        ─────────────────────────────────────────────────────────────────────────────────────
-                                        New "📝 Re-embed Semicolon Files (n)" button on the Health Check panel, beside Fix All Issues. It loads every file flagged with a semicolon in its stored comment into the FILES panel and switches to that tab, so you can re-fetch metadata and Embed cleanly on this build. The button shows a live count and is enabled only when there are flagged files and no scan is running.
-                                        Note: tags already lost to a pre-105 truncation can't be recovered from the file itself — re-fetching from the provider restores them. That's why this loads files for a real re-embed rather than just rewriting the truncated comment. Complements Fix All Issues, which excludes semicolon files (their fix is a re-embed, not a remux).
-
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        New "📝 Re-embed Semicolon Files (n)" button on the Health Check panel, beside Fix All Issues. It loads every file flagged with a semicolon in its stored comment into the FILES panel and switches to that tab, so you can re-fetch metadata and Embed cleanly on this build. The button shows a live count and is enabled only when there are flagged files and no scan is running. Note: tags already lost to a pre-105 truncation can't be recovered from the file itself — re-fetching from the provider restores them. That's why this loads files for a real re-embed rather than just rewriting the truncated comment. Complements Fix All Issues, which excludes semicolon files (their fix is a re-embed, not a remux).
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 108 — CI build fix + Health Check semicolon scan
-                                        ─────────────────────────────────────────────────────────────────────────────────────
-                                        Fix: Build 107 failed to compile in CI — WriteSelfTest.cs used Path/FileInfo/Directory which didn't resolve in the WPF markup-compile pass. Switched those calls to explicit aliases (matching the existing SysFile pattern). Resolved.
-                                        New: the Media Health Check now reads each file's embedded comment and flags any containing a semicolon — these files' stored tags may have been truncated by a pre-Build-105 write, so re-embed them on Build 105+ to be safe. Shown as a Warning; it does not block or trigger the ffmpeg "Fix All" (re-embedding is the fix, not remuxing).
-
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Fix: Build 107 failed to compile in CI — WriteSelfTest.cs used Path/FileInfo/Directory which didn't resolve in the WPF markup-compile pass. Switched those calls to explicit aliases (matching the existing SysFile pattern). Resolved. New: the Media Health Check now reads each file's embedded comment and flags any containing a semicolon — these files' stored tags may have been truncated by a pre-Build-105 write, so re-embed them on Build 105+ to be safe. Shown as a Warning; it does not block or trigger the ffmpeg "Fix All" (re-embedding is the fix, not remuxing).
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 107 — Built-in Full Write Diagnostic tool
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         Enabling Settings → Write Error Diagnostics → "Enable full diagnostic dump" now also reveals a "🩺 Run Full Write Diagnostic on a File…" button. It runs the entire 16-step write investigation (the same checks built up while tracking down the Build 105 bug) against a file you choose — on a safe copy, the original is never modified — showing a green check or red cross for each step with a plain-language interpretation, then exports the full log to a location of your choice. The file picker defaults to your Move/Copy destination folder. Use this to capture a precise report for any future write problem.
-
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 106 — Optional diagnostic dump
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         The full per-file write diagnostic used to isolate the Build 105 bug is retained as an opt-in tool rather than removed. Enable it under Settings → Write Error Diagnostics → "Enable full diagnostic dump" (default OFF). When on, every embed appends a detailed report to %TEMP%\vme_artdump\&lt;filename&gt;.diag.txt covering the MP4 atom layout and tag state before/after the write at each pipeline stage.
-
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 105 — ROOT CAUSE FIX: semicolon truncated the metadata comment
-                                        ─────────────────────────────────────────────────────────────────────────────────────
-                                        The long-running "embeds then reverts on rescan" / "Write Failed" bug that affected only SOME files is fixed. Root cause: TagLib# 2.3.0 truncates the MP4/Apple comment atom (©cmt) at the FIRST SEMICOLON on write. VME stores its [VME:...] tokens at the END of the comment, after the plot description — so any file whose description contained a ';' had its entire token block (IMDB/TMDB IDs, rating, MPA, and every TV episode field) silently chopped off, leaving the file's previous comment in place. On the next Library rescan the file therefore appeared to "revert" to its pre-embed state. Files with no semicolon in the description were never affected, which is exactly why only some files failed.
-                                        How it was found: a sequence of standalone diagnostics showed synthetic comment text of any length wrote fine, while the real descriptions failed at a fixed point. A controlled real-vs-synthetic test isolated it to content, and character-class elimination pinned it to the semicolon — at the exact position matching the truncated read-back length on both test files ("A Taste of Hunger" at 105 chars, a Dr. STONE episode at 99).
-                                        Fix: VmeCommentCodec.Encode now sanitises semicolons (replacing ';' with ',', which reads naturally in prose) in the description and in free-text token values before building the comment, so the token block can never be truncated away. Decoding is unaffected. Regression tests use the exact real descriptions that failed. Note: files already truncated by an older build keep their incomplete tags until re-embedded on this build (see the Health Check semicolon scan and the "Re-embed Semicolon Files" button added in later builds).
-
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        The long-running "embeds then reverts on rescan" / "Write Failed" bug that affected only SOME files is fixed. Root cause: TagLib# 2.3.0 truncates the MP4/Apple comment atom (©cmt) at the FIRST SEMICOLON on write. VME stores its [VME:...] tokens at the END of the comment, after the plot description — so any file whose description contained a ';' had its entire token block (IMDB/TMDB IDs, rating, MPA, and every TV episode field) silently chopped off, leaving the file's previous comment in place. On the next Library rescan the file therefore appeared to "revert" to its pre-embed state. Files with no semicolon in the description were never affected, which is exactly why only some files failed. How it was found: a sequence of standalone diagnostics showed synthetic comment text of any length wrote fine, while the real descriptions failed at a fixed point. A controlled real-vs-synthetic test isolated it to content, and character-class elimination pinned it to the semicolon — at the exact position matching the truncated read-back length on both test files ("A Taste of Hunger" at 105 chars, a Dr. STONE episode at 99). Fix: VmeCommentCodec.Encode now sanitises semicolons (replacing ';' with ',', which reads naturally in prose) in the description and in free-text token values before building the comment, so the token block can never be truncated away. Decoding is unaffected. Regression tests use the exact real descriptions that failed. Note: files already truncated by an older build keep their incomplete tags until re-embedded on this build (see the Health Check semicolon scan and the "Re-embed Semicolon Files" button added in later builds).
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 100 — Write-failure dialog layout fix
-                                        ─────────────────────────────────────────────────────────────────────────────────────
-                                        Fix: the "Write Failed" dialog crammed five buttons into a fixed 720px non-resizable window, so the right-aligned row overflowed off the left edge and clipped the first button (e.g. "Open in TagScanner" → "in TagScanner"). The window is now wider and resizable, and buttons reflow in a WrapPanel instead of clipping.
-                                        Note: when verification reports the comment-token fields (IMDB/TMDB/MPA/rating) didn't commit while Title did, the container can't reliably hold the embedded comment block — the fix is Remux → .mp4, which rebuilds a clean faststart container; Replace Original then re-embeds the metadata with artwork.
-
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Fix: the "Write Failed" dialog crammed five buttons into a fixed 720px non-resizable window, so the right-aligned row overflowed off the left edge and clipped the first button (e.g. "Open in TagScanner" → "in TagScanner"). The window is now wider and resizable, and buttons reflow in a WrapPanel instead of clipping. Note: when verification reports the comment-token fields (IMDB/TMDB/MPA/rating) didn't commit while Title did, the container can't reliably hold the embedded comment block — the fix is Remux → .mp4, which rebuilds a clean faststart container; Replace Original then re-embeds the metadata with artwork.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 99 — Remux cache eviction on extension change
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         Fix: after Remux → Replace Original, the cache was evicted for the original and candidate paths but not the actual final path when the extension changed (e.g. .mkv remuxed to .mp4). A stale entry under the final path could be served on the next scan, making a remuxed file appear to revert. The final path is now evicted too. One mechanism within the broader write→cache→scan family fixed across Builds 92–98; not the cause of reverts on files never remuxed.
-
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 98 — Remux auto-embed and context-menu fixes
-                                        ─────────────────────────────────────────────────────────────────────────────────────
-                                        Fix: Remux → Replace Original → auto-embed now routes through the single source-of-truth projection so the panel shows verified disk content (and the disk-verified badge) rather than optimistic intended metadata. With the Build 97 handle fix, the embed that used to fail after a successful replace should now succeed or give an honest diagnosis.
-                                        Fix: original metadata is captured WITH artwork before replacing, so the remuxed file keeps its cover art on auto-embed.
-                                        Fix: FILES-panel right-click "Open in fallback app (e.g. TagScanner)" could render cut off — shortened to "Open in fallback app…" with the example moved to the tooltip.
-
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Fix: Remux → Replace Original → auto-embed now routes through the single source-of-truth projection so the panel shows verified disk content (and the disk-verified badge) rather than optimistic intended metadata. With the Build 97 handle fix, the embed that used to fail after a successful replace should now succeed or give an honest diagnosis. Fix: original metadata is captured WITH artwork before replacing, so the remuxed file keeps its cover art on auto-embed. Fix: FILES-panel right-click "Open in fallback app (e.g. TagScanner)" could render cut off — shortened to "Open in fallback app…" with the example moved to the tooltip.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 97 — Verification false-positive fix
-                                        ─────────────────────────────────────────────────────────────────────────────────────
-                                        Fix: post-write verification re-opened the file while the write handle was still open, which could read a partially-flushed/locked view and report phantom "fields not committed" failures on files (and remuxed copies) that actually wrote fine. The tag-write now runs in its own scope that releases the handle BEFORE verification re-opens the file.
-                                        Fix: the free-text Description field is no longer hard-verified — some containers truncate/normalise long comment atoms, which would fail an otherwise-correct write. Structured tokens (rating, IDs, MPA, watched, all TV fields) are still strictly verified.
-                                        Note: a true revert (rescan shows pre-write values) still exhausts retries and recommends a faststart remux; the remux relocates the MP4 moov atom so tags can be written, and is now verified correctly rather than false-failing.
-
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Fix: post-write verification re-opened the file while the write handle was still open, which could read a partially-flushed/locked view and report phantom "fields not committed" failures on files (and remuxed copies) that actually wrote fine. The tag-write now runs in its own scope that releases the handle BEFORE verification re-opens the file. Fix: the free-text Description field is no longer hard-verified — some containers truncate/normalise long comment atoms, which would fail an otherwise-correct write. Structured tokens (rating, IDs, MPA, watched, all TV fields) are still strictly verified. Note: a true revert (rescan shows pre-write values) still exhausts retries and recommends a faststart remux; the remux relocates the MP4 moov atom so tags can be written, and is now verified correctly rather than false-failing.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 96 — Phase 2: Self-verification and recoverability
-                                        ─────────────────────────────────────────────────────────────────────────────────────
-                                        Verification: after every embed the write path now re-reads the file and verifies the FULL VME token set (rating, IDs, MPA, watched, and all TV fields), not just Title. A container that silently dropped tokens used to pass the Title-only check and revert on the next scan; now the write fails with the exact list of fields that didn't commit. Enforced only for formats that claim full-tag support (MP4/M4V/MKV/MOV); WebM/WMV/AVI keep the Title-only check to avoid false failures.
-                                        Indicator: FILES panel shows a per-file badge — green "verified on disk" when the post-embed re-read matched, amber "not verified" when it didn't — so a silent revert is visible, not hidden.
-                                        Tests: 6 new VerifyWritten unit tests (CI-runnable, pure logic).
-
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Verification: after every embed the write path now re-reads the file and verifies the FULL VME token set (rating, IDs, MPA, watched, and all TV fields), not just Title. A container that silently dropped tokens used to pass the Title-only check and revert on the next scan; now the write fails with the exact list of fields that didn't commit. Enforced only for formats that claim full-tag support (MP4/M4V/MKV/MOV); WebM/WMV/AVI keep the Title-only check to avoid false failures. Indicator: FILES panel shows a per-file badge — green "verified on disk" when the post-embed re-read matched, amber "not verified" when it didn't — so a silent revert is visible, not hidden. Tests: 6 new VerifyWritten unit tests (CI-runnable, pure logic).
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 95 — First-save cache persistence bug fix
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         Fix: LibraryCacheService.SaveAsync used File.Replace, which throws on the first save for a folder (no existing target) and was silently swallowed — the first cache write was lost on fresh setups, compounding metadata-revert symptoms. Now uses File.Move to create the file, File.Replace only when it exists; save failures are logged instead of silenced. Caught by the Phase 1 integration tests.
-
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 94 — CI fix for Phase 1 tests
-                                        ─────────────────────────────────────────────────────────────────────────────────────
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
                                         Fix: added LibraryModels/LibraryCacheService/SubtitleDetector to the test compile list and guarded WPF-only members (CoverSource decode, LibraryTab) under NO_WPF so the cache persistence tests compile in the non-WPF test project.
-
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 93 — Phase 1: Foundation stabilization
-                                        ─────────────────────────────────────────────────────────────────────────────────────
-                                        Architecture: deleted the dead LibraryViewModel shell (its own unused Entries/Tabs/View/commands the UI never bound to) — removes the two-parallel-collections confusion behind the recurring library state bugs. Behaviour unchanged.
-                                        Architecture: SyncLibraryEntry is now the single source-of-truth projection — one fresh disk read projected into the grid row, the cache, AND the FILES-panel snapshot in one place. Grid and cache field mapping share one helper so they can't drift.
-                                        Fix: batch and TV-batch embeds now refresh the FILES-panel snapshot too (previously only the single-file path did), closing the same revert class one layer up.
-                                        Tests: new LibraryCachePersistenceTests (5 tests) cover the embed → save → reload lifecycle where metadata used to revert; run unskipped in CI. Total 80 tests across 10 files.
-
-                                        v1.4.0  ·  Build 92 — Library persistence root-cause fix
-                                        ─────────────────────────────────────────────────────────────────────────────────────
-                                        Fix: library metadata no longer reverts to pre-embed values after a Library scan or after closing and reopening the app.
-                                        Root cause: SyncLibraryEntry trusted the in-memory metadata object and returned early before updating the persistent cache whenever a file was not yet in LibraryEntries (added via Add Files/Add Folder, not scanned), leaving the cache stale; the in-memory forced-read set masked this within a session but is wiped on restart.
-                                        Fix: SyncLibraryEntry now re-reads the file from disk after every embed and writes that authoritative result into both the grid entry and the persistent cache — unconditionally, even when the file is not yet in the library. Stale old-path cache entries are evicted on rename.
-                                        Fix: all three embed paths (single-file, batch, TV batch) now call SyncLibraryEntry; previously only the single-file path did.
-                                        Fix: FILES panel snapshot refreshed from disk after single-file embed; TV-tree refresh marshalled to UI dispatcher for background batch embeds.
-                                        Fix: TV tree no longer shows correctly-tagged episodes (e.g. Dr. Stone S02E04) as "untagged" — the gap-scanner now excludes episode numbers already represented by a real library entry.
-
-                                        v1.4.0  ·  Build 91 — Audit pass: all Step 6/7/8 items implemented
-                                        ─────────────────────────────────────────────────────────────────────────────────────
-                                        Build/Version: bumped to v1.4.0.91; all version markers updated consistently.
-                                        Step 6 — Feature completeness: remux auto-embeds original metadata on Replace Original; TV Batch skips already-tagged files with Yes/No/Cancel prompt.
-                                        Step 7 — Improvements: library scan workers now drive-aware (DriveCapabilityService); all 16 event handlers unsubscribed on close; WatchFolderService + LibraryWatchService disposed; TraktApiService HttpClient static singleton; ApiService User-Agent reads AssemblyVersion; full changelog updated.
-                                        Step 8.4 — Export All NFO: ExportLibraryNfoCommand wired; 📄 NFO button added to Library toolbar; ToMovieMetadata() added to LibraryEntry; exports Kodi/Jellyfin/Plex-compatible sidecar files for entire library.
-                                        Step 8.5 — Search confidence: MatchLabel badge already wired in search results (✓ Exact / ≈ Good / ~ Partial / ? Weak).
-                                        Step 8.6 — Watched progress: WatchedProgress + ProgressLabel fields on VideoFile; teal progress badge appears in FILES panel item alongside watched badge when Trakt reports in-progress playback.
-                                        Step 8.7 — Auto update check: CheckForUpdateAsync fires at ApplicationIdle; compares AssemblyVersion to latest GitHub release tag; shows status bar notification if newer version available — non-blocking, non-intrusive.
-                                        Fix: ToMovieMetadata used ImdbRating (wrong) → Rating (correct MovieMetadata field name).
-                                        Fix: WatchedProgress setter used if(Set(...)) → VideoFile.Set returns void; rewritten as explicit equality check.
-                                        Fix: GetCorrectExtension called with r.FilePath (string) → r (HealthResult) in FixAllIssuesAsync.
-                                        Fix: Unused done variable removed from ExportLibraryNfoAsync.
-
-                                        v1.4.0  ·  Build 90 — Major quality pass: library persistence, audit fixes, new features
-                                        ─────────────────────────────────────────────────────────────────────────────────────
-                                        Library: in-place scan update (no more clear-and-rebuild), metadata persists across Scan Library clicks.
-                                        Library: MarkAsEmbedded ensures fresh TagLib# read on next scan for any embedded file.
-                                        Library: cache now saved on app close; IsWatched preserved across restarts.
-                                        Library: ExportLibraryNfoCommand now wired — 📄 NFO button in toolbar exports Kodi/Plex sidecars.
-                                        Library: scan workers now drive-aware (DriveCapabilityService) — HDD no longer thrashes.
-                                        UI: Subtitle panel added to RETRIEVED DATA tab (🗒 Subtitles expander, Search + Download Selected).
-                                        UI: Undo Batch permanent button in RAW DATA tab (no longer only in transient banner chip).
-                                        UI: Mark Watched button now shows ♥ Watched / Unwatched (was showing ✓ Found / Not found).
-                                        UI: Progress badge added to FILES panel items showing Trakt watch progress %.
-                                        UI: Save Layout now syncs column widths before save (resize-without-reorder now captured).
-                                        Embed: Rename Current File now snapshots undo state correctly.
-                                        Embed: Remux Replace Original auto-embeds original metadata into remuxed file.
-                                        Embed: TV Batch now prompts to skip already-tagged files (Yes/No/Cancel).
-                                        Embed: Batch undo warns before clearing snapshot when new batch starts.
-                                        Stability: CanScanLibrary now checks IsBusy — scan blocked during embed.
-                                        Stability: LibraryCacheService _index changed to ConcurrentDictionary (parallel scan safety).
-                                        Stability: Trakt token refresh now uses SemaphoreSlim — no double-refresh race.
-                                        Stability: TraktApiService.HttpClient changed to static readonly singleton.
-                                        Stability: ApiService User-Agent now reads from AssemblyVersion (was hardcoded 1.3.4).
-                                        Stability: MainWindow_Closing now unsubscribes all 16 event handlers + disposes FSW services.
-                                        Stability: WatchFolderService and LibraryWatchService now disposed on app close.
-                                        Bindings: SubtitleSearchResults binding corrected (was SubtitleResults — silent failure).
-                                        Bindings: InverseBool → InvBool (correct converter key, was causing startup crash).
-                                        Bindings: ChipClickHandler moved to class-level (was local function — CS0103 error).
-                                        Startup: Auto update check fires at ApplicationIdle — notifies via status bar if newer version available.
-                                        Build: WriteStatus.None → WriteStatus.Untouched (CS0117 CI error fixed).
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
-                                        IMPROVEMENTS: Fingerprint cache import now supports Merge vs Replace
-                                        and no longer requires restart (new Reload/MergeFrom methods). Quick
-                                        Scan now honours excluded patterns (was only respected in Deep Scan).
-                                        Cross-stage duplicate group deduplication — same file pair caught by
-                                        multiple stages now appears only once, highest-confidence kept. TMDB
-                                        popularity score used as tiebreaker in search ranking (common-title
-                                        disambiguation). Standard tag fallback in MetadataService reads IMDB
-                                        ID, rating, MPA from Apple tag atoms on files tagged by external tools
-                                        (TagScanner, tinyMediaManager, Plex). Health Check: new ✏ Fix Extension
-                                        option renames mislabeled files instantly (no remux, no re-encode).
-                                        TV batch now cross-references library gaps and logs which episodes
-                                        remain unmatched. Folder watcher completely rewritten: silent seed
-                                        pass on startup prevents re-reporting existing files; FSW buffer-overflow
-                                        recovery now does an immediate poll scan instead of waiting up to 3
-                                        minutes; prunes stale entries every 10 polls.
-                                        THREAD SAFETY: ConsoleLog.Insert routed through dispatcher-aware Log()
-                                        helper across all 122 call sites — eliminates NotSupportedException on
-                                        CollectionView from background threads (Trakt startup check, library
-                                        rebuild, orphan sweep). Library cache auto-prunes ghost entries on
-                                        every scan. VmeCommentCodec extracted as pure-logic class for testing.
-                                        TESTS: MetadataRoundTripTests (10) verify VME tag encode/decode
-                                        round-trips including TV episode fields, rating precision, locale-safe
-                                        decimal format, and token isolation. Total: 66 test methods.
-                                        CI: GitHub Actions updated to checkout@v4.2.2 / setup-dotnet@v4.3.1
-                                        (eliminates Node.js 20 deprecation warnings before June 2026 deadline).
+                                        Architecture: deleted the dead LibraryViewModel shell (its own unused Entries/Tabs/View/commands the UI never bound to) — removes the two-parallel-collections confusion behind the recurring library state bugs. Behaviour unchanged. Architecture: SyncLibraryEntry is now the single source-of-truth projection — one fresh disk read projected into the grid row, the cache, AND the FILES-panel snapshot in one place. Grid and cache field mapping share one helper so they can't drift. Fix: batch and TV-batch embeds now refresh the FILES-panel snapshot too (previously only the single-file path did), closing the same revert class one layer up. Tests: new LibraryCachePersistenceTests (5 tests) cover the embed → save → reload lifecycle where metadata used to revert; run unskipped in CI. Total 80 tests across 10 files.
                                     </TextBlock>
-
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 92 — Library persistence root-cause fix
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Fix: library metadata no longer reverts to pre-embed values after a Library scan or after closing and reopening the app. Root cause: SyncLibraryEntry trusted the in-memory metadata object and returned early before updating the persistent cache whenever a file was not yet in LibraryEntries (added via Add Files/Add Folder, not scanned), leaving the cache stale; the in-memory forced-read set masked this within a session but is wiped on restart. Fix: SyncLibraryEntry now re-reads the file from disk after every embed and writes that authoritative result into both the grid entry and the persistent cache — unconditionally, even when the file is not yet in the library. Stale old-path cache entries are evicted on rename. Fix: all three embed paths (single-file, batch, TV batch) now call SyncLibraryEntry; previously only the single-file path did. Fix: FILES panel snapshot refreshed from disk after single-file embed; TV-tree refresh marshalled to UI dispatcher for background batch embeds. Fix: TV tree no longer shows correctly-tagged episodes (e.g. Dr. Stone S02E04) as "untagged" — the gap-scanner now excludes episode numbers already represented by a real library entry.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 91 — Audit pass: all Step 6/7/8 items implemented
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Build/Version: bumped to v1.4.0.91; all version markers updated consistently. Step 6 — Feature completeness: remux auto-embeds original metadata on Replace Original; TV Batch skips already-tagged files with Yes/No/Cancel prompt. Step 7 — Improvements: library scan workers now drive-aware (DriveCapabilityService); all 16 event handlers unsubscribed on close; WatchFolderService + LibraryWatchService disposed; TraktApiService HttpClient static singleton; ApiService User-Agent reads AssemblyVersion; full changelog updated. Step 8.4 — Export All NFO: ExportLibraryNfoCommand wired; 📄 NFO button added to Library toolbar; ToMovieMetadata() added to LibraryEntry; exports Kodi/Jellyfin/Plex-compatible sidecar files for entire library. Step 8.5 — Search confidence: MatchLabel badge already wired in search results (✓ Exact / ≈ Good / ~ Partial / ? Weak). Step 8.6 — Watched progress: WatchedProgress + ProgressLabel fields on VideoFile; teal progress badge appears in FILES panel item alongside watched badge when Trakt reports in-progress playback. Step 8.7 — Auto update check: CheckForUpdateAsync fires at ApplicationIdle; compares AssemblyVersion to latest GitHub release tag; shows status bar notification if newer version available — non-blocking, non-intrusive. Fix: ToMovieMetadata used ImdbRating (wrong) → Rating (correct MovieMetadata field name). Fix: WatchedProgress setter used if(Set(...)) → VideoFile.Set returns void; rewritten as explicit equality check. Fix: GetCorrectExtension called with r.FilePath (string) → r (HealthResult) in FixAllIssuesAsync. Fix: Unused done variable removed from ExportLibraryNfoAsync.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 90 — Major quality pass: library persistence, audit fixes, new features
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Library: in-place scan update (no more clear-and-rebuild), metadata persists across Scan Library clicks. Library: MarkAsEmbedded ensures fresh TagLib# read on next scan for any embedded file. Library: cache now saved on app close; IsWatched preserved across restarts. Library: ExportLibraryNfoCommand now wired — 📄 NFO button in toolbar exports Kodi/Plex sidecars. Library: scan workers now drive-aware (DriveCapabilityService) — HDD no longer thrashes. UI: Subtitle panel added to RETRIEVED DATA tab (🗒 Subtitles expander, Search + Download Selected). UI: Undo Batch permanent button in RAW DATA tab (no longer only in transient banner chip). UI: Mark Watched button now shows ♥ Watched / Unwatched (was showing ✓ Found / Not found). UI: Progress badge added to FILES panel items showing Trakt watch progress %. UI: Save Layout now syncs column widths before save (resize-without-reorder now captured). Embed: Rename Current File now snapshots undo state correctly. Embed: Remux Replace Original auto-embeds original metadata into remuxed file. Embed: TV Batch now prompts to skip already-tagged files (Yes/No/Cancel). Embed: Batch undo warns before clearing snapshot when new batch starts. Stability: CanScanLibrary now checks IsBusy — scan blocked during embed. Stability: LibraryCacheService _index changed to ConcurrentDictionary (parallel scan safety). Stability: Trakt token refresh now uses SemaphoreSlim — no double-refresh race. Stability: TraktApiService.HttpClient changed to static readonly singleton. Stability: ApiService User-Agent now reads from AssemblyVersion (was hardcoded 1.3.4). Stability: MainWindow_Closing now unsubscribes all 16 event handlers + disposes FSW services. Stability: WatchFolderService and LibraryWatchService now disposed on app close. Bindings: SubtitleSearchResults binding corrected (was SubtitleResults — silent failure). Bindings: InverseBool → InvBool (correct converter key, was causing startup crash). Bindings: ChipClickHandler moved to class-level (was local function — CS0103 error). Startup: Auto update check fires at ApplicationIdle — notifies via status bar if newer version available. Build: WriteStatus.None → WriteStatus.Untouched (CS0117 CI error fixed). IMPROVEMENTS: Fingerprint cache import now supports Merge vs Replace and no longer requires restart (new Reload/MergeFrom methods). Quick Scan now honours excluded patterns (was only respected in Deep Scan). Cross-stage duplicate group deduplication — same file pair caught by multiple stages now appears only once, highest-confidence kept. TMDB popularity score used as tiebreaker in search ranking (common-title disambiguation). Standard tag fallback in MetadataService reads IMDB ID, rating, MPA from Apple tag atoms on files tagged by external tools (TagScanner, tinyMediaManager, Plex). Health Check: new ✏ Fix Extension option renames mislabeled files instantly (no remux, no re-encode). TV batch now cross-references library gaps and logs which episodes remain unmatched. Folder watcher completely rewritten: silent seed pass on startup prevents re-reporting existing files; FSW buffer-overflow recovery now does an immediate poll scan instead of waiting up to 3 minutes; prunes stale entries every 10 polls. THREAD SAFETY: ConsoleLog.Insert routed through dispatcher-aware Log() helper across all 122 call sites — eliminates NotSupportedException on CollectionView from background threads (Trakt startup check, library rebuild, orphan sweep). Library cache auto-prunes ghost entries on every scan. VmeCommentCodec extracted as pure-logic class for testing. TESTS: MetadataRoundTripTests (10) verify VME tag encode/decode round-trips including TV episode fields, rating precision, locale-safe decimal format, and token isolation. Total: 66 test methods. CI: GitHub Actions updated to checkout@v4.2.2 / setup-dotnet@v4.3.1 (eliminates Node.js 20 deprecation warnings before June 2026 deadline).
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 89 — Media Health Check + Deep Scan polish
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
-                                        NEW 📋 Media Health Check tab. MediaHealthService detects the true
-                                        container from file-header magic bytes (MP4, QuickTime, Matroska,
-                                        AVI, ASF/WMV, MPEG-TS/PS, FLV) and compares against the extension —
-                                        catches misnamed files that silently fail metadata embedding.
-                                        Flags MP4 no-faststart (moov atom at end), zero-byte/truncated
-                                        files, unreadable headers, and unknown containers. Parallel
-                                        detection (ProcessorCount−1), reads only first ~64 KB per file.
-                                        Plain-English issue + suggested fix per row; 📋 Copy Report; ✕ Clear.
-                                        STAGE 2: FfmpegService adds ⚡ Fix All Faststart — lossless
-                                        stream-copy remux (-c copy -movflags +faststart), preserves
-                                        timestamps, no re-encode. ffmpeg auto-detected from native\ folder,
-                                        app folder, or PATH. Settings → External Tools shows ffmpeg status,
-                                        🔄 Re-detect, and 🌐 Download link (gyan.dev). ffmpeg is NOT bundled.
-                                        UI: tab strip tightened (padding 16,10 → 9,9; font 13 → 12) so all
-                                        tabs fit at default width. Health Check tab icon is a clipboard 📋.
-                                        Right-click Remux: both the Health Check grid and the FILES panel
-                                        now offer 🔧 Remux to .mkv / .mp4 — lossless container rebuild that
-                                        fixes files refusing metadata embedding (the genuine answer to the
-                                        "had to use TagScanner" cases). FILES panel also gets 🔧 Open in
-                                        fallback app and 📂 Open containing folder. Remux to .mp4 keeps MP4
-                                        and adds faststart; Remux to .mkv uses the most tag-permissive
-                                        container. Fix All Faststart parallelised (ProcessorCount−1) with a
-                                        completion summary dialog (count processed / failed). Build filename
-                                        fix: AssemblyName bumped to 1.4.0.89 (was producing ...88.exe).
-                                        Note: MKVToolNix only outputs MKV — MP4-preserving faststart needs
-                                        ffmpeg, which is why Stage 2 uses ffmpeg rather than mkvmerge.
+                                        NEW 📋 Media Health Check tab. MediaHealthService detects the true container from file-header magic bytes (MP4, QuickTime, Matroska, AVI, ASF/WMV, MPEG-TS/PS, FLV) and compares against the extension — catches misnamed files that silently fail metadata embedding. Flags MP4 no-faststart (moov atom at end), zero-byte/truncated files, unreadable headers, and unknown containers. Parallel detection (ProcessorCount−1), reads only first ~64 KB per file. Plain-English issue + suggested fix per row; 📋 Copy Report; ✕ Clear. STAGE 2: FfmpegService adds ⚡ Fix All Faststart — lossless stream-copy remux (-c copy -movflags +faststart), preserves timestamps, no re-encode. ffmpeg auto-detected from native\ folder, app folder, or PATH. Settings → External Tools shows ffmpeg status, 🔄 Re-detect, and 🌐 Download link (gyan.dev). ffmpeg is NOT bundled. UI: tab strip tightened (padding 16,10 → 9,9; font 13 → 12) so all tabs fit at default width. Health Check tab icon is a clipboard 📋. Right-click Remux: both the Health Check grid and the FILES panel now offer 🔧 Remux to .mkv / .mp4 — lossless container rebuild that fixes files refusing metadata embedding (the genuine answer to the "had to use TagScanner" cases). FILES panel also gets 🔧 Open in fallback app and 📂 Open containing folder. Remux to .mp4 keeps MP4 and adds faststart; Remux to .mkv uses the most tag-permissive container. Fix All Faststart parallelised (ProcessorCount−1) with a completion summary dialog (count processed / failed). Build filename fix: AssemblyName bumped to 1.4.0.89 (was producing ...88.exe). Note: MKVToolNix only outputs MKV — MP4-preserving faststart needs ffmpeg, which is why Stage 2 uses ffmpeg rather than mkvmerge.
                                     </TextBlock>
-
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 88 — Chromaprint Deep Scan + duplicate cleanup workflow
                                     </TextBlock>
