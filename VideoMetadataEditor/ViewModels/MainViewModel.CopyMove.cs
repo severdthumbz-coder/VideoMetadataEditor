@@ -367,6 +367,17 @@ public partial class MainViewModel
                     ?? Enumerable.Empty<string>(),
             StringComparer.OrdinalIgnoreCase);
 
+        // If the destination folder is one the Watch Folder monitors (build 128
+        // widened the watch to every loaded file's folder), the moved file would
+        // otherwise be re-detected at its NEW path and re-added to the panel as a
+        // "new" arrival — making a move look like it didn't remove the file. Seed
+        // each successful destination path as already-known so the watch ignores it.
+        if (results != null)
+        {
+            foreach (var r in results.Where(r => r.Success && !string.IsNullOrWhiteSpace(r.DestPath)))
+                _watchFolderService.AddKnownPath(r.DestPath);
+        }
+
         int removedCount = 0;
         foreach (var vf in transferred.ToList())
         {
