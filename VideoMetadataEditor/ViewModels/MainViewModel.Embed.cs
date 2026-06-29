@@ -57,9 +57,9 @@ public partial class MainViewModel
                 if (!string.IsNullOrWhiteSpace(RetrievedMetadata.TmdbId))
                     file.EmbeddedMetadata.TmdbId = RetrievedMetadata.TmdbId;
                 if (!string.IsNullOrWhiteSpace(RetrievedMetadata.ImdbId))
-                    SelectedFile.EmbeddedMetadata.ImdbId = RetrievedMetadata.ImdbId;
+                    file.EmbeddedMetadata.ImdbId = RetrievedMetadata.ImdbId;
                 if (!string.IsNullOrWhiteSpace(RetrievedMetadata.TvdbId))
-                    SelectedFile.EmbeddedMetadata.TvdbId = RetrievedMetadata.TvdbId;
+                    file.EmbeddedMetadata.TvdbId = RetrievedMetadata.TvdbId;
             }
         }
 
