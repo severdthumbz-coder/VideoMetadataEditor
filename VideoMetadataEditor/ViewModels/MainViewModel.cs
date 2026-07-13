@@ -355,35 +355,26 @@ public partial class MainViewModel : INotifyPropertyChanged
     /// </summary>
     private async Task CheckForUpdateAsync()
     {
-        try
+        // Respect the opt-out setting.
+        if (!Settings.CheckForUpdatesOnStartup) return;
+
+        var localVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        if (localVer == null) return;
+
+        // Pure service does the fetch + parse + compare; fails silent (returns null).
+        var info = await Services.UpdateCheckService.CheckAsync(localVer).ConfigureAwait(false);
+        if (info == null) return;
+
+        // Newer release available — raise the persistent badge (not just a transient
+        // status message, which the next action would overwrite).
+        await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
         {
-            const string api = "https://api.github.com/repos/severdthumbz-coder/VideoMetadataEditor/releases/latest";
-            using var http = new System.Net.Http.HttpClient();
-            http.DefaultRequestHeaders.Add("User-Agent", "VideoMetadataEditor-UpdateCheck");
-            http.Timeout = TimeSpan.FromSeconds(6);
-
-            var json = await http.GetStringAsync(api).ConfigureAwait(false);
-            // Parse "tag_name": "v1.4.0.91" cheaply without a full JSON dependency
-            var tagMatch = System.Text.RegularExpressions.Regex.Match(json, @"""tag_name""\s*:\s*""([^""]+)""");
-            if (!tagMatch.Success) return;
-
-            var remoteTag  = tagMatch.Groups[1].Value.TrimStart('v');
-            var localVer   = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-            if (localVer == null) return;
-            if (!Version.TryParse(remoteTag, out var remoteVer)) return;
-            if (remoteVer <= localVer) return;
-
-            // Newer version available — show a non-intrusive banner
-            var urlMatch = System.Text.RegularExpressions.Regex.Match(json, @"""html_url""\s*:\s*""([^""]+)""");
-            string releaseUrl = urlMatch.Success ? urlMatch.Groups[1].Value : "https://github.com/severdthumbz-coder/VideoMetadataEditor/releases";
-
-            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                StatusText = $"🆕 Update available: v{remoteVer} — see Help → Changelog or visit GitHub";
-                Log($"[{DateTime.Now:HH:mm:ss}] Update available: v{remoteVer} (current: v{localVer})");
-            });
-        }
-        catch { /* non-fatal — no internet, private repo, etc */ }
+            UpdateUrl       = info.ReleaseUrl;
+            UpdateBadgeText = $"⬆ Update available: v{info.LatestVersion}";
+            UpdateAvailable = true;
+            StatusText      = $"🆕 Update available: v{info.LatestVersion} — click the badge below the title, or visit GitHub";
+            Log($"[{DateTime.Now:HH:mm:ss}] Update available: v{info.LatestVersion} (current: v{localVer})");
+        });
     }
 
     /// <summary>
@@ -849,6 +840,31 @@ public partial class MainViewModel : INotifyPropertyChanged
 
     public string AppVersion     { get; } = BuildVersionString();
     public string AppVersionFull { get; } = BuildVersionStringFull();
+
+    // ── Update badge (set by CheckForUpdateAsync when a newer GitHub release exists) ──
+    private bool _updateAvailable;
+    public bool UpdateAvailable
+    {
+        get => _updateAvailable;
+        private set { _updateAvailable = value; RaiseProperty(); }
+    }
+
+    private string _updateBadgeText = string.Empty;
+    public string UpdateBadgeText
+    {
+        get => _updateBadgeText;
+        private set { _updateBadgeText = value; RaiseProperty(); }
+    }
+
+    private string _updateUrl = Services.UpdateCheckService.ReleasesPage;
+    public string UpdateUrl
+    {
+        get => _updateUrl;
+        private set { _updateUrl = value; RaiseProperty(); }
+    }
+
+    /// <summary>Opens the release page for an available update in the default browser.</summary>
+    public ICommand OpenUpdateUrlCommand { get; private set; } = null!;
 
     private static string BuildVersionString()
     {
@@ -1710,6 +1726,15 @@ public partial class MainViewModel : INotifyPropertyChanged
             TvSelectedEpisode = null;
         });
         AddExtraLibraryFolderCommand      = new RelayCommand(_ => AddExtraLibraryFolder());
+        OpenUpdateUrlCommand              = new RelayCommand(_ =>
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                { FileName = UpdateUrl, UseShellExecute = true });
+            }
+            catch { /* non-fatal — browser launch failure */ }
+        });
 
         CloseLibraryTabCommand = new RelayCommand(p =>
         {

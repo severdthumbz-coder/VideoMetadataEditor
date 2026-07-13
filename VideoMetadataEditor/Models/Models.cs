@@ -35,6 +35,8 @@ public class AppSettings
     /// <summary>When true, AniList is included as a fallback metadata source for anime content.</summary>
     public bool   UseAniList       { get; set; } = false;
     public bool   LibraryTabbedMode    { get; set; } = false;
+    /// <summary>When true, the app checks GitHub Releases for a newer version on startup and shows an update badge if one exists.</summary>
+    public bool   CheckForUpdatesOnStartup { get; set; } = true;
     public bool   LibraryTvTreeView    { get; set; } = false;
     public string LanguageCode          { get; set; } = "System";
     // "List" = flat DataGrid (default), "Tree" = Show>Season>Episode hierarchy

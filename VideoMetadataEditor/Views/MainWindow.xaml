@@ -67,6 +67,25 @@
                         <TextBlock Text="{Binding AppVersionFull, Mode=OneTime}"
                                    FontSize="10"
                                    Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                        <!-- Update badge: shown only when a newer GitHub release exists.
+                             Click opens the release page in the browser. -->
+                        <Button Command="{Binding OpenUpdateUrlCommand}"
+                                Cursor="Hand"
+                                Margin="0,2,0,0"
+                                Padding="6,1"
+                                HorizontalAlignment="Left"
+                                ToolTip="A newer version is available on GitHub — click to open the release page"
+                                Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolVis}}">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="#2E7D32" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                        <TextBlock Text="{Binding UpdateBadgeText}"
+                                                   FontSize="10" FontWeight="SemiBold"
+                                                   Foreground="White"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
                     </StackPanel>
                 </StackPanel>
 
@@ -2526,6 +2545,10 @@
                                         <CheckBox Content="Auto-switch to Retrieved Data tab after search"
                                                   IsChecked="{Binding Settings.AutoSwitchToResults}"
                                                   Margin="0,0,0,6"/>
+                                        <CheckBox Content="Check GitHub for updates on startup"
+                                                  IsChecked="{Binding Settings.CheckForUpdatesOnStartup}"
+                                                  Margin="0,0,0,6"
+                                                  ToolTip="On launch, checks the GitHub Releases page for a newer version. If one exists, a badge appears under the title. No download happens automatically."/>
                                         <TextBlock Text="AUTO-SEARCH DEBOUNCE (ms)" Style="{StaticResource LabelText}"/>
                                         <TextBox Text="{Binding Settings.AutoSearchDebounceMs, UpdateSourceTrigger=PropertyChanged}"
                                                  Margin="0,0,0,0"
@@ -5111,6 +5134,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 130 — Update check with title-bar badge
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        On startup the app now checks the GitHub Releases page for a newer version and, if one exists, shows a small "⬆ Update available" badge under the title — click it to open the release page in your browser. No download happens automatically (this is a portable app; you choose when to grab the new EXE). The check runs quietly in the background, never blocks startup, and fails silent if you're offline or there's no newer release. It can be turned off in Settings → Behaviour → "Check GitHub for updates on startup". The version-comparison logic lives in a pure, unit-tested UpdateCheckService (tolerates a leading "v" on tags, treats only strictly-newer releases as updates); the badge stays dormant until a release newer than the running build is published.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 129 — Selection-aware Batch Edit, Help refresh, and a cluster of fixes
                                     </TextBlock>

@@ -2,6 +2,20 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 130 — Update check with title-bar badge
+
+On startup, the app checks GitHub Releases for a newer version and surfaces an unobtrusive update badge if one exists.
+
+- **Badge under the title.** When a newer release is found, a small "⬆ Update available: vX.Y.Z.N" badge appears beneath the version text. Clicking it opens the release page in the default browser. No automatic download — this is a portable single-EXE app, so the user chooses when to fetch the new binary.
+- **Quiet and non-blocking.** The check runs on a background task after launch, never blocks startup, and fails silent on any error (offline, rate-limited, private repo, no release yet). Uses GitHub's unauthenticated `/releases/latest` endpoint (60 req/hour is ample for once-per-launch).
+- **Opt-out.** Settings → Behaviour → "Check GitHub for updates on startup" (default on).
+- **Pure, tested core.** `UpdateCheckService` splits the network fetch from the decision logic. `ParseTag` tolerates a leading `v` and whitespace; `Evaluate` treats only strictly-newer versions as updates and falls back to the releases page if a release lacks an `html_url`. New tests cover valid/invalid tags, newer/equal/older comparisons, malformed JSON, and missing fields.
+- Replaces the previous behavior where an available update only flashed a transient status-bar message (easily missed and overwritten by the next action).
+
+The badge stays dormant until a GitHub Release newer than the running build is published — so it's safe to ship before the first release exists.
+
+---
+
 ## v1.4.0 Build 129 — Selection-aware Batch Edit + Help docs refreshed
 
 - **Selection-aware Batch Edit Fields.** The dialog now greys out fields that don't apply to the current selection: Show title is disabled for an all-movie selection (it's TV-only), and Year is disabled for an all-episode selection (episodes use their aired date, which isn't batch-editable). A mixed selection leaves everything available; fields shared by both types (Genre, Cast, Director, MPA, Watched) are never greyed. The greying is computed in the ViewModel from the selection's content-type composition and applied in the dialog — the underlying `BatchFieldEditService` logic is unchanged.
