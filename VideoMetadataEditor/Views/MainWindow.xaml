@@ -5135,6 +5135,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 131 — Clear the last compiler warning
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        The Duplicates results setter assigned a possibly-null value into the non-nullable _groups field (CS8601). It now coalesces null to an empty collection, which matches the field's declared type and the surrounding null-guards — no behaviour change, and the build log is now warning-clean. (The workflow's Node 20 deprecation notice is separate, addressed by bumping the GitHub Actions versions.)
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 130 — Update check with title-bar badge
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

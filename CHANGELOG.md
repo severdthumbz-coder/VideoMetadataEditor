@@ -2,6 +2,13 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 131 — Clear the last compiler warning
+
+- **CS8601 in DuplicatesViewModel resolved.** The `Groups` setter passed a possibly-null `value` into the non-nullable `_groups` field. It now coalesces to an explicit `new ObservableCollection<>()`, which the compiler sees as definitely non-null (a bare `[]` collection-expression still left the warning). Matches the field's declared type and the existing null-guards around subscribe/unsubscribe. No behavior change — the empty collection and null were already handled identically — but the build log is now warning-clean.
+- **GitHub Actions bumped off deprecated Node 20.** The CI workflow's `actions/checkout` and `actions/setup-dotnet` were updated to v5 (Node 24), clearing GitHub's runner deprecation notice. (Workflow-only change, outside the app.)
+
+---
+
 ## v1.4.0 Build 130 — Update check with title-bar badge
 
 On startup, the app checks GitHub Releases for a newer version and surfaces an unobtrusive update badge if one exists.

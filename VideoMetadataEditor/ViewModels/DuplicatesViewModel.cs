@@ -197,7 +197,11 @@ public class DuplicatesViewModel : ViewModelBase
                 _groups.CollectionChanged -= OnGroupsCollectionChanged;
             }
 
-            Set(ref _groups, value);
+            // Normalise null to an empty collection: the field is declared non-nullable
+            // and the subscribe/unsubscribe guards below already treat "no groups" as valid.
+            // Explicit new() (not []) so the compiler sees a definitely-non-null value and
+            // clears CS8601 (assigning a possibly-null value to a non-null field).
+            Set(ref _groups, value ?? new ObservableCollection<DuplicateGroupViewModel>());
 
             // Subscribe to all groups in the new collection
             if (_groups != null)
