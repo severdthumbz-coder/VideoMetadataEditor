@@ -53,11 +53,11 @@ if "%PROJECT_DIR:~-1%"=="\" set "PROJECT_DIR=%PROJECT_DIR:~0,-1%"
 
 :: Read FullVersion from the .csproj so we can find the versioned EXE.
 :: AssemblyName is "VideoMetadataEditor v<FullVersion>", so the output EXE
-:: is "VideoMetadataEditor v<ver>.exe" — not a fixed name. Match ONLY the
-:: real <FullVersion>x.y.z.n</FullVersion> element (require a digit after
-:: the tag) so we skip the comment and the $(FullVersion) references.
+:: is "VideoMetadataEditor v<ver>.exe" — not a fixed name. Only the real
+:: element line contains "</FullVersion>" (comment and $(FullVersion) refs
+:: do not), so match the closing tag and take token 2 split on < >.
 set "APP_VERSION="
-for /f "tokens=2 delims=<>" %%v in ('findstr /r /c:"<FullVersion>[0-9]" "%CSPROJ%"') do set "APP_VERSION=%%v"
+for /f "usebackq tokens=2 delims=<>" %%v in (`findstr /i /c:"</FullVersion>" "%CSPROJ%"`) do set "APP_VERSION=%%v"
 
 set "PUBLISH_DIR=%PROJECT_DIR%\publish"
 if defined APP_VERSION (

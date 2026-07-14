@@ -5135,10 +5135,16 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
-                                        v1.4.0  ·  Build 131 — Clear the last compiler warning
+                                        v1.4.0  ·  Build 132 — Silence the last compiler warning
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
-                                        The Duplicates results setter assigned a possibly-null value into the non-nullable _groups field (CS8601). It now coalesces null to an empty collection, which matches the field's declared type and the surrounding null-guards — no behaviour change, and the build log is now warning-clean. (The workflow's Node 20 deprecation notice is separate, addressed by bumping the GitHub Actions versions.)
+                                        The Duplicates results setter drew a CS8601 "possible null reference assignment" warning. The value is coalesced to an empty collection on that line, and _groups is null-guarded both before and after, so null and empty were always handled identically — the warning was cosmetic, never a runtime risk. Build 131's coalescing didn't satisfy the compiler (its nullable analysis can't see through the generic Set&lt;T&gt;(ref T, T) helper), so it's now suppressed at the site with a #pragma documenting the reasoning. No behaviour change; the build log is warning-clean.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 131 — Release tooling and warning cleanup
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        The CI workflow's GitHub Actions (checkout, setup-dotnet) were bumped to v5, clearing GitHub's Node 20 deprecation notice. The Duplicates CS8601 warning was addressed by coalescing null to an empty collection — correct and harmless, but it didn't clear the warning (see Build 132). Release publishing also moved to PowerShell: publish-release.ps1 reads the version by parsing the csproj as XML, verifies gh auth, locates the versioned EXE, refuses to overwrite an existing release, builds notes from the changelog, and confirms before publishing.
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 130 — Update check with title-bar badge

@@ -2,10 +2,17 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
-## v1.4.0 Build 131 — Clear the last compiler warning
+## v1.4.0 Build 132 — Silence the last compiler warning
 
-- **CS8601 in DuplicatesViewModel resolved.** The `Groups` setter passed a possibly-null `value` into the non-nullable `_groups` field. It now coalesces to an explicit `new ObservableCollection<>()`, which the compiler sees as definitely non-null (a bare `[]` collection-expression still left the warning). Matches the field's declared type and the existing null-guards around subscribe/unsubscribe. No behavior change — the empty collection and null were already handled identically — but the build log is now warning-clean.
+- **CS8601 in DuplicatesViewModel suppressed.** The `Groups` setter's `Set(ref _groups, value ?? ...)` drew a "possible null reference assignment" warning. The value is coalesced to an empty collection on the line itself, and `_groups` is null-guarded both before and after the assignment, so null and empty were always handled identically — the warning was cosmetic, never a runtime risk. Build 131 tried to clear it by coalescing explicitly; that didn't satisfy the compiler, whose nullable analysis can't see through the generic `Set<T>(ref T, T)` helper. It's now suppressed at the site with a `#pragma` documenting the reasoning. No behavior change; the build log is warning-clean.
+
+---
+
+## v1.4.0 Build 131 — Release tooling and warning cleanup
+
 - **GitHub Actions bumped off deprecated Node 20.** The CI workflow's `actions/checkout` and `actions/setup-dotnet` were updated to v5 (Node 24), clearing GitHub's runner deprecation notice. (Workflow-only change, outside the app.)
+- **CS8601 coalescing attempt.** The `Groups` setter was changed to coalesce null to an empty collection. This is correct and harmless, but did not clear the warning — see Build 132.
+- **Release publishing moved to PowerShell.** `publish-release.ps1` replaces the batch publisher: it reads `<FullVersion>` by parsing the csproj as XML (rather than fragile text-scraping), checks `gh` auth, finds the versioned EXE, refuses to overwrite an existing release, builds notes from CHANGELOG.md, and confirms before publishing. `publish-release.bat` remains as a thin double-click launcher that invokes it with `-ExecutionPolicy Bypass`. (Tooling only, outside the app.)
 
 ---
 

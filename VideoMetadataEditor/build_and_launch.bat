@@ -4,7 +4,7 @@ title Video Metadata Editor - Build
 
 echo.
 echo  ============================================================
-echo   Video Metadata Editor - Build and Package
+echo   Video Metadata Editor v1.2.0 build 7 - Build and Package
 echo  ============================================================
 echo.
 
@@ -51,27 +51,9 @@ if not exist "%CSPROJ%" (
 :: Strip trailing backslash from PROJECT_DIR to prevent double-backslash
 if "%PROJECT_DIR:~-1%"=="\" set "PROJECT_DIR=%PROJECT_DIR:~0,-1%"
 
-:: Read FullVersion from the .csproj so we can find the versioned EXE.
-:: AssemblyName is "VideoMetadataEditor v<FullVersion>", so the output EXE
-:: is "VideoMetadataEditor v<ver>.exe" — not a fixed name. The csproj has
-:: "FullVersion" on several lines (comment + $(FullVersion) refs), so scan
-:: all of them and keep the token that starts with a digit (the version).
-set "APP_VERSION="
-for /f "usebackq tokens=2 delims=<>" %%v in (`findstr /i "FullVersion" "%CSPROJ%"`) do (
-    set "CANDIDATE=%%v"
-    for /f "delims=0123456789" %%d in ("!CANDIDATE!") do set "CANDIDATE="
-    if not "!CANDIDATE!"=="" set "APP_VERSION=!CANDIDATE!"
-)
-
 set "PUBLISH_DIR=%PROJECT_DIR%\publish"
-if defined APP_VERSION (
-    set "EXE_PATH=%PUBLISH_DIR%\VideoMetadataEditor v%APP_VERSION%.exe"
-) else (
-    set "EXE_PATH=%PUBLISH_DIR%\VideoMetadataEditor.exe"
-)
+set "EXE_PATH=%PUBLISH_DIR%\VideoMetadataEditor.exe"
 set "CONFIG_FILE=%PUBLISH_DIR%\config.json"
-
-if defined APP_VERSION echo  [OK] Version: %APP_VERSION%
 
 echo  [OK] Project: %PROJECT_DIR%
 echo.

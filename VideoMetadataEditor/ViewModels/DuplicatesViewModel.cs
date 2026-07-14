@@ -197,11 +197,15 @@ public class DuplicatesViewModel : ViewModelBase
                 _groups.CollectionChanged -= OnGroupsCollectionChanged;
             }
 
-            // Normalise null to an empty collection: the field is declared non-nullable
-            // and the subscribe/unsubscribe guards below already treat "no groups" as valid.
-            // Explicit new() (not []) so the compiler sees a definitely-non-null value and
-            // clears CS8601 (assigning a possibly-null value to a non-null field).
+            // Normalise null to an empty collection so the field is never null.
+            // CS8601 is suppressed here deliberately: the value is coalesced on the
+            // line itself, and _groups is null-guarded on both sides (above and
+            // below), so "no groups" and null are already handled identically.
+            // The compiler's nullable analysis can't prove this through the generic
+            // Set<T>(ref T, T) helper, but it has been verified by inspection.
+#pragma warning disable CS8601 // Possible null reference assignment - value is coalesced above
             Set(ref _groups, value ?? new ObservableCollection<DuplicateGroupViewModel>());
+#pragma warning restore CS8601
 
             // Subscribe to all groups in the new collection
             if (_groups != null)

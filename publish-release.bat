@@ -27,7 +27,5 @@ if not exist "%PS1%" (
 :: so you never have to change your machine's PowerShell policy.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%PS1%"
 
-PAUSE
-
 set "RC=%ERRORLEVEL%"
 endlocal & exit /b %RC%
