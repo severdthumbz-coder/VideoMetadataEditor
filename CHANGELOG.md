@@ -2,6 +2,19 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 134 — Minimise to system tray
+
+The app can now collapse to the notification area and keep watching folders in the background — the natural companion to Watch Folder, which previously required leaving the window open.
+
+- **Enable it** in Settings → Behaviour → "Minimise to system tray". Off by default; nothing changes unless you turn it on.
+- **Closing or minimising hides to the tray** instead of quitting, with a one-time balloon so the window vanishing doesn't look like a crash. Double-click the tray icon to restore.
+- **Tray menu:** Restore window, Rescan watched folder(s), Watching on/off, Start with Windows, Exit. Deliberately limited to actions that make sense with no window on screen — Duplicates, Health Check, and Copy/Move Selected are excluded because their whole point is inspecting results or acting on a UI selection; from a hidden window they'd either run invisibly or force the window open, defeating the purpose.
+- **Exit from the tray is a real shutdown** — it runs the full teardown (event unsubscribe, cancel in-flight work, dispose the FileSystemWatchers, flush the library cache). Hiding to the tray deliberately skips all of that, because disposing the watchers is exactly what must *not* happen when the point is to keep watching.
+- **Start with Windows** registers a per-user (HKCU) Run entry — no admin rights, no effect on other users. Because this is a portable EXE that can be moved, the entry stores the current executable path and is re-pointed automatically on startup if it has gone stale.
+- **Implementation note:** the tray uses `System.Windows.Forms.NotifyIcon` via a `FrameworkReference` rather than `UseWindowsForms=true`. Setting that property would pull `System.Windows.Forms` into the implicit usings and make `Application`/`MessageBox` ambiguous against their WPF counterparts at 21 existing call sites. The FrameworkReference exposes the assembly for explicit, aliased use only — no collisions, no third-party dependency.
+
+---
+
 ## v1.4.0 Build 133 — Fix: update check never ran
 
 The update badge added in build 130 never appeared, even with a newer release published. Root cause: the check was chained onto the end of the startup library-scan lambda, so it only ran if that lambda reached its last line.

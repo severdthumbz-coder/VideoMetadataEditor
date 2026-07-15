@@ -2549,6 +2549,10 @@
                                                   IsChecked="{Binding Settings.CheckForUpdatesOnStartup}"
                                                   Margin="0,0,0,6"
                                                   ToolTip="On launch, checks the GitHub Releases page for a newer version. If one exists, a badge appears under the title. No download happens automatically."/>
+                                        <CheckBox Content="Minimise to system tray (keep watching in background)"
+                                                  IsChecked="{Binding Settings.MinimizeToTray}"
+                                                  Margin="0,0,0,6"
+                                                  ToolTip="Closing or minimising the window hides it to the notification area instead of quitting, so Watch Folder keeps running. Right-click the tray icon to rescan, toggle watching, start with Windows, or Exit."/>
                                         <TextBlock Text="AUTO-SEARCH DEBOUNCE (ms)" Style="{StaticResource LabelText}"/>
                                         <TextBox Text="{Binding Settings.AutoSearchDebounceMs, UpdateSourceTrigger=PropertyChanged}"
                                                  Margin="0,0,0,0"
@@ -5134,6 +5138,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 134 — Minimise to system tray
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        The app can now collapse to the notification area and keep watching folders in the background — the natural companion to Watch Folder, which previously meant leaving the window open. Enable it in Settings → Behaviour → "Minimise to system tray" (off by default). Closing or minimising then hides to the tray instead of quitting, with a one-time balloon so the window vanishing doesn't look like a crash; double-click the icon to restore. The tray menu offers Restore window, Rescan watched folder(s), Watching on/off, Start with Windows, and Exit — deliberately limited to actions that make sense with no window on screen. Exit runs the full teardown (unsubscribe, cancel in-flight work, dispose the watchers, flush the library cache); hiding skips it entirely, since disposing the watchers is precisely what must not happen when the point is to keep watching. Start with Windows uses a per-user Run entry (no admin rights) and, because this is a portable EXE that can move, re-points itself automatically if the stored path goes stale.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 133 — Fix: update check never ran
                                     </TextBlock>

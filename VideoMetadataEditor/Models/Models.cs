@@ -37,6 +37,8 @@ public class AppSettings
     public bool   LibraryTabbedMode    { get; set; } = false;
     /// <summary>When true, the app checks GitHub Releases for a newer version on startup and shows an update badge if one exists.</summary>
     public bool   CheckForUpdatesOnStartup { get; set; } = true;
+    /// <summary>When true, closing/minimising the window hides it to the system tray and the app keeps watching in the background. Exit from the tray menu quits for real.</summary>
+    public bool   MinimizeToTray           { get; set; } = false;
     public bool   LibraryTvTreeView    { get; set; } = false;
     public string LanguageCode          { get; set; } = "System";
     // "List" = flat DataGrid (default), "Tree" = Show>Season>Episode hierarchy

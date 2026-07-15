@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     private MainViewModel VM => (MainViewModel)DataContext;
     private ToastNotification? _toast;
     private CompletionBanner?  _banner;
+    private Services.TrayIconService? _tray;
 
     public MainWindow()
     {
@@ -103,6 +104,11 @@ public partial class MainWindow : Window
                 if (MainTabControl != null) MainTabControl.SelectedIndex = 0; // Files tab
             };
             VM.WriteFailedDetailed   += OnWriteFailedDetailed;
+
+            // System tray: create the icon up-front when the feature is on, so it's
+            // present before the first hide (and so "start with Windows" launches
+            // land in the tray as expected).
+            if (VM.Settings.MinimizeToTray) EnsureTray();
 
             VM.RecoveryCandidatesFound += OnRecoveryCandidatesFound;
 
@@ -1254,8 +1260,111 @@ public partial class MainWindow : Window
 
     // Duplicate comparison uses DuplicateCompareDialog (separate window)
 
+    // ── System tray ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Creates the tray icon and wires its menu to app actions. Called on load when
+    /// MinimizeToTray is on, and when the setting is switched on at runtime.
+    /// Safe to call repeatedly.
+    /// </summary>
+    private void EnsureTray()
+    {
+        if (_tray != null) return;
+
+        // Re-point a stale Run entry if the portable EXE has been moved since it
+        // was registered, so "start with Windows" doesn't silently break.
+        Services.StartupRegistrationService.Refresh();
+
+        _tray = new Services.TrayIconService();
+        _tray.RestoreRequested += RestoreFromTray;
+        _tray.RescanRequested  += () =>
+        {
+            // Rescan is fire-and-forget: it needs no window, and the watcher is
+            // already tracking these folders.
+            if (VM.RefreshFilesCommand.CanExecute(null))
+                VM.RefreshFilesCommand.Execute(null);
+        };
+        _tray.WatchToggleRequested += enabled =>
+        {
+            VM.Settings.WatchFolderEnabled = enabled;
+            VM.ApplyWatchFolderSetting();
+            _ = App.ConfigService.SaveAsync();
+        };
+        _tray.StartWithWindowsToggleRequested += enabled =>
+        {
+            if (!Services.StartupRegistrationService.SetEnabled(enabled))
+            {
+                // Registry blocked (policy, permissions) — put the checkmark back
+                // rather than lie about the state.
+                _tray?.SyncStartupState(Services.StartupRegistrationService.IsEnabled());
+            }
+        };
+        _tray.ExitRequested += ExitFromTray;
+
+        _tray.Show(VM.Settings.WatchFolderEnabled,
+                   Services.StartupRegistrationService.IsEnabled());
+    }
+
+    /// <summary>Removes the tray icon (when the user turns the feature off).</summary>
+    private void DestroyTray()
+    {
+        _tray?.Dispose();
+        _tray = null;
+    }
+
+    /// <summary>Hides the window to the tray, showing the one-time explanatory balloon.</summary>
+    private void HideToTray()
+    {
+        EnsureTray();
+        Hide();
+        _tray?.ShowFirstMinimiseHint();
+    }
+
+    /// <summary>Restores and focuses the window from the tray.</summary>
+    private void RestoreFromTray()
+    {
+        Show();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+        Topmost = true;   // bounce Topmost to force foreground reliably
+        Topmost = false;
+        Focus();
+    }
+
+    /// <summary>
+    /// Set when the user chooses Exit from the tray menu (or the app is really
+    /// shutting down). Distinguishes "close means hide to tray" from "close means
+    /// quit" — the teardown below MUST NOT run when we're only hiding, because it
+    /// disposes the watch services that are the entire point of staying resident.
+    /// </summary>
+    private bool _reallyExiting;
+
+    /// <summary>Performs a genuine shutdown from the tray, bypassing minimise-to-tray.</summary>
+    internal void ExitFromTray()
+    {
+        _reallyExiting = true;
+        Close();
+    }
+
     private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
     {
+        // Minimise-to-tray: hide instead of closing, and skip teardown entirely so
+        // the watchers keep running. Only a tray Exit (or app shutdown) tears down.
+        if (!_reallyExiting
+            && VM.Settings.MinimizeToTray
+            && _tray != null
+            && System.Windows.Application.Current?.ShutdownMode != ShutdownMode.OnExplicitShutdown)
+        {
+            e.Cancel = true;
+            HideToTray();
+            return;
+        }
+
+        // Real exit from here on — remove the tray icon first so it can't linger
+        // in the notification area after the process is gone.
+        _tray?.Dispose();
+        _tray = null;
+
         // Unsubscribe all VM events to prevent memory leaks
         VM.WriteFailedDetailed      -= OnWriteFailedDetailed;
         VM.RecoveryCandidatesFound  -= OnRecoveryCandidatesFound;
