@@ -349,32 +349,56 @@ public partial class MainViewModel : INotifyPropertyChanged
     public Action? SyncLibraryGridBeforeSave { get; set; }
 
     /// <summary>
-    /// Checks GitHub releases for a newer version and surfaces a notification
-    /// banner if one is available. Fires once per session on startup.
-    /// Non-fatal — any failure is silently swallowed.
+    /// Checks GitHub releases for a newer version and raises the update badge if one
+    /// exists. Fires once per session on startup, independently of any other startup
+    /// work. Never throws. Every outcome is logged: previously this failed silently in
+    /// every case, which made "no badge" indistinguishable from "check never ran".
     /// </summary>
     private async Task CheckForUpdateAsync()
     {
-        // Respect the opt-out setting.
-        if (!Settings.CheckForUpdatesOnStartup) return;
-
-        var localVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-        if (localVer == null) return;
-
-        // Pure service does the fetch + parse + compare; fails silent (returns null).
-        var info = await Services.UpdateCheckService.CheckAsync(localVer).ConfigureAwait(false);
-        if (info == null) return;
-
-        // Newer release available — raise the persistent badge (not just a transient
-        // status message, which the next action would overwrite).
-        await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+        try
         {
-            UpdateUrl       = info.ReleaseUrl;
-            UpdateBadgeText = $"⬆ Update available: v{info.LatestVersion}";
-            UpdateAvailable = true;
-            StatusText      = $"🆕 Update available: v{info.LatestVersion} — click the badge below the title, or visit GitHub";
-            Log($"[{DateTime.Now:HH:mm:ss}] Update available: v{info.LatestVersion} (current: v{localVer})");
-        });
+            // Respect the opt-out setting.
+            if (!Settings.CheckForUpdatesOnStartup)
+            {
+                Log($"[{DateTime.Now:HH:mm:ss}] Update check skipped (disabled in Settings → Behaviour).");
+                return;
+            }
+
+            var localVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            if (localVer == null)
+            {
+                Log($"[{DateTime.Now:HH:mm:ss}] Update check skipped: could not read the running assembly version.");
+                return;
+            }
+
+            Log($"[{DateTime.Now:HH:mm:ss}] Checking GitHub for updates (current: v{localVer})…");
+
+            // Pure service does the fetch + parse + compare; returns null on any failure
+            // or when the published release is not newer than the running build.
+            var info = await Services.UpdateCheckService.CheckAsync(localVer).ConfigureAwait(false);
+            if (info == null)
+            {
+                Log($"[{DateTime.Now:HH:mm:ss}] Update check: no newer release found (or GitHub was unreachable).");
+                return;
+            }
+
+            // Newer release available — raise the persistent badge (not just a transient
+            // status message, which the next action would overwrite).
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                UpdateUrl       = info.ReleaseUrl;
+                UpdateBadgeText = $"⬆ Update available: v{info.LatestVersion}";
+                UpdateAvailable = true;
+                StatusText      = $"🆕 Update available: v{info.LatestVersion} — click the badge below the title, or visit GitHub";
+                Log($"[{DateTime.Now:HH:mm:ss}] Update available: v{info.LatestVersion} (current: v{localVer})");
+            });
+        }
+        catch (Exception ex)
+        {
+            // Non-fatal by design, but no longer invisible.
+            Log($"[{DateTime.Now:HH:mm:ss}] ⚠ Update check failed: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -1683,20 +1707,34 @@ public partial class MainViewModel : INotifyPropertyChanged
             System.Windows.Threading.DispatcherPriority.ApplicationIdle,
             new Action(async () =>
             {
-                if (!string.IsNullOrWhiteSpace(Settings.LibraryFolderPath) &&
-                    Directory.Exists(Settings.LibraryFolderPath) &&
-                    !IsBusy)
+                try
                 {
-                    await ScanLibraryAsync();
+                    if (!string.IsNullOrWhiteSpace(Settings.LibraryFolderPath) &&
+                        Directory.Exists(Settings.LibraryFolderPath) &&
+                        !IsBusy)
+                    {
+                        await ScanLibraryAsync();
+                    }
+                    else if (LibraryEntries.Any())
+                    {
+                        // Entries exist from a previous session cache — just build tabs
+                        RebuildLibraryTabs();
+                    }
                 }
-                else if (LibraryEntries.Any())
+                catch (Exception ex)
                 {
-                    // Entries exist from a previous session cache — just build tabs
-                    RebuildLibraryTabs();
+                    // Never let a startup scan failure take down the rest of startup.
+                    Log($"[{DateTime.Now:HH:mm:ss}] ⚠ Startup library scan failed: {ex.Message}");
                 }
-                // Fire update check after startup work completes — low priority, non-blocking
-                _ = CheckForUpdateAsync();
             }));
+
+        // Update check — deliberately fired on its OWN dispatcher callback, not chained
+        // after the library scan. Previously it lived at the end of the scan lambda, so
+        // a scan that threw (or a branch that wasn't taken) silently skipped the check
+        // entirely. It's an independent concern and must not depend on library state.
+        System.Windows.Application.Current?.Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+            new Action(() => { _ = CheckForUpdateAsync(); }));
 
         ScanLibraryCommand         = new AsyncRelayCommand(ScanLibraryAsync,
             _ => CanScanLibrary);

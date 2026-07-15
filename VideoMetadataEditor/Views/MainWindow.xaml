@@ -5135,6 +5135,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 133 — Fix: update check never ran
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        The update badge added in build 130 never appeared, even with a newer release published. The check had been chained onto the end of the startup library-scan callback, which is effectively async void — if the scan threw, the exception was swallowed and everything after it, including the update check, was silently skipped. The check now fires on its own dispatcher callback, independent of the library scan; startup scan failures are caught and logged rather than aborting the rest of startup. The check is also traceable now: it previously failed silently in every case, so "no update" and "never ran" looked identical — which is why this went unnoticed. It now logs each outcome (skipped, checking, none found, update available, or failed with the reason), all still non-fatal.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 132 — Silence the last compiler warning
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

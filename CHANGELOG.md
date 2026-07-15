@@ -2,6 +2,18 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 133 — Fix: update check never ran
+
+The update badge added in build 130 never appeared, even with a newer release published. Root cause: the check was chained onto the end of the startup library-scan lambda, so it only ran if that lambda reached its last line.
+
+- **Decoupled from the library scan.** `CheckForUpdateAsync()` now fires on its own dispatcher callback rather than after `await ScanLibraryAsync()`. The scan lambda was effectively `async void` — if the scan threw, the exception was swallowed and every statement after it (including the update check) was silently skipped. The check is an independent concern and no longer depends on library state or scan success.
+- **Startup scan failures are now caught and logged** instead of silently aborting the rest of startup.
+- **The check is now traceable.** It previously failed silently in *every* case, which made "no update available" indistinguishable from "never ran" — the reason this bug went unnoticed. It now logs each outcome: skipped (disabled), checking, no newer release found, update available, or check failed with the error. All still non-fatal.
+
+If the badge still doesn't appear, the Log tab will now say why.
+
+---
+
 ## v1.4.0 Build 132 — Silence the last compiler warning
 
 - **CS8601 in DuplicatesViewModel suppressed.** The `Groups` setter's `Set(ref _groups, value ?? ...)` drew a "possible null reference assignment" warning. The value is coalesced to an empty collection on the line itself, and `_groups` is null-guarded both before and after the assignment, so null and empty were always handled identically — the warning was cosmetic, never a runtime risk. Build 131 tried to clear it by coalescing explicitly; that didn't satisfy the compiler, whose nullable analysis can't see through the generic `Set<T>(ref T, T)` helper. It's now suppressed at the site with a `#pragma` documenting the reasoning. No behavior change; the build log is warning-clean.
