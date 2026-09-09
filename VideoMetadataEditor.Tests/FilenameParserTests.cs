@@ -136,4 +136,25 @@ public class FilenameParserTests
     {
         Assert.Null(FilenameParser.ParseEpisode(input));
     }
+
+    // Regression (build 137): adding bare-E## to ParseEpisode must NOT stop
+    // ParseAbsoluteEpisode from recognising "E153" as an anime absolute number.
+    // The two interpretations coexist: ParseEpisode treats E153 as S01E153 for
+    // season-style renaming, while ParseAbsoluteEpisode still yields 153 for the
+    // {AbsoluteEpisode} token. Season-bearing codes must still block absolute detection.
+    [Theory]
+    [InlineData("Show Name E153", 153)]
+    [InlineData("Monster E37 A Nameless Monster", 37)]
+    public void BareEpisodeCode_StillResolvesAsAbsolute(string input, int expectedAbsolute)
+    {
+        Assert.Equal(expectedAbsolute, FilenameParser.ParseAbsoluteEpisode(input));
+    }
+
+    [Theory]
+    [InlineData("Show.S01E05.1080p")]   // season-bearing → not absolute
+    [InlineData("Show 1x05")]            // season-bearing → not absolute
+    public void SeasonBearingCode_IsNotAbsolute(string input)
+    {
+        Assert.Null(FilenameParser.ParseAbsoluteEpisode(input));
+    }
 }

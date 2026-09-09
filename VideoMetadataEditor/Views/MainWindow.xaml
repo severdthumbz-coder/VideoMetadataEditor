@@ -5139,6 +5139,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 137 — Fix: build 136 broke anime absolute-episode detection
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Build 136 taught the parser to recognise a bare E## code for episode-only TV filenames. CI caught a side effect: ParseAbsoluteEpisode (anime absolute numbering, for the {AbsoluteEpisode} token) used the episode regex as a gate to skip season-relative codes, and a bare E153 now tripped that gate — so absolute detection stopped recognising E153 as absolute 153. Fixed by bailing only on season-bearing codes (S01E05, 1x05, Season 1 Episode 5), not the bare E## alternative. Both readings now coexist: E153 parses as a season-style episode for renaming and as absolute 153 for the token. Regression tests added in both directions. No change to the 136 fix itself — episode-only filenames still rename correctly as TV.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 136 — Fix: episode-only filenames (E##) renamed as movies in batch
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

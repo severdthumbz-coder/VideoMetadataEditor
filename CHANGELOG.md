@@ -2,6 +2,17 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 137 — Fix: build 136 broke anime absolute-episode detection
+
+Build 136 taught `ParseEpisode` to recognise a bare `E##` code (for episode-only TV filenames). That had an unintended side effect caught by CI: `ParseAbsoluteEpisode` (anime absolute numbering, for the `{AbsoluteEpisode}` token) used `EpisodeRegex.IsMatch` as a gate to skip season-relative codes — and now a bare `E153` matched that gate, so absolute detection stopped recognising `E153` as absolute episode 153.
+
+- **Fix:** `ParseAbsoluteEpisode` now bails only when a *season-bearing* code is present (`S01E05`, `1x05`, `Season 1 Episode 5`), not on the bare `E##` alternative. The two readings coexist correctly: `E153` parses as a season-style episode for renaming *and* as absolute 153 for the `{AbsoluteEpisode}` token.
+- Added regression tests locking in both directions (bare `E##` resolves as absolute; season-bearing codes do not).
+
+No behaviour change for the build-136 fix itself — episode-only filenames still rename correctly as TV. This only restores anime absolute-episode detection that 136 inadvertently disabled.
+
+---
+
 ## v1.4.0 Build 136 — Fix: episode-only filenames (E##) renamed as movies in batch
 
 Batch Process renamed a whole TV series using the movie pattern when the files were named with a bare episode number and no season — e.g. `Monster.E05.The.Girl.of.Heidelberg` — even though single-file Apply + Embed + Rename handled them correctly.

@@ -48,7 +48,7 @@
                     Background="{DynamicResource SurfaceAltBrush}"
                     CornerRadius="0,0,18,18">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Vertical">
-                    <TextBlock Text="© 2026 VideoMetadataEditor  ·  v1.4.0 build 136"
+                    <TextBlock Text="© 2026 VideoMetadataEditor  ·  v1.4.0 build 137"
                                FontSize="11"
                                Foreground="{DynamicResource ForegroundMutedBrush}"
                                HorizontalAlignment="Center"/>

@@ -352,9 +352,15 @@ public static class FilenameParser
         var input = fileNameWithoutExtension;
         if (string.IsNullOrWhiteSpace(input)) return null;
 
-        // If a season/episode code is present, the number is season-relative — not
-        // an absolute number. Bail so we never mistake S01E05 for absolute 5.
-        if (EpisodeRegex.IsMatch(input)) return null;
+        // If a SEASON-BEARING season/episode code is present (S01E05, 1x05,
+        // Season 1 Episode 5), the number is season-relative — not absolute — so bail.
+        // A bare "E153" (episode-only, group 7 of EpisodeRegex) is NOT disqualifying:
+        // in fansub naming that is an absolute number, which is exactly what this
+        // method exists to detect. So we check only the season-bearing capture groups.
+        var epMatch = EpisodeRegex.Match(input);
+        if (epMatch.Success &&
+            (epMatch.Groups[1].Success || epMatch.Groups[3].Success || epMatch.Groups[5].Success))
+            return null;
 
         // Try " - 153" / " - E153" first (most explicit fansub layout).
         var dash = AbsoluteDashRegex.Match(input);
