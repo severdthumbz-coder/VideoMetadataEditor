@@ -92,4 +92,48 @@ public class FilenameParserTests
         Assert.Equal(string.Empty, title);
         Assert.Equal(string.Empty, year);
     }
+
+    // ── Episode-only codes (E## with no season) — build 136 ─────────────────────
+    // Real-world torrent naming like "Monster.E05.The.Girl.of.Heidelberg" uses a bare
+    // episode number with no S## prefix. These must parse as episodes (season defaults
+    // to 1) so batch rename picks the TV pattern instead of the movie pattern.
+
+    [Theory]
+    [InlineData("Monster.E05.The.Girl.of.Heidelberg.720p.DVDRip", 1, 5)]
+    [InlineData("Monster.E10.A.Past.Erased.720p", 1, 10)]
+    [InlineData("Monster E37 A Nameless Monster", 1, 37)]
+    [InlineData("Show.E100.Finale", 1, 100)]
+    public void ParseEpisode_EpisodeOnlyCode_ParsesAsSeason1(string input, int expSeason, int expEpisode)
+    {
+        var r = FilenameParser.ParseEpisode(input);
+        Assert.NotNull(r);
+        Assert.Equal(expSeason, r!.Value.season);
+        Assert.Equal(expEpisode, r.Value.episode);
+    }
+
+    [Theory]
+    [InlineData("Monster - S01E37 - A Nameless Monster", 1, 37)]  // full S##E## still wins
+    [InlineData("Show 2x05 Title", 2, 5)]                          // NxNN still works
+    public void ParseEpisode_StandardCodes_StillParse(string input, int expSeason, int expEpisode)
+    {
+        var r = FilenameParser.ParseEpisode(input);
+        Assert.NotNull(r);
+        Assert.Equal(expSeason, r!.Value.season);
+        Assert.Equal(expEpisode, r.Value.episode);
+    }
+
+    // Movies must NOT be misread as episodes by the bare-E## pattern. The word-boundary
+    // guards mean "E" must be a standalone token followed by digits.
+    [Theory]
+    [InlineData("District 9 (2009) 1080p BluRay")]
+    [InlineData("Se7en (1995) 720p")]
+    [InlineData("E.T. the Extra-Terrestrial (1982)")]  // "E." has a dot, not E+digits
+    [InlineData("Escape.Room.2019.1080p")]              // "Escape" — E not followed by digits
+    [InlineData("WALL-E (2008) 1080p")]                 // ends in E, no trailing digits
+    [InlineData("Conan the Barbarian (1982)")]
+    [InlineData("Ocean's Eleven (2001)")]
+    public void ParseEpisode_MovieFilenames_ReturnNull(string input)
+    {
+        Assert.Null(FilenameParser.ParseEpisode(input));
+    }
 }

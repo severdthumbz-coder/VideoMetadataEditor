@@ -542,6 +542,9 @@ public partial class MainViewModel
                 : $"✓  {LibraryEntries.Count} file(s) scanned.";
             RaiseProperty(nameof(LibraryCacheInfo));
             LibraryScanProgress = 100;
+            // Folder contents were just re-read — drop the TvShowTree folder-scan cache
+            // so the tree reflects any files added/removed since the last scan.
+            InvalidatePhysicalEpisodeCache();
             // Rebuild per-folder tabs for tabbed display
             RebuildLibraryTabs();
 
@@ -1212,6 +1215,10 @@ public partial class MainViewModel
         if (entry != null)
         {
             ApplyDiskTo(entry, preserveWatched: true);
+
+            // A file's on-disk metadata just changed, so the physical-episode scan
+            // for its folder may be stale — drop the cache so the tree re-reads.
+            InvalidatePhysicalEpisodeCache();
 
             // Raise TV tree so the untagged warning clears without a rescan. May be
             // called from a background batch task — marshal to the UI dispatcher.

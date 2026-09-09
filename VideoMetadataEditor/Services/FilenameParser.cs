@@ -8,7 +8,7 @@ public static class FilenameParser
     // ── TV episode code patterns ──────────────────────────────────────────────
     // Matches: S01E01, s1e1, 1x01, 1X01, Season 1 Episode 1
     private static readonly Regex EpisodeRegex = new(
-        @"(?i)(?:S(\d{1,2})E(\d{1,3})|(\d{1,2})[xX](\d{2,3})|[Ss]eason\s*(\d{1,2})\s*[Ee]pisode\s*(\d{1,2}))",
+        @"(?i)(?:S(\d{1,2})E(\d{1,3})|(\d{1,2})[xX](\d{2,3})|[Ss]eason\s*(\d{1,2})\s*[Ee]pisode\s*(\d{1,2})|(?<![A-Za-z0-9])E(\d{1,3})(?![A-Za-z0-9]))",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     // ── Known noise tokens to strip after the year ────────────────────────────
@@ -226,10 +226,15 @@ public static class FilenameParser
             season  = int.Parse(m.Groups[3].Value);
             episode = int.Parse(m.Groups[4].Value);
         }
-        else                             // Season 1 Episode 1
+        else if (m.Groups[5].Success)   // Season 1 Episode 1
         {
             season  = int.Parse(m.Groups[5].Value);
             episode = int.Parse(m.Groups[6].Value);
+        }
+        else                             // E01 (episode-only, no season) → assume season 1
+        {
+            season  = 1;
+            episode = int.Parse(m.Groups[7].Value);
         }
 
         // Show title = everything before the episode code

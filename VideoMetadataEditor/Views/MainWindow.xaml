@@ -5139,6 +5139,18 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 136 — Fix: episode-only filenames (E##) renamed as movies in batch
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Batch Process renamed a whole TV series with the movie pattern when files used a bare episode number and no season (e.g. Monster.E05.The.Girl.of.Heidelberg), even though single-file Apply handled them correctly. The parser (ParseEpisode) only recognised S01E05 / 1x05 / Season 1 Episode 5 — a bare E05 matched none, so the batch's type-mismatch guard saw "episode metadata but no episode code in the filename", assumed TMDB mis-matched a movie to a series, and forced the movie pattern (the log showed repeated "Type mismatch: … has no episode code"). ParseEpisode now also recognises a standalone E## token (season defaults to 1), word-boundary guarded so WALL-E, E.T. and Escape don't match — verified against many movie filenames to avoid false positives, with the type-mismatch guard remaining a backstop. Separately, "Apply to Raw Data Tab" now syncs the file's stored RetrievedMetadata too, so a file searched-and-applied before a batch carries the correct IsEpisode state (the batch renames from RetrievedMetadata ?? PendingMetadata, and previously only the latter was updated). New parser tests cover the episode-only codes and a set of movies that must not be misread.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 135 — Faster TV tree view
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        The Library TV tree could lag when displaying or refreshing, especially with many shows. The tree is a computed property rebuilt every time it's raised — on filter, sort, watched-state toggle, tab switch, and once per background artwork load during a scan — and each rebuild re-walked every season folder on disk (Directory.EnumerateFiles plus a per-filename regex) to spot episodes present on disk but missing from the library. That repeated disk scan was the stall. The folder scan is now cached: disk is read once per folder and reused across rebuilds, with the cache invalidated only when files may actually have changed (after a library scan, and after a file's on-disk metadata is written). The missing-episode gaps and untagged-on-disk warnings are unchanged — the tree just no longer hits the disk on every refresh.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 134 — Minimise to system tray
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

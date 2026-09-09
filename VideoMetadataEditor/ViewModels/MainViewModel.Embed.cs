@@ -40,6 +40,13 @@ public partial class MainViewModel
             // Update PendingMetadata so data survives re-selection and is ready to embed
             CopyMetadataTo(RetrievedMetadata, file.PendingMetadata);
 
+            // Keep the file's own RetrievedMetadata consistent with what was just applied.
+            // Batch Process renames from (RetrievedMetadata ?? PendingMetadata); if this
+            // file was searched-and-applied individually, its RetrievedMetadata could be
+            // stale (e.g. IsEpisode not set), causing the batch to pick the movie rename
+            // pattern for an episode. Syncing it here keeps both objects in agreement.
+            file.RetrievedMetadata = RetrievedMetadata.Clone();
+
             // Update EmbeddedMetadata TV fields so the ground-truth reset in
             // OnSelectedFileChanged doesn't clobber IsEpisode back to false
             // before the user has had a chance to embed. Only TV fields are updated
@@ -1217,6 +1224,50 @@ public partial class MainViewModel
         set { Set(ref _tvTreeSort, value); RaiseProperty(nameof(TvShowTree)); }
     }
 
+    // Cache for the physical-episode folder scan used by TvShowTree. Enumerating each
+    // season folder from disk on every TvShowTree evaluation was the main cause of the
+    // tree feeling slow — the getter is raised ~10 different ways (filter, sort, watched
+    // state, and once per background artwork load), and each rebuild re-walked every
+    // folder. Folder contents only change on a library scan or a watch event, so we
+    // cache the scan per directory and invalidate explicitly. Key = folder path,
+    // Value = set of episode numbers found physically in that folder.
+    private readonly Dictionary<string, HashSet<int>> _physicalEpisodeCache
+        = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Clears the TvShowTree folder-scan cache. Call when files may have changed
+    /// on disk (library scan, watch add/remove) so the next tree build re-reads folders.</summary>
+    public void InvalidatePhysicalEpisodeCache()
+    {
+        _physicalEpisodeCache.Clear();
+    }
+
+    /// <summary>
+    /// Returns the episode numbers physically present in <paramref name="dir"/> for the
+    /// given season, reading the folder from disk only once and caching the result.
+    /// </summary>
+    private HashSet<int> GetPhysicalEpisodes(string dir, int seasonNum)
+    {
+        var key = $"{dir}|S{seasonNum:D2}";
+        if (_physicalEpisodeCache.TryGetValue(key, out var cached)) return cached;
+
+        var found = new HashSet<int>();
+        try
+        {
+            foreach (var f in Directory.EnumerateFiles(dir))
+            {
+                var baseName = Path.GetFileNameWithoutExtension(f);
+                var epM = System.Text.RegularExpressions.Regex.Match(baseName,
+                    $@"(?i)[Ss]{seasonNum:D2}[Ee](\d{{1,3}})");
+                if (epM.Success && int.TryParse(epM.Groups[1].Value, out var epNum))
+                    found.Add(epNum);
+            }
+        }
+        catch { /* folder unreadable — treat as no extra physical episodes */ }
+
+        _physicalEpisodeCache[key] = found;
+        return found;
+    }
+
     public System.Collections.ObjectModel.ObservableCollection<VideoMetadataEditor.Models.TvShowNode> TvShowTree
     {
         get
@@ -1249,8 +1300,9 @@ public partial class MainViewModel
                     .Select(ss =>
                     {
                         var orderedEps  = ss.OrderBy(e => e.Episode ?? 0).ToList();
-                        // Scan folder for files with S##E## codes that aren't in LibraryEntries
-                        // (files with wrong/missing metadata show as "untagged" not "missing")
+                        // Find files with S##E## codes that aren't in LibraryEntries
+                        // (files with wrong/missing metadata show as "untagged" not "missing").
+                        // Cached per folder so this doesn't re-hit disk on every tree rebuild.
                         var knownPhysical = new HashSet<int>();
                         var seasonFolders = orderedEps
                             .Select(e => Path.GetDirectoryName(e.FilePath))
@@ -1259,14 +1311,8 @@ public partial class MainViewModel
                         foreach (var dir in seasonFolders)
                         {
                             if (string.IsNullOrWhiteSpace(dir)) continue;
-                            foreach (var f in Directory.EnumerateFiles(dir))
-                            {
-                                var baseName = Path.GetFileNameWithoutExtension(f);
-                                var epM = System.Text.RegularExpressions.Regex.Match(baseName,
-                                    $@"(?i)[Ss]{seasonNum:D2}[Ee](\d{{1,3}})");
-                                if (epM.Success && int.TryParse(epM.Groups[1].Value, out var epNum))
-                                    knownPhysical.Add(epNum);
-                            }
+                            foreach (var epNum in GetPhysicalEpisodes(dir, seasonNum))
+                                knownPhysical.Add(epNum);
                         }
                         var withGaps = InsertMissingEpisodes(orderedEps, knownPhysical, orderedEps.Select(e => e.Episode ?? 0).ToHashSet());
                         return new VideoMetadataEditor.Models.TvSeasonNode

@@ -2,6 +2,30 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 136 — Fix: episode-only filenames (E##) renamed as movies in batch
+
+Batch Process renamed a whole TV series using the movie pattern when the files were named with a bare episode number and no season — e.g. `Monster.E05.The.Girl.of.Heidelberg` — even though single-file Apply + Embed + Rename handled them correctly.
+
+- **Root cause:** `FilenameParser.ParseEpisode` only recognised `S01E05`, `1x05`, and `Season 1 Episode 5`. A bare `E05` (no `S##`) matched none of them, so the parser reported "no episode code." The batch's type-mismatch guard then saw metadata that said "episode" but a filename it thought had no episode code, concluded TMDB had mis-matched a movie to a series, and forced the movie rename pattern. The log showed this as repeated `⚠ Type mismatch: '…' has no episode code`.
+- **Fix (parser):** `ParseEpisode` now also recognises a standalone `E##` token (season defaults to 1), guarded by word boundaries so it only matches `E` immediately followed by digits as its own token — `WALL-E`, `E.T.`, and `Escape` do not match. Verified against a range of movie filenames to avoid false positives; the existing type-mismatch guard remains a backstop (a movie that does contain a stray `E##` token and carries movie metadata is blocked from rename with a logged reason, never mangled).
+- **Fix (consistency):** "Apply to Raw Data Tab" now also syncs the file's stored `RetrievedMetadata`, so a file searched-and-applied individually before a batch run carries the correct `IsEpisode` state. Previously it updated only `PendingMetadata`/`EmbeddedMetadata`, and the batch (which renames from `RetrievedMetadata ?? PendingMetadata`) could read a stale object.
+- New parser tests cover episode-only codes, the standard codes still parsing, and a set of movie filenames that must not be misread as episodes.
+
+Note: the TV Batch button was not broken — for a selection that is already fully TV-tagged it asks whether to skip already-tagged files, and answering Yes correctly leaves nothing to do.
+
+---
+
+## v1.4.0 Build 135 — Faster TV tree view
+
+The Library TV tree (Show → Season → Episode) could take a noticeable moment to display or refresh, especially with many shows.
+
+- **Root cause:** the `TvShowTree` is a computed property rebuilt on every change that raises it — filter, sort, watched-state toggle, tab switch, and *once per background artwork load* during a scan. Each rebuild ran `Directory.EnumerateFiles` against every season folder on disk (plus a regex per filename) to detect episodes present on disk but missing from the library. That disk walk, repeated on every raise, was the stall.
+- **Fix:** the per-folder physical-episode scan is now cached. Disk is read once per folder and reused across tree rebuilds; the cache is invalidated only when files may actually have changed — after a library scan, and after an entry's on-disk metadata is written/verified. The "untagged episode on disk" detection is preserved exactly; it just no longer re-walks the disk on every UI refresh.
+
+No visible change other than speed — the tree contents, missing-episode gaps, and untagged warnings are identical.
+
+---
+
 ## v1.4.0 Build 134 — Minimise to system tray
 
 The app can now collapse to the notification area and keep watching folders in the background — the natural companion to Watch Folder, which previously required leaving the window open.
