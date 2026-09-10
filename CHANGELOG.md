@@ -2,6 +2,18 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 138 — Fix: Watch Folder could permanently miss files that weren't ready on first detection
+
+Watch Folder sometimes failed to pick up files that were in (or arrived in) a watched folder, and the only reliable workaround was to re-run Add Folder — which forces a fresh full load that ignores the watch's seen-set.
+
+- **Root cause:** the watch marked a file as "known" the instant it was *detected*, before the app had actually loaded it. FileSystemWatcher fires as soon as a file appears — often before a large copy or download has finished writing it — so the load could fail (file still locked/incomplete). But the path was already recorded as known, so the periodic poll fallback skipped it forever. The file never appeared until a manual Add Folder bypassed the seen-set.
+- **Fix:** the watch's "known" set is now populated only when a file is *successfully loaded* (the app already did this on the success path). Detection uses a separate short-lived in-flight guard purely to debounce duplicate dispatches; it clears after a few seconds, so a file that wasn't ready on first detection is retried on the next poll instead of being suppressed permanently. This is the retry behaviour you'd expect: a file still being copied in is picked up once it finishes.
+- Net effect: files that arrive mid-copy, over slow/network paths, or in bulk (where FileSystemWatcher can drop events) are now reliably caught by the poll fallback rather than being written off after one failed attempt.
+
+No change to detection speed for files that are ready immediately — those still load on the instant FileSystemWatcher event.
+
+---
+
 ## v1.4.0 Build 137 — Fix: build 136 broke anime absolute-episode detection
 
 Build 136 taught `ParseEpisode` to recognise a bare `E##` code (for episode-only TV filenames). That had an unintended side effect caught by CI: `ParseAbsoluteEpisode` (anime absolute numbering, for the `{AbsoluteEpisode}` token) used `EpisodeRegex.IsMatch` as a gate to skip season-relative codes — and now a bare `E153` matched that gate, so absolute detection stopped recognising `E153` as absolute episode 153.

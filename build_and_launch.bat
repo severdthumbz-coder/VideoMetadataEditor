@@ -51,23 +51,13 @@ if not exist "%CSPROJ%" (
 :: Strip trailing backslash from PROJECT_DIR to prevent double-backslash
 if "%PROJECT_DIR:~-1%"=="\" set "PROJECT_DIR=%PROJECT_DIR:~0,-1%"
 
-:: Read FullVersion from the .csproj so we can find the versioned EXE.
-:: AssemblyName is "VideoMetadataEditor v<FullVersion>", so the output EXE
-:: is "VideoMetadataEditor v<ver>.exe" — not a fixed name. Only the real
-:: element line contains "</FullVersion>" (comment and $(FullVersion) refs
-:: do not), so match the closing tag and take token 2 split on < >.
-set "APP_VERSION="
-for /f "usebackq tokens=2 delims=<>" %%v in (`findstr /i /c:"</FullVersion>" "%CSPROJ%"`) do set "APP_VERSION=%%v"
-
 set "PUBLISH_DIR=%PROJECT_DIR%\publish"
-if defined APP_VERSION (
-    set "EXE_PATH=%PUBLISH_DIR%\VideoMetadataEditor v%APP_VERSION%.exe"
-) else (
-    set "EXE_PATH=%PUBLISH_DIR%\VideoMetadataEditor.exe"
-)
 set "CONFIG_FILE=%PUBLISH_DIR%\config.json"
-
-if defined APP_VERSION echo  [OK] Version: %APP_VERSION%
+:: The output EXE is named "VideoMetadataEditor v<version>.exe" (AssemblyName
+:: derives from FullVersion). Rather than parse the version out of the .csproj
+:: (fragile in batch), we locate the produced EXE by glob AFTER the build. That
+:: is set below, once publish has run.
+set "EXE_PATH="
 
 echo  [OK] Project: %PROJECT_DIR%
 echo.
@@ -104,12 +94,16 @@ echo.
 echo  [OK] Build succeeded.
 echo.
 
-if not exist "%EXE_PATH%" (
-    echo  [WARNING] VideoMetadataEditor.exe not found.
+:: Locate the produced EXE by pattern (name is "VideoMetadataEditor v<ver>.exe").
+:: Globbing the actual output avoids reconstructing the version-dependent name.
+for %%F in ("%PUBLISH_DIR%\VideoMetadataEditor*.exe") do set "EXE_PATH=%%F"
+
+if not defined EXE_PATH (
+    echo  [WARNING] Built EXE not found in the publish folder.
 ) else (
     for %%F in ("%EXE_PATH%") do (
         set /a SIZE_MB=%%~zF / 1048576
-        echo  [OK] VideoMetadataEditor.exe - !SIZE_MB! MB
+        echo  [OK] !EXE_PATH! - !SIZE_MB! MB
     )
 )
 
@@ -161,7 +155,7 @@ set /p LAUNCH= Launch VideoMetadataEditor.exe now? [Y/N]:
 if /i "!LAUNCH!"=="Y" (
     echo.
     echo  Launching...
-    start "" "%EXE_PATH%"
+    start "" "!EXE_PATH!"
 )
 
 echo.

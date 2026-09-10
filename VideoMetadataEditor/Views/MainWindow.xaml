@@ -5139,6 +5139,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 138 — Fix: Watch Folder could permanently miss files not ready on first detection
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Watch Folder sometimes didn't pick up files, and the only reliable fix was to re-run Add Folder. Cause: the watch marked a file "known" the moment it was detected — before it was loaded. FileSystemWatcher fires as soon as a file appears, often before a large copy or download has finished writing, so the load could fail (file still locked/incomplete) while the path was already recorded as seen; the periodic poll fallback then skipped it forever. Fix: the "known" set is now populated only on a successful load (which the app already did on the success path), and detection uses a short-lived in-flight guard that clears after a few seconds — so a file that wasn't ready on first detection is retried on the next poll instead of being suppressed permanently. Files arriving mid-copy, over network paths, or in bulk (where FileSystemWatcher can drop events) are now reliably caught by the poll. No change for files ready immediately — they still load on the instant FSW event.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 137 — Fix: build 136 broke anime absolute-episode detection
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

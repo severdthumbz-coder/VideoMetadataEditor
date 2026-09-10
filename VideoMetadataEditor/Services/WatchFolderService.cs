@@ -36,6 +36,11 @@ public sealed class WatchFolderService : IDisposable
 
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _knownPaths =
         new(StringComparer.OrdinalIgnoreCase);
+    // Short-lived guard: paths dispatched to the host and awaiting a load result.
+    // Prevents duplicate FileDetected dispatches for the same file within a few
+    // seconds, WITHOUT permanently suppressing re-detection if the load fails.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _inFlight =
+        new(StringComparer.OrdinalIgnoreCase);
     private int _pruneCounter;
 
     // ── Events ────────────────────────────────────────────────────────────────
@@ -207,11 +212,25 @@ public sealed class WatchFolderService : IDisposable
 
     private void DispatchDetect(string path)
     {
-        if (!_knownPaths.TryAdd(path, 0)) return; // already known
+        // Do NOT permanently mark the path known here. _knownPaths means
+        // "confirmed loaded" and is populated by the host (via AddKnownPath) only
+        // after a successful load. If we marked it known on mere detection, a file
+        // that fails to load (still being written, locked, on a slow network copy)
+        // would be suppressed forever — the poll would skip it and it would never
+        // appear, forcing the user to re-run Add Folder. Instead we use a short-lived
+        // in-flight guard purely to debounce duplicate dispatches for the same file
+        // while the host is responding; it clears after a few seconds so an
+        // unsuccessful load gets retried on the next poll.
+        if (_knownPaths.ContainsKey(path)) return;      // already loaded — skip
+        if (!_inFlight.TryAdd(path, 0)) return;         // dispatch already pending
 
         System.Windows.Application.Current?.Dispatcher.InvokeAsync(
             () => FileDetected?.Invoke(path),
             System.Windows.Threading.DispatcherPriority.Background);
+
+        // Release the in-flight guard shortly after, so if the load didn't take
+        // (file wasn't ready yet) the next poll can re-dispatch and retry.
+        _ = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => _inFlight.TryRemove(path, out _));
     }
 
     private static bool IsVideoFile(string path) =>
