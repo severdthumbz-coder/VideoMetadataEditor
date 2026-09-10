@@ -5139,6 +5139,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 139 — Fix: build 138 didn't compile
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Build 138's Watch Folder fix had a compile error caught by CI: the in-flight cleanup called _inFlight.TryRemove(path, out _) inside a ContinueWith(_ => …) whose lambda parameter was also named _, so the out discard bound to the Task parameter instead (CS1503). Changed to an explicit typed discard, out byte _. No logic change — build 138's fix is otherwise intact; this just makes it compile.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 138 — Fix: Watch Folder could permanently miss files not ready on first detection
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

@@ -17,7 +17,7 @@
     <!-- (The other version locations — SplashScreen.xaml, MainWindow.xaml     -->
     <!--  changelog/revision, and CHANGELOG.md — are separate by design.)      -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <FullVersion>1.4.0.138</FullVersion>
+    <FullVersion>1.4.0.139</FullVersion>
     <Version>1.4.0</Version>
     <AssemblyVersion>$(FullVersion)</AssemblyVersion>
     <FileVersion>$(FullVersion)</FileVersion>

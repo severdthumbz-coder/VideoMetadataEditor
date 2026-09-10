@@ -2,6 +2,12 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 139 — Fix: build 138 didn't compile
+
+Build 138's Watch Folder fix had a compile error: in the in-flight cleanup, `_inFlight.TryRemove(path, out _)` sat inside a `ContinueWith(_ => …)` whose lambda parameter was also named `_`, so the compiler bound the `out _` discard to the `Task` parameter instead of a fresh discard (CS1503). Changed to an explicit typed discard, `out byte _`. No logic change — this only makes build 138's fix actually compile. (CI caught it; 138 was never a working build.)
+
+---
+
 ## v1.4.0 Build 138 — Fix: Watch Folder could permanently miss files that weren't ready on first detection
 
 Watch Folder sometimes failed to pick up files that were in (or arrived in) a watched folder, and the only reliable workaround was to re-run Add Folder — which forces a fresh full load that ignores the watch's seen-set.

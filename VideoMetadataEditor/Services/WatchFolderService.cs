@@ -230,7 +230,7 @@ public sealed class WatchFolderService : IDisposable
 
         // Release the in-flight guard shortly after, so if the load didn't take
         // (file wasn't ready yet) the next poll can re-dispatch and retry.
-        _ = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => _inFlight.TryRemove(path, out _));
+        _ = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => _inFlight.TryRemove(path, out byte _));
     }
 
     private static bool IsVideoFile(string path) =>
