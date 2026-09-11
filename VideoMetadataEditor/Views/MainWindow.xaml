@@ -5139,6 +5139,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 140 — Core write path now under automated CI test
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        The metadata write-and-read-back tests — the app's fundamental function — had been skipped in CI because a hand-built minimal MP4 stub didn't reliably initialise TagLib#'s tag layer for writing, so the core write path had no automated verification. Added a real MP4 fixture (a 1-second libx264 clip generated with ffmpeg and verified writable in the app) and un-skipped the 8 write tests: each starts from a fresh untagged copy and verifies title, core fields, TV-episode fields, invariant-decimal rating, watched flag, overwrite-existing-tags, temp-file cleanup, and non-destruction on success. Test-only change — no application code touched. Closes the biggest gap in the safety net: the write round-trip is now checked on every push.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 139 — Fix: build 138 didn't compile
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

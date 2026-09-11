@@ -16,6 +16,15 @@
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
   </ItemGroup>
+  <!-- Real MP4 fixture for MetadataWriteTests. Copied next to the test assembly so
+       the write-round-trip tests can open a genuine container TagLib# accepts.
+       Generated locally with ffmpeg (1s 128x128 libx264) and verified writable in
+       the app before committing. -->
+  <ItemGroup>
+    <None Include="Assets\tiny.mp4">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
   <!-- Reference the compiled assemblies we need via file copies — avoid WPF dependency -->
   <ItemGroup>
     <Compile Include="../VideoMetadataEditor/Services/FilenameParser.cs"/>

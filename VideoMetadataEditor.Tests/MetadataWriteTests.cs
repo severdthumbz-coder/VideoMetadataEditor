@@ -8,31 +8,18 @@ namespace VideoMetadataEditor.Tests;
 
 /// <summary>
 /// Tests that verify MetadataService can write tags to a real file on disk
-/// and read them back correctly.
+/// and read them back correctly — the app's core function.
 ///
-/// These tests are SKIPPED in CI because they require TagLib# to successfully
-/// open and write to a real video container — something a minimal stub can't
-/// always guarantee on a fresh runner. Run locally to verify write behaviour.
-///
-/// To run locally: remove the Skip = "..." from each [Fact] attribute.
-///
-/// The minimal MP4 is structurally valid (ftyp + moov(mvhd+udta) + mdat, 161 bytes)
-/// but some versions of TagLib# require a trak atom to fully initialise the
-/// tag layer for writing. The VmeCommentCodec round-trip tests (MetadataRoundTripTests)
-/// already verify the encode/decode logic that these tests would exercise.
+/// These run against a real committed MP4 fixture (Assets/tiny.mp4, a 1-second
+/// libx264 clip generated with ffmpeg and verified writable in the app). Each test
+/// copies a fresh clean copy into a temp dir, so every write starts from an untagged
+/// file. Previously these were skipped because a hand-built minimal MP4 stub didn't
+/// reliably initialise TagLib#'s tag layer for writing; the real fixture fixes that,
+/// putting the write round-trip under automated CI verification.
 /// </summary>
 public class MetadataWriteTests : IDisposable
 {
     private readonly string _tempDir;
-
-    // Minimal valid MP4: ftyp(isom/iso2/mp41) + moov(mvhd@108b + udta) + mdat
-    // Boxes: ftyp@0(28), moov@28(124)[mvhd@36(108),udta@144(8)], mdat@152(9)
-    private const string MinimalMp4Base64 =
-        "AAAAHGZ0eXBpc29tAAACAGlzb21pc28ybXA0MQAAAHxtb292" +
-        "AAAAbG12aGQAAAAAAAAAAAAAAAAAAAPoAAAAAAABAAABAAAA" +
-        "AAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAA" +
-        "AAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC" +
-        "AAAACHVkdGEAAAAJbWRhdAA=";
 
     public MetadataWriteTests()
     {
@@ -45,10 +32,24 @@ public class MetadataWriteTests : IDisposable
         try { Directory.Delete(_tempDir, recursive: true); } catch { }
     }
 
+    // Real MP4 fixture (committed at Assets/tiny.mp4, copied next to the test
+    // assembly by the .csproj). A genuine libx264 container that TagLib# opens and
+    // writes tags to — verified in the app before committing. Copies a fresh clean
+    // copy into the temp dir per test so each write starts from an untagged file.
+    private static string FixturePath =>
+        Path.Combine(AppContext.BaseDirectory, "Assets", "tiny.mp4");
+
     private string CreateMp4(string name = "test.mp4")
     {
-        var path  = Path.Combine(_tempDir, name);
-        File.WriteAllBytes(path, Convert.FromBase64String(MinimalMp4Base64));
+        var src = FixturePath;
+        // If the fixture is missing (e.g. not committed / not copied to output),
+        // fail loudly with a clear reason rather than silently skipping — a missing
+        // test asset is a real problem, not a condition to hide.
+        Assert.True(File.Exists(src),
+            $"Test fixture not found at '{src}'. Ensure Assets/tiny.mp4 is committed " +
+            "and marked CopyToOutputDirectory in the test project.");
+        var path = Path.Combine(_tempDir, name);
+        File.Copy(src, path, overwrite: true);
         return path;
     }
 
@@ -60,13 +61,9 @@ public class MetadataWriteTests : IDisposable
         ArtworkMaxPx       = 1000,
     };
 
-    private const string SkipReason =
-        "MetadataService write tests require TagLib# to open a real video container. " +
-        "Remove this Skip attribute and run locally to verify the write path.";
+    // ── Tests ─────────────────────────────────────────────────────────────────
 
-    // ── Tests — remove Skip to run locally ───────────────────────────────────
-
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task Mp4_WriteAndReadBack_TitlePreserved()
     {
         var path = CreateMp4();
@@ -80,7 +77,7 @@ public class MetadataWriteTests : IDisposable
         Assert.Equal("Test Movie", read.Title);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task Mp4_WriteAndReadBack_AllCoreFields()
     {
         var path = CreateMp4("core_fields.mp4");
@@ -102,7 +99,7 @@ public class MetadataWriteTests : IDisposable
         Assert.Equal("PG-13",     read.MpaRating);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task Mp4_WriteAndReadBack_TvEpisode()
     {
         var path = CreateMp4("episode.mp4");
@@ -123,7 +120,7 @@ public class MetadataWriteTests : IDisposable
         Assert.Equal(7, read.Episode);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task Mp4_RatingStoredAsInvariantDecimal()
     {
         var path = CreateMp4("rating.mp4");
@@ -133,7 +130,7 @@ public class MetadataWriteTests : IDisposable
         Assert.Equal(8.5f, svc.ReadMetadataFast(path).Rating, precision: 1);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task Mp4_TempFileCleanedUpAfterSuccessfulWrite()
     {
         var path = CreateMp4("cleanup.mp4");
@@ -143,7 +140,7 @@ public class MetadataWriteTests : IDisposable
         Assert.Empty(Directory.GetFiles(_tempDir, ".vme_tmp_*"));
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task Mp4_OverwriteExistingTags_UpdatesAllFields()
     {
         var path = CreateMp4("overwrite.mp4");
@@ -156,7 +153,7 @@ public class MetadataWriteTests : IDisposable
         Assert.Equal("Updated", svc.ReadMetadataFast(path).Title);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task Mp4_WatchedFlag_RoundTrips()
     {
         var path = CreateMp4("watched.mp4");
@@ -166,7 +163,7 @@ public class MetadataWriteTests : IDisposable
         Assert.True(svc.ReadMetadataFast(path).IsWatched);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task Mp4_WriteDoesNotDestroyFileOnSuccess()
     {
         var path = CreateMp4("safety.mp4");

@@ -2,6 +2,18 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 140 — Core write path now under automated CI test
+
+The metadata write-and-read-back tests — the app's fundamental function — were skipped in CI because a hand-built minimal MP4 stub didn't reliably initialise TagLib#'s tag layer for writing. So the one thing the app most needs to get right had no automated verification; every write regression relied on being noticed manually.
+
+- **Added a real MP4 fixture** (`VideoMetadataEditor.Tests/Assets/tiny.mp4`) — a 1-second 128×128 libx264 clip generated with ffmpeg and verified writable in the app before committing. It's copied next to the test assembly at build time.
+- **Un-skipped the 8 `MetadataWriteTests`.** Each copies a fresh clean copy of the fixture into a temp dir, so every write starts from an untagged file, then verifies: title, all core fields (IDs/rating/MPA), TV-episode fields, rating stored as invariant decimal, watched-flag round-trip, overwrite-existing-tags, temp-file cleanup, and that a successful write doesn't destroy the file.
+- Removed the obsolete base64 stub and skip machinery.
+
+No application code changed — this is a test-only build. It closes the biggest hole in the safety net: the metadata write round-trip is now verified on every push.
+
+---
+
 ## v1.4.0 Build 139 — Fix: build 138 didn't compile
 
 Build 138's Watch Folder fix had a compile error: in the in-flight cleanup, `_inFlight.TryRemove(path, out _)` sat inside a `ContinueWith(_ => …)` whose lambda parameter was also named `_`, so the compiler bound the `out _` discard to the `Task` parameter instead of a fresh discard (CS1503). Changed to an explicit typed discard, `out byte _`. No logic change — this only makes build 138's fix actually compile. (CI caught it; 138 was never a working build.)
