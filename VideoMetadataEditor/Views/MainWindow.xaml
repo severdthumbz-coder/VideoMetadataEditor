@@ -2553,6 +2553,10 @@
                                                   IsChecked="{Binding Settings.MinimizeToTray}"
                                                   Margin="0,0,0,6"
                                                   ToolTip="Closing or minimising the window hides it to the notification area instead of quitting, so Watch Folder keeps running. Right-click the tray icon to rescan, toggle watching, start with Windows, or Exit."/>
+                                        <CheckBox Content="Auto-clean stale Files-panel entries after rename"
+                                                  IsChecked="{Binding Settings.AutoCleanStalePanelEntries}"
+                                                  Margin="0,0,0,6"
+                                                  ToolTip="After a file is auto-renamed, remove any leftover Files-panel row that still points at the old (now non-existent) name — e.g. a watch-detected entry for a file that was then renamed. Only removes rows whose file is gone and that hold no undo history. Same reconciliation the Refresh button does, run automatically."/>
                                         <TextBlock Text="AUTO-SEARCH DEBOUNCE (ms)" Style="{StaticResource LabelText}"/>
                                         <TextBox Text="{Binding Settings.AutoSearchDebounceMs, UpdateSourceTrigger=PropertyChanged}"
                                                  Margin="0,0,0,0"
@@ -5138,6 +5142,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 141 — Fix: stale Files-panel entry left after watch-detect + auto-rename
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        When Watch Folder detected a freshly-downloaded file it added a panel entry for that name; the file was then auto-renamed to its correct name, leaving the old entry (pointing at a now-gone path) in the panel beside the renamed one. Refresh cleared it, but that shouldn't be manual. After a successful auto-rename the panel now drops any entry whose file no longer exists on disk — a lightweight version of what Refresh already does. Safe for undo: an entry is removed only when its file is gone AND it holds no undo state, so the live renamed entry (which carries the undo snapshot) is never touched; the collection change is marshalled to the UI thread. Toggle in Settings → Behaviour → "Auto-clean stale Files-panel entries after rename" (default on) to disable without a rebuild. Cosmetic only — the file was always correctly renamed and embedded.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 140 — Core write path now under automated CI test
                                     </TextBlock>

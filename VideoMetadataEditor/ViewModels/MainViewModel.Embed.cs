@@ -191,6 +191,9 @@ public partial class MainViewModel
                         _watchFolderService.AddKnownPath(newPath);
                         Log( $"[{DateTime.Now:HH:mm:ss}] Renamed: {oldName} → {newName}");
                         RenameSucceeded?.Invoke(this, new RenameEventArgs(oldName, newName));
+                        // A watch-detected entry for the pre-rename name may now be stale
+                        // (the file moved to newName). Drop any panel rows whose file is gone.
+                        SweepStalePanelEntries();
                     }
                 }
                 else if (!renamed && !string.IsNullOrWhiteSpace(err))
@@ -1763,6 +1766,53 @@ public partial class MainViewModel
     }
 
     // Watch folder events handled by WatchFolderService
+
+    /// <summary>
+    /// Removes Files-panel entries whose file no longer exists on disk. Fixes the case
+    /// where Watch Folder detects a freshly-arrived file (creating an entry), then that
+    /// file is auto-renamed — leaving a stale entry pointing at the old, now-gone path
+    /// alongside the correctly-renamed one. This is a lightweight, targeted version of
+    /// what the Refresh button does (which clears and rebuilds the whole panel).
+    ///
+    /// Safe for undo: an entry is removed ONLY when its file is gone AND it holds no
+    /// undo state. The live, renamed entry (whose file exists and carries UndoFilePath/
+    /// UndoMetadata) is never touched. Gated behind a setting (default on) so it can be
+    /// disabled without a rebuild if it ever misbehaves.
+    /// </summary>
+    private void SweepStalePanelEntries()
+    {
+        if (!Settings.AutoCleanStalePanelEntries) return;
+
+        // Files is an ObservableCollection bound to the UI — mutating it must happen on
+        // the UI thread. ApplyToFileAsync may resume on a thread-pool thread after its
+        // awaits, so marshal to the dispatcher rather than assume the caller's context.
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess())
+        {
+            dispatcher.InvokeAsync(SweepStalePanelEntriesCore);
+        }
+        else
+        {
+            SweepStalePanelEntriesCore();
+        }
+    }
+
+    private void SweepStalePanelEntriesCore()
+    {
+        var stale = Files
+            .Where(f => !f.IsSeparator
+                        && f.UndoFilePath == null          // never remove an undoable entry
+                        && f.UndoMetadata == null
+                        && !string.IsNullOrWhiteSpace(f.FilePath)
+                        && !File.Exists(f.FilePath))        // file is genuinely gone
+            .ToList();
+
+        foreach (var f in stale)
+        {
+            Files.Remove(f);
+            Log( $"[{DateTime.Now:HH:mm:ss}] Cleaned stale panel entry: {f.FileName} (file no longer at that path)");
+        }
+    }
 
     private void TryAddWatchedFile(string path)
     {

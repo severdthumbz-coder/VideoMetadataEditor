@@ -2,6 +2,18 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 141 — Fix: stale Files-panel entry left behind after watch-detect + auto-rename
+
+When Watch Folder detected a freshly-downloaded file, it added a panel entry for that name; the file was then auto-renamed to its correct name, leaving the old entry (pointing at a path that no longer exists) sitting in the panel next to the correctly-renamed one. Clicking Refresh cleared it — because Refresh rebuilds the panel and skips paths that don't exist — but it shouldn't require a manual step.
+
+- **Fix:** after a successful auto-rename, the panel now drops any leftover entry whose file no longer exists on disk — a lightweight, targeted version of the reconciliation the Refresh button already does (without the full clear-and-rebuild).
+- **Safe for undo:** an entry is removed only when its file is gone *and* it holds no undo state (`UndoFilePath`/`UndoMetadata` both null). The live, renamed entry — whose file exists and carries the undo snapshot — is never touched, so Undo Last Embed / Undo Batch are unaffected. The collection mutation is marshalled to the UI thread.
+- **Toggle:** Settings → Behaviour → "Auto-clean stale Files-panel entries after rename" (default on). Turn it off to keep the previous behaviour or if it ever misbehaves — no rebuild needed.
+
+Cosmetic-only: the file was always correctly renamed and embedded; this just removes the confusing leftover row automatically.
+
+---
+
 ## v1.4.0 Build 140 — Core write path now under automated CI test
 
 The metadata write-and-read-back tests — the app's fundamental function — were skipped in CI because a hand-built minimal MP4 stub didn't reliably initialise TagLib#'s tag layer for writing. So the one thing the app most needs to get right had no automated verification; every write regression relied on being noticed manually.

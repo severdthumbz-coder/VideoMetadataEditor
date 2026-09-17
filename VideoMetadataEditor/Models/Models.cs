@@ -39,6 +39,11 @@ public class AppSettings
     public bool   CheckForUpdatesOnStartup { get; set; } = true;
     /// <summary>When true, closing/minimising the window hides it to the system tray and the app keeps watching in the background. Exit from the tray menu quits for real.</summary>
     public bool   MinimizeToTray           { get; set; } = false;
+    /// <summary>When true, after a successful rename the Files panel drops any leftover
+    /// entries whose file no longer exists on disk (e.g. a watch-detected entry for a
+    /// name that was then auto-renamed). Purely a display cleanup; never touches files
+    /// or entries that still hold undo state. Default on.</summary>
+    public bool   AutoCleanStalePanelEntries { get; set; } = true;
     public bool   LibraryTvTreeView    { get; set; } = false;
     public string LanguageCode          { get; set; } = "System";
     // "List" = flat DataGrid (default), "Tree" = Show>Season>Episode hierarchy
