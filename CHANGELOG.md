@@ -2,6 +2,17 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 142 — Fix: duplicate Files-panel entry for one file after watch-detect + auto-embed rename
+
+A watched file could end up with two panel rows for the same file: one green (embedded + verified) and one yellow (unverified, sometimes carrying later-fetched metadata like a rating). Root cause: when the auto-embed renames the file, the rename's `File.Move` fires a FileSystemWatcher event for the new name *before* that name is registered as known, so the watch re-detects the file and adds a second entry. The panel's dedup guards compared raw path strings, which could also miss a duplicate when the two paths differed only in form (separators, casing, normalization).
+
+- **Fix:** the watch's duplicate guards now compare by *canonical* full path (`Path.GetFullPath`) rather than raw string, so two forms of the same file are recognised as one — closing the duplicate whether it arises from the rename-event timing window or a path-form mismatch. The at-add-time re-check (which catches a concurrent add) is included, so both the path-form and timing variants are covered. The entry-lookup after add is canonicalised the same way.
+- Build 141's stale-entry sweep is kept as a backstop for the separate case of an entry whose file is genuinely gone; the two fixes don't overlap or conflict.
+
+Why this matters beyond cosmetics: a duplicate row pointing at a file another operation is about to move/rename could cause that operation to act on a file that isn't where the entry expects. Preventing the duplicate at creation removes that risk.
+
+---
+
 ## v1.4.0 Build 141 — Fix: stale Files-panel entry left behind after watch-detect + auto-rename
 
 When Watch Folder detected a freshly-downloaded file, it added a panel entry for that name; the file was then auto-renamed to its correct name, leaving the old entry (pointing at a path that no longer exists) sitting in the panel next to the correctly-renamed one. Clicking Refresh cleared it — because Refresh rebuilds the panel and skips paths that don't exist — but it shouldn't require a manual step.

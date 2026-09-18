@@ -5143,6 +5143,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 142 — Fix: duplicate Files-panel entry for one file after watch-detect + auto-embed rename
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        A watched file could show two rows for the same file — one green (verified) and one yellow (unverified, sometimes with later-fetched metadata such as a rating). Cause: when auto-embed renames the file, the rename's File.Move fires a FileSystemWatcher event for the new name before that name is registered as known, so the watch re-detects the file and adds a second entry; and the dedup guards compared raw path strings, which could also miss a duplicate when paths differed only in form. Fix: the watch duplicate guards (and the post-add entry lookup) now compare by canonical full path (Path.GetFullPath) instead of raw string, so two forms of the same file are treated as one — closing the duplicate from both the rename-event timing window and any path-form mismatch, with the at-add-time re-check covering a concurrent add. Build 141's stale-entry sweep stays as a backstop for the different case of an entry whose file is genuinely gone. Beyond cosmetics: a duplicate row pointing at a file another operation is about to move/rename could make that operation act on the wrong location; preventing the duplicate removes that risk.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 141 — Fix: stale Files-panel entry left after watch-detect + auto-rename
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

@@ -1814,6 +1814,27 @@ public partial class MainViewModel
         }
     }
 
+    /// <summary>
+    /// True if the Files panel already contains an entry for the same physical file as
+    /// <paramref name="path"/>. Compares by canonical full path rather than raw string,
+    /// so two forms of the same path (differing only by separators, casing, or
+    /// normalization after a rename) are correctly treated as the same file. This is the
+    /// guard against watch-detection creating a second entry for a file that's already
+    /// listed — e.g. when the auto-embed rename fires a FileSystemWatcher event for the
+    /// new name before that name is registered as known.
+    /// </summary>
+    private bool FilesContainsSamePath(string path)
+    {
+        string Canon(string p)
+        {
+            try { return Path.GetFullPath(p); } catch { return p; }
+        }
+        var target = Canon(path);
+        return Files.Any(f => !f.IsSeparator
+                              && !string.IsNullOrWhiteSpace(f.FilePath)
+                              && Canon(f.FilePath).Equals(target, StringComparison.OrdinalIgnoreCase));
+    }
+
     private void TryAddWatchedFile(string path)
     {
         // When Watch Folder detects a VME temp/backup file, run recovery check
@@ -1832,13 +1853,16 @@ public partial class MainViewModel
             }
             return;
         }
-        if (Files.Any(f => f.FilePath.Equals(path, StringComparison.OrdinalIgnoreCase)))
+        if (FilesContainsSamePath(path))
             return;
 
         // Wait briefly for the file to finish writing
         TryAddFile(path, isNew: true);
-        var justAdded = Files.FirstOrDefault(f => !f.IsSeparator &&
-            f.FilePath.Equals(path, StringComparison.OrdinalIgnoreCase));
+        string CanonLookup(string p) { try { return Path.GetFullPath(p); } catch { return p; } }
+        var targetCanon = CanonLookup(path);
+        var justAdded = Files.FirstOrDefault(f => !f.IsSeparator
+            && !string.IsNullOrWhiteSpace(f.FilePath)
+            && CanonLookup(f.FilePath).Equals(targetCanon, StringComparison.OrdinalIgnoreCase));
         if (justAdded != null)
         {
             justAdded.IsNewFile = true;
@@ -1865,7 +1889,7 @@ public partial class MainViewModel
         // Silently ignore VME temp/backup files
         if (IsVmeTempPath(path)) return;
         if (!MetadataService.IsSupported(path)) return;
-        if (Files.Any(f => f.FilePath.Equals(path, StringComparison.OrdinalIgnoreCase))) return;
+        if (FilesContainsSamePath(path)) return;
 
         // Offload the TagLib# read to a background thread so the UI thread is not blocked.
         // For Watch Folder files (isNew=true) this is especially important — FSW can fire
@@ -1907,7 +1931,7 @@ public partial class MainViewModel
                 dispatcher?.InvokeAsync(() =>
                 {
                     // Re-check after async gap — another task may have added it
-                    if (Files.Any(f => f.FilePath.Equals(path, StringComparison.OrdinalIgnoreCase)))
+                    if (FilesContainsSamePath(path))
                         return;
                     Files.Add(vf);
                     _watchFolderService.AddKnownPath(path);
