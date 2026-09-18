@@ -1871,7 +1871,16 @@ public partial class MainViewModel
 
             // Auto-search in the background so results are ready when the user
             // clicks the file — they don't have to wait for the search to start.
-            if (!string.IsNullOrWhiteSpace(justAdded.EmbeddedMetadata.Title))
+            //
+            // BUT skip it when auto-embed is enabled: in that case AutoEmbedFileAsync
+            // (triggered from TryAddFile) already searches and embeds this same file.
+            // Running a second, independent search here was redundant (double the TMDB
+            // calls) and — because that search wrote its result to the entry after
+            // auto-embed had already embedded+renamed — produced a divergent duplicate
+            // panel row (e.g. a yellow, unverified entry carrying a later-fetched rating
+            // alongside the green verified one). One flow, one entry.
+            if (!Settings.AutoEmbedEnabled
+                && !string.IsNullOrWhiteSpace(justAdded.EmbeddedMetadata.Title))
             {
                 var title = justAdded.ParsedTitle.Length > 0
                     ? justAdded.ParsedTitle : justAdded.EmbeddedMetadata.Title;

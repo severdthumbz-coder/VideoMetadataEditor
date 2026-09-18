@@ -2,6 +2,17 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 143 — Fix (part 1): stop the redundant second search that caused duplicate watch entries
+
+The real cause of the duplicate Files-panel row (traced from the logs): a watched file triggered **two independent TMDB searches** — the background pre-warm search (`ScheduleAutoSearch`) *and* the auto-embed's own search. Auto-embed embedded + verified + renamed the file (green entry) using its search; the separate pre-warm search finished later and wrote its result (e.g. a series-level rating) onto the entry after the rename, producing a divergent second row (yellow, unverified). The earlier build-142 canonical-path guard didn't help because this wasn't a path-comparison problem — it was two searches, two writes, one file.
+
+- **Fix:** when auto-embed is enabled, the redundant pre-warm search is no longer scheduled for watched files — auto-embed already searches and embeds them. One flow, one entry. When auto-embed is *disabled*, the pre-warm search still runs (so manually-processed files have results ready), so nothing is lost for that workflow.
+- Also halves the TMDB API calls for auto-embedded files.
+
+This is part 1 of a two-part fix. Part 2 (a following build) makes the auto-embedded TV rating fall back to the series rating when the episode itself has none, so the single verified entry is also the richer one.
+
+---
+
 ## v1.4.0 Build 142 — Fix: duplicate Files-panel entry for one file after watch-detect + auto-embed rename
 
 A watched file could end up with two panel rows for the same file: one green (embedded + verified) and one yellow (unverified, sometimes carrying later-fetched metadata like a rating). Root cause: when the auto-embed renames the file, the rename's `File.Move` fires a FileSystemWatcher event for the new name *before* that name is registered as known, so the watch re-detects the file and adds a second entry. The panel's dedup guards compared raw path strings, which could also miss a duplicate when the two paths differed only in form (separators, casing, normalization).

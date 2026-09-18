@@ -5143,6 +5143,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 143 — Fix (part 1): stop the redundant second search behind duplicate watch entries
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        The logs traced the duplicate Files-panel row to its real cause: a watched file ran TWO independent TMDB searches — the background pre-warm search and auto-embed's own search. Auto-embed embedded + verified + renamed the file (green) using its result; the separate pre-warm search finished later and wrote its result onto the entry after the rename, creating a divergent second row (yellow, unverified, sometimes carrying a series-level rating). Build 142's canonical-path guard didn't help because this was never a path-comparison problem. Fix: when auto-embed is enabled, the redundant pre-warm search is no longer scheduled for watched files (auto-embed already searches and embeds them) — one flow, one entry, and half the TMDB calls. When auto-embed is disabled the pre-warm still runs, so manual workflows keep their ready-results. Part 1 of two; part 2 will make the auto-embedded TV rating fall back to the series rating so the single verified entry is also the richer one.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 142 — Fix: duplicate Files-panel entry for one file after watch-detect + auto-embed rename
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
