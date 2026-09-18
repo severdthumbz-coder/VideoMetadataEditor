@@ -2,6 +2,19 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 146 — Auto-embedded TV episodes now get the series rating (part 2)
+
+Auto-embedded TV episodes were embedding with rating 0.0 because TMDB gives most individual episodes no `vote_average` — the show's score (e.g. 8.2) lives on the *series* record, not the episode.
+
+- **Fix:** `GetTvEpisodeAsync` now falls back to the series `vote_average` (and vote count) when the episode has no rating of its own. This needs **no extra API call** — the series record was already being fetched for the show title, genres, and content rating; the rating was simply never read from it. Episode-level ratings still win when present.
+- Also populates `RatingVotes` to match whichever source (episode or series) supplied the rating; previously it was left at 0 for episodes.
+
+Result: the single verified entry an auto-embedded episode produces now carries the show's rating instead of 0.0.
+
+**Also:** the Settings → Behaviour cleanup toggle is renamed "Auto-clean stale **&amp; duplicate** Files-panel entries after rename," and its tooltip now notes it collapses duplicate rows too (keeping the verified one), not just stale ones — because that toggle now gates the build-145 duplicate-collapse fix as well. Turning it off brings back the duplicate/stale rows, so it's recommended ON.
+
+---
+
 ## v1.4.0 Build 145 — Fix (part 3): the duplicate-collapse now runs on the path auto-embed actually uses
 
 Builds 141–144 added stale-entry sweeping and same-file collapse logic, but the duplicate persisted — and this build explains why: all that logic was hooked onto `ApplyToFileAsync`, while the watch-folder auto-embed uses a *different* embed method (`EmbedTvEpisodeAsync`) that never called it. The reconciliation existed but never ran for auto-embedded files. (This was also why a failed Move could report "Could not find file" — a stale entry pointing at a pre-rename path was never cleaned.)

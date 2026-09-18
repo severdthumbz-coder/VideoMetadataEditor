@@ -525,10 +525,27 @@ public class ApiService
             var cast       = string.Join(", ", mainCast.Take(6).Concat(guestStars.Take(4)));
 
             float rating = 0f;
+            int   ratingVotes = 0;
             if (float.TryParse(epObj["vote_average"]?.ToString(),
                 System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out var r))
+            {
                 rating = MathF.Round(r, 1);
+                int.TryParse(epObj["vote_count"]?.ToString(), out ratingVotes);
+            }
+            // Individual TV episodes frequently have no per-episode votes on TMDB
+            // (vote_average = 0). Fall back to the SERIES rating in that case, which is
+            // already present in seriesObj (no extra API call) — so the embedded rating
+            // reflects the show's score rather than showing 0.0.
+            if (rating <= 0f && seriesObj != null
+                && float.TryParse(seriesObj["vote_average"]?.ToString(),
+                    System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var sr)
+                && sr > 0f)
+            {
+                rating = MathF.Round(sr, 1);
+                int.TryParse(seriesObj["vote_count"]?.ToString(), out ratingVotes);
+            }
 
             var airDate = epObj["air_date"]?.ToString() ?? "";
 
@@ -541,6 +558,7 @@ public class ApiService
                 Director      = director,
                 Cast          = cast,
                 Rating        = rating,
+                RatingVotes   = ratingVotes,
                 MpaRating     = mpa,
                 // TV-specific fields
                 IsEpisode     = true,

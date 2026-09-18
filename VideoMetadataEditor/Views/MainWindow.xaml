@@ -2553,10 +2553,10 @@
                                                   IsChecked="{Binding Settings.MinimizeToTray}"
                                                   Margin="0,0,0,6"
                                                   ToolTip="Closing or minimising the window hides it to the notification area instead of quitting, so Watch Folder keeps running. Right-click the tray icon to rescan, toggle watching, start with Windows, or Exit."/>
-                                        <CheckBox Content="Auto-clean stale Files-panel entries after rename"
+                                        <CheckBox Content="Auto-clean stale &amp; duplicate Files-panel entries after rename"
                                                   IsChecked="{Binding Settings.AutoCleanStalePanelEntries}"
                                                   Margin="0,0,0,6"
-                                                  ToolTip="After a file is auto-renamed, remove any leftover Files-panel row that still points at the old (now non-existent) name — e.g. a watch-detected entry for a file that was then renamed. Only removes rows whose file is gone and that hold no undo history. Same reconciliation the Refresh button does, run automatically."/>
+                                                  ToolTip="After a file is auto-renamed, reconcile the Files panel: remove rows whose file no longer exists at that path, and collapse duplicate rows that point at the same file (keeping the verified one) — e.g. the yellow re-detection the watch adds when auto-embed renames a file. Only removes rows that are safe to remove (file gone or a duplicate of an existing entry) and never one holding undo history. Recommended ON — turning it off brings back the duplicate/stale rows."/>
                                         <TextBlock Text="AUTO-SEARCH DEBOUNCE (ms)" Style="{StaticResource LabelText}"/>
                                         <TextBox Text="{Binding Settings.AutoSearchDebounceMs, UpdateSourceTrigger=PropertyChanged}"
                                                  Margin="0,0,0,0"
@@ -5142,6 +5142,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 146 — Auto-embedded TV episodes now get the series rating (part 2)
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Auto-embedded TV episodes embedded with rating 0.0 because TMDB gives most individual episodes no vote_average — the show's score lives on the series record. GetTvEpisodeAsync now falls back to the series vote_average (and vote count) when the episode has none, with no extra API call (the series record was already fetched for title/genres/content-rating; the rating just wasn't read from it). Episode ratings still win when present; RatingVotes is now populated to match whichever source supplied the rating. So an auto-embedded episode's single verified entry carries the show's rating instead of 0.0. Also: the Settings cleanup toggle is renamed to note it collapses duplicate rows too (not just stale ones), since it now gates the build-145 duplicate-collapse — recommended ON.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 145 — Fix (part 3): duplicate-collapse now runs on the path auto-embed actually uses
                                     </TextBlock>
