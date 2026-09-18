@@ -5143,6 +5143,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 145 — Fix (part 3): duplicate-collapse now runs on the path auto-embed actually uses
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Builds 141–144 added stale-entry sweeping and same-file collapse logic, but the duplicate persisted because all of it was hooked onto ApplyToFileAsync, while the watch-folder auto-embed uses a different embed method (EmbedTvEpisodeAsync) that never called it — the reconciliation existed but never ran for auto-embedded files. (Same reason a failed Move could report "Could not find file": a stale pre-rename entry was never cleaned.) Fix: EmbedTvEpisodeAsync — used by both auto-embed and batch — now runs the collapse and sweep after its rename, immediately and again on a ~4s delay. The delay matters because the phantom is created by an asynchronous re-detection (watcher event + file-settle delay) that can land seconds after the rename; the delayed pass catches it. The collapse is idempotent and self-marshalling, so the extra pass is a safe no-op. Survivor rules unchanged: keep the undo-bearing entry, else verified, else most-complete; never remove an entry holding undo state. Parts 1 and 2 were correct; they just weren't wired into the auto-embed path until now.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 144 — Fix (part 2): collapse duplicate same-file panel entries after rename
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

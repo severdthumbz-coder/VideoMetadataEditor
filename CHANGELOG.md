@@ -2,6 +2,17 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 145 — Fix (part 3): the duplicate-collapse now runs on the path auto-embed actually uses
+
+Builds 141–144 added stale-entry sweeping and same-file collapse logic, but the duplicate persisted — and this build explains why: all that logic was hooked onto `ApplyToFileAsync`, while the watch-folder auto-embed uses a *different* embed method (`EmbedTvEpisodeAsync`) that never called it. The reconciliation existed but never ran for auto-embedded files. (This was also why a failed Move could report "Could not find file" — a stale entry pointing at a pre-rename path was never cleaned.)
+
+- **Fix:** `EmbedTvEpisodeAsync` — the method auto-embed and batch both use — now calls the duplicate-collapse and stale-entry sweep after its rename, both immediately and again on a short (~4s) delay. The delay matters because the phantom entry is created by an *asynchronous* re-detection (FileSystemWatcher event + the watch's file-settle delay) that can land seconds after the rename; the delayed pass catches that late-born duplicate. The collapse is idempotent and self-marshalling, so the extra pass is a safe no-op when there's nothing to do.
+- Survivor rules unchanged: keep the undo-bearing entry, else the verified entry, else the most-complete; never remove an entry holding undo state.
+
+This is the placement fix the earlier parts needed. Parts 1 (drop redundant search, 143) and 2 (collapse logic, 144) were correct in themselves; they just weren't wired into the auto-embed path until now.
+
+---
+
 ## v1.4.0 Build 144 — Fix (part 2): collapse duplicate same-file panel entries after rename
 
 Build 143 removed the redundant second *search*, but the logs showed the duplicate panel row persisted from a different cause: the auto-embed **rename** fires a FileSystemWatcher event for the new name, which re-detects the file and adds a second entry (unverified/yellow) beside the embedded+verified one (green). Winning that detection timing race up front proved unreliable, so this takes the deterministic approach: reconcile *after*.

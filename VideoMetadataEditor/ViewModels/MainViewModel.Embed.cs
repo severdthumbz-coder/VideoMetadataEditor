@@ -2397,6 +2397,27 @@ public partial class MainViewModel
         // Single source-of-truth projection — grid, cache, and FILES-panel snapshot.
         SyncLibraryEntry(preWritePath, file.FilePath, meta, file);
 
+        // This is the embed path the watch-folder auto-embed actually uses (not
+        // ApplyToFileAsync). The rename above fires a FileSystemWatcher event that can
+        // re-detect the file and add a duplicate panel entry, and a pre-rename entry can
+        // be left pointing at the old (now-gone) path. Reconcile here — the point where
+        // the phantom coexists with this verified entry — so duplicates are collapsed and
+        // dead-path rows removed. Earlier builds placed this on ApplyToFileAsync only,
+        // which auto-embed never calls, so it never ran for watched files.
+        CollapseDuplicateEntries();
+        SweepStalePanelEntries();
+
+        // The re-detection that creates the phantom is asynchronous (FSW event + the
+        // "wait for file to finish writing" delay), so it may land a few seconds AFTER
+        // this point. Run the reconciliation again on a short delay to catch that
+        // late-born duplicate. Self-marshalling + idempotent, so a redundant run is a
+        // no-op. ~4s comfortably clears the watch's own settle delay.
+        _ = Task.Delay(TimeSpan.FromSeconds(4)).ContinueWith(_ =>
+        {
+            CollapseDuplicateEntries();
+            SweepStalePanelEntries();
+        });
+
         Log(
             $"[{DateTime.Now:HH:mm:ss}] ✓ {meta.ShowTitle} " +
             $"S{meta.Season:D2}E{meta.Episode:D2} — {meta.EpisodeTitle}");
