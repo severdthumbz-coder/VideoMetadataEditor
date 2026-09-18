@@ -194,6 +194,7 @@ public partial class MainViewModel
                         // A watch-detected entry for the pre-rename name may now be stale
                         // (the file moved to newName). Drop any panel rows whose file is gone.
                         SweepStalePanelEntries();
+                        CollapseDuplicateEntries();
                     }
                 }
                 else if (!renamed && !string.IsNullOrWhiteSpace(err))
@@ -1815,6 +1816,67 @@ public partial class MainViewModel
     }
 
     /// <summary>
+    /// Collapses multiple Files-panel entries that point at the SAME physical file into
+    /// one. This is the deterministic (post-hoc) fix for the watch-detect + auto-embed
+    /// rename race: the rename fires a FileSystemWatcher event that re-detects the file
+    /// and adds a second entry (typically unverified/yellow) beside the embedded+verified
+    /// one (green). Rather than try to win that timing race up front, we reconcile after:
+    /// group by canonical path, and where a group has more than one entry, keep the best
+    /// survivor and remove the others.
+    ///
+    /// Survivor precedence (never removes an entry holding undo state):
+    ///   1. an entry holding undo state (so Undo Last Embed / Undo Batch never break),
+    ///   2. else a DiskVerified == true entry (reflects real embedded+verified state),
+    ///   3. else the entry with the most-complete metadata (title+rating present),
+    ///   4. else the first.
+    /// Marshalled to the UI thread, gated behind the same setting as the stale sweep.
+    /// </summary>
+    private void CollapseDuplicateEntries()
+    {
+        if (!Settings.AutoCleanStalePanelEntries) return;
+
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess())
+            dispatcher.InvokeAsync(CollapseDuplicateEntriesCore);
+        else
+            CollapseDuplicateEntriesCore();
+    }
+
+    private void CollapseDuplicateEntriesCore()
+    {
+        string Canon(string p) { try { return Path.GetFullPath(p); } catch { return p; } }
+
+        var groups = Files
+            .Where(f => !f.IsSeparator && !string.IsNullOrWhiteSpace(f.FilePath))
+            .GroupBy(f => Canon(f.FilePath), StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1);
+
+        foreach (var group in groups.ToList())
+        {
+            var entries = group.ToList();
+
+            // Choose the survivor by precedence.
+            var survivor =
+                entries.FirstOrDefault(e => e.UndoFilePath != null || e.UndoMetadata != null)
+                ?? entries.FirstOrDefault(e => e.DiskVerified == true)
+                ?? entries.OrderByDescending(e =>
+                        (string.IsNullOrWhiteSpace(e.EmbeddedMetadata?.Title) ? 0 : 1) +
+                        ((e.EmbeddedMetadata?.Rating ?? 0f) > 0f ? 1 : 0))
+                    .First();
+
+            foreach (var dup in entries.Where(e => !ReferenceEquals(e, survivor)))
+            {
+                // Safety: never remove an entry that itself holds undo state, even if it
+                // wasn't chosen as survivor (shouldn't happen given precedence, but guard
+                // anyway so undo can never be orphaned).
+                if (dup.UndoFilePath != null || dup.UndoMetadata != null) continue;
+                Files.Remove(dup);
+                Log( $"[{DateTime.Now:HH:mm:ss}] Merged duplicate panel entry: {dup.FileName} (same file as an existing entry)");
+            }
+        }
+    }
+
+    /// <summary>
     /// True if the Files panel already contains an entry for the same physical file as
     /// <paramref name="path"/>. Compares by canonical full path rather than raw string,
     /// so two forms of the same path (differing only by separators, casing, or
@@ -1890,6 +1952,12 @@ public partial class MainViewModel
                     System.Windows.Application.Current?.Dispatcher.InvokeAsync(
                         () => ScheduleAutoSearch(justAdded, title, year)));
             }
+
+            // If this detection re-added a file that's already represented (e.g. the
+            // auto-embed rename fired a watcher event for the new name), collapse the
+            // duplicate now, keeping the verified entry. Deterministic reconciliation —
+            // runs after the entry exists, so it's immune to the detection timing race.
+            CollapseDuplicateEntries();
         }
     }
 

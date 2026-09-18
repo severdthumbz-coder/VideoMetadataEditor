@@ -2,6 +2,18 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 144 — Fix (part 2): collapse duplicate same-file panel entries after rename
+
+Build 143 removed the redundant second *search*, but the logs showed the duplicate panel row persisted from a different cause: the auto-embed **rename** fires a FileSystemWatcher event for the new name, which re-detects the file and adds a second entry (unverified/yellow) beside the embedded+verified one (green). Winning that detection timing race up front proved unreliable, so this takes the deterministic approach: reconcile *after*.
+
+- **Fix:** after a watched file is added and after a rename, the panel collapses entries that resolve to the same physical file (canonical path) down to one. Survivor precedence: an entry holding undo state first (so Undo Last Embed / Undo Batch can never be orphaned), then the disk-verified entry, then the most-complete one. Non-survivors are removed — but never one that holds undo state, so if two duplicates both carried undo state, both are kept rather than risk breaking undo.
+- Because it runs after the entries exist, it's immune to the detection timing that defeated the earlier prevention attempts.
+- Gated behind the same Settings → Behaviour toggle as the stale-entry sweep (default on).
+
+This closes the duplicate-entry issue and, importantly, the risk that a duplicate row pointing at a renamed file could cause a later Move/Copy to act on the wrong location. The surviving entry is the verified one; a following change will enrich its TV rating (series-rating fallback) so it's also the most complete.
+
+---
+
 ## v1.4.0 Build 143 — Fix (part 1): stop the redundant second search that caused duplicate watch entries
 
 The real cause of the duplicate Files-panel row (traced from the logs): a watched file triggered **two independent TMDB searches** — the background pre-warm search (`ScheduleAutoSearch`) *and* the auto-embed's own search. Auto-embed embedded + verified + renamed the file (green entry) using its search; the separate pre-warm search finished later and wrote its result (e.g. a series-level rating) onto the entry after the rename, producing a divergent second row (yellow, unverified). The earlier build-142 canonical-path guard didn't help because this wasn't a path-comparison problem — it was two searches, two writes, one file.

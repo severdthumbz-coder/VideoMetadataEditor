@@ -5143,6 +5143,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 144 — Fix (part 2): collapse duplicate same-file panel entries after rename
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Build 143 removed the redundant second search, but the logs showed the duplicate row persisted from a different cause: the auto-embed rename fires a FileSystemWatcher event for the new name, re-detecting the file and adding a second entry (unverified/yellow) beside the verified one (green). Rather than keep trying to win that detection timing race, this reconciles after the fact: once a watched file is added, and after a rename, the panel collapses entries resolving to the same physical file (canonical path) to one. Survivor precedence: an entry holding undo state first (so undo is never orphaned), then the disk-verified entry, then the most-complete; a non-survivor is never removed if it holds undo state (so two undo-bearing duplicates are both kept rather than risk breaking undo). Because it runs after the entries exist, it's immune to the timing that defeated the prevention attempts, and it removes the risk of a duplicate row causing a later Move/Copy to act on the wrong location. Gated behind the same Settings → Behaviour toggle (default on).
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 143 — Fix (part 1): stop the redundant second search behind duplicate watch entries
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
