@@ -2,6 +2,17 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 147 — Fix: auto-embed failed to match shows whose title has an apostrophe
+
+Auto-embed couldn't confidently match shows like "Marvel's The Defenders" when the files dropped the apostrophe (`Marvels.The.Defenders`), leaving every episode queued for manual processing with "no confident match."
+
+- **Cause:** the title-similarity normaliser replaced *all* punctuation — including apostrophes — with a space. So TMDB's "Marvel's The Defenders" became "marvel s the defenders" (splitting "marvel's" into two words "marvel" + "s"), while the file's "Marvels The Defenders" stayed one word "marvels". The word-overlap score dropped to ~0.4, below the 0.70 confidence threshold, so the match was rejected.
+- **Fix:** apostrophes (straight and curly) and backticks are now *removed* rather than replaced with a space, so "Marvel's" collapses to "marvels" and matches a filename that omitted the apostrophe. The two titles now score 1.0 (identical) and match confidently. This only makes genuinely-same titles match; it can't cause false matches, since it merely reconciles the possessive/no-apostrophe spelling of the same word.
+
+Applies to the auto-embed confidence match for watched TV files. Shows with apostrophes in their names now auto-embed instead of being queued for manual handling.
+
+---
+
 ## v1.4.0 Build 146 — Auto-embedded TV episodes now get the series rating (part 2)
 
 Auto-embedded TV episodes were embedding with rating 0.0 because TMDB gives most individual episodes no `vote_average` — the show's score (e.g. 8.2) lives on the *series* record, not the episode.

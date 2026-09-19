@@ -2454,6 +2454,12 @@ public partial class MainViewModel
         // Remove common noise: year in brackets, "the", punctuation normalisation
         var t = title.ToLowerInvariant();
         t = System.Text.RegularExpressions.Regex.Replace(t, @"\s*\(\d{4}\)\s*$", "");
+        // Strip apostrophes/quotes by REMOVING them (not replacing with space), so a
+        // possessive like "Marvel's" collapses to "marvels" and matches a filename that
+        // dropped the apostrophe ("Marvels.The.Defenders"). Handles straight and curly
+        // apostrophes. Doing this before the general punctuation pass below is what makes
+        // "Marvel's The Defenders" and "Marvels The Defenders" score as identical.
+        t = System.Text.RegularExpressions.Regex.Replace(t, @"[''`]", "");
         t = System.Text.RegularExpressions.Regex.Replace(t, @"[^a-z0-9\s]", " ");
         t = System.Text.RegularExpressions.Regex.Replace(t, @"\s{2,}", " ").Trim();
         return t;

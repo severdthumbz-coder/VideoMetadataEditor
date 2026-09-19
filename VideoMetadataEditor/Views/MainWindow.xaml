@@ -5143,6 +5143,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 147 — Fix: auto-embed failed to match shows whose title has an apostrophe
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Auto-embed couldn't confidently match shows like "Marvel's The Defenders" when the files dropped the apostrophe (Marvels.The.Defenders), queuing every episode for manual processing. Cause: the title-similarity normaliser replaced all punctuation — including apostrophes — with a space, so TMDB's "Marvel's The Defenders" became "marvel s the defenders" (two words) while the file's "Marvels The Defenders" stayed "marvels", dropping the word-overlap score to ~0.4, below the 0.70 threshold. Fix: apostrophes (straight/curly) and backticks are now removed rather than spaced, so "Marvel's" collapses to "marvels" and matches. The titles now score 1.0 and match confidently; this only reconciles the possessive spelling of the same word, so it can't cause false matches. Shows with apostrophes now auto-embed instead of being queued for manual handling.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 146 — Auto-embedded TV episodes now get the series rating (part 2)
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
