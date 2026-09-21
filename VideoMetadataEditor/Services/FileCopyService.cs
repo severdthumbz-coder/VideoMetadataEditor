@@ -565,6 +565,70 @@ public class FileCopyService
     /// Small files use sequential async IO (less overhead, same throughput).
     /// Size verification after every file. Retry with back-off on failure.
     /// </summary>
+    // Subtitle sidecar formats media servers (Plex/Jellyfin) actually pair with a video.
+    // Excludes .lrc (a lyrics format, not subtitles) even though the detector lists it.
+    private static readonly HashSet<string> PairableSubtitleExtensions =
+        new(StringComparer.OrdinalIgnoreCase)
+        { ".srt", ".ass", ".ssa", ".vtt", ".sub", ".idx", ".sbv" };
+
+    /// <summary>
+    /// Moves/copies subtitle sidecars that belong to <paramref name="sourceVideoPath"/>
+    /// (same base name) into the folder of <paramref name="videoDestPath"/>, renaming each
+    /// to match the video's FINAL base name while preserving its exact suffix
+    /// (e.g. ".en.forced.srt") so media-server pairing survives a rename. Uses the same
+    /// conflict policy as the video. Best-effort: individual subtitle failures are ignored.
+    /// The .idx/.sub VobSub pair is handled naturally — both share the base name and both
+    /// get transferred.
+    /// </summary>
+    private static async Task TransferSidecarSubtitlesAsync(
+        string sourceVideoPath, string videoDestPath,
+        CopyMode mode, ConflictMode conflictMode, CancellationToken ct)
+    {
+        var srcDir      = Path.GetDirectoryName(sourceVideoPath);
+        var destDir     = Path.GetDirectoryName(videoDestPath);
+        if (string.IsNullOrWhiteSpace(srcDir) || string.IsNullOrWhiteSpace(destDir)) return;
+
+        var srcVideoBase  = Path.GetFileNameWithoutExtension(sourceVideoPath);
+        var destVideoBase = Path.GetFileNameWithoutExtension(videoDestPath);
+        if (string.IsNullOrWhiteSpace(srcVideoBase)) return;
+
+        foreach (var subPath in Directory.EnumerateFiles(srcDir))
+        {
+            ct.ThrowIfCancellationRequested();
+            var ext = Path.GetExtension(subPath);
+            if (!PairableSubtitleExtensions.Contains(ext)) continue;
+
+            var subBase = Path.GetFileNameWithoutExtension(subPath);
+            // Must be a sidecar of THIS video: its name starts with the video's base name.
+            if (!subBase.StartsWith(srcVideoBase, StringComparison.OrdinalIgnoreCase)) continue;
+
+            // Preserve the exact suffix after the video base (e.g. ".en.forced"), verbatim.
+            var suffix   = subBase.Substring(srcVideoBase.Length);
+            var destName = destVideoBase + suffix + ext;
+            var subDest  = Path.Combine(destDir, destName);
+
+            if (string.Equals(subPath, subDest, StringComparison.OrdinalIgnoreCase)) continue;
+
+            try
+            {
+                if (File.Exists(subDest))
+                {
+                    if (conflictMode == ConflictMode.Skip) continue;
+                    // Overwrite: remove existing so Move/Copy can proceed.
+                    File.Delete(subDest);
+                }
+
+                if (mode == CopyMode.Move)
+                    File.Move(subPath, subDest);
+                else
+                    File.Copy(subPath, subDest, overwrite: true);
+            }
+            catch { /* skip this subtitle, keep going */ }
+
+            await Task.Yield();
+        }
+    }
+
     public static async Task<List<FileCopyResult>> BuiltInBatchCopyAsync(
         IReadOnlyList<string> sources,
         string destinationDir,
@@ -574,7 +638,8 @@ public class FileCopyService
         int retryDelayMs = 500,
         IProgress<(int filesDone, int total, long bytesDone, long bytesTotal, string currentFile)>? progress = null,
         CancellationToken ct = default,
-        IReadOnlyDictionary<string, string>? destMap = null)
+        IReadOnlyDictionary<string, string>? destMap = null,
+        bool moveSubtitles = false)
     {
         // When destMap is provided, each file goes to its own resolved destination folder
         if (destMap != null)
@@ -646,6 +711,21 @@ public class FileCopyService
                             Interlocked.Add(ref bytesDone, bytes);
                             progress?.Report((filesDone, total, Interlocked.Read(ref bytesDone), totalBytes, fileName));
                         }, ct);
+                }
+
+                // Companion subtitles: after a successful video transfer, move/copy any
+                // sidecar subtitle files (same base name) to the same destination,
+                // renaming them to match the video's final name so media-server pairing
+                // survives a Smart-Organise rename. Best-effort — subtitle failures never
+                // fail the video transfer, and subtitles aren't counted as separate files.
+                if (result.Success && moveSubtitles && !string.IsNullOrWhiteSpace(result.DestPath))
+                {
+                    try
+                    {
+                        await TransferSidecarSubtitlesAsync(
+                            sourcePath, result.DestPath, mode, conflictMode, ct);
+                    }
+                    catch { /* never let a subtitle issue break the video transfer */ }
                 }
 
                 results.Add(result);

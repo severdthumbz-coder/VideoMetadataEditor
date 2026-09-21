@@ -152,6 +152,10 @@ public class AppSettings
 
     // Smart Move/Copy — organise by content type
     public bool   SmartOrganiseEnabled   { get; set; } = false;
+    /// <summary>When true, move/copy operations (Custom Fast engine) also transfer sidecar
+    /// subtitle files found beside each video, renaming them to match the video's final
+    /// name so media servers keep pairing them. Default on.</summary>
+    public bool   MoveSubtitleSidecars    { get; set; } = true;
     public string MoviesFolderName       { get; set; } = "Movies";
     public string TvShowsFolderName      { get; set; } = "TV Shows";
     public bool   CreateSeasonSubfolders { get; set; } = true;

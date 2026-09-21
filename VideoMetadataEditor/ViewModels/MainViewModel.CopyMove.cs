@@ -269,7 +269,8 @@ public partial class MainViewModel
                         maxRetries:   maxRetries,
                         retryDelayMs: retryDelay,
                         progress:     batchProgress,
-                        destMap:      destMap);
+                        destMap:      destMap,
+                        moveSubtitles: Settings.MoveSubtitleSidecars);
                 }
                 else
                 {
@@ -278,7 +279,8 @@ public partial class MainViewModel
                         conflictMode: conflictMode,
                         maxRetries:   maxRetries,
                         retryDelayMs: retryDelay,
-                        progress:     batchProgress);
+                        progress:     batchProgress,
+                        moveSubtitles: Settings.MoveSubtitleSidecars);
                 }
 
                 // ── Process results ────────────────────────────────────────────

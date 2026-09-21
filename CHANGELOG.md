@@ -2,6 +2,18 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 148 — Move/copy subtitle sidecars with their video
+
+Move/Copy (Custom Fast engine) now also transfers subtitle sidecar files, so subtitles no longer get left behind in the source folder.
+
+- **What travels:** any subtitle file sharing a video's base name — `.srt`, `.ass`, `.ssa`, `.vtt`, `.sub`/`.idx` (VobSub pair), `.sbv`. (`.lrc` is excluded — it's a lyrics format, not subtitles, and no media server pairs it.)
+- **Renamed to match:** each subtitle is renamed to the video's *final* name while keeping its exact language/flag suffix — so `Show.S01E01.en.forced.srt` following `Show.S01E01.mkv` → `Show - S01E01 - Title - en.forced.srt` stays paired in Plex/Jellyfin. The suffix is preserved verbatim (no lossy re-parsing), so `.en`, `.forced`, `.hi`/`.sdh`, multi-token suffixes all survive.
+- **Scope:** the Custom Fast engine only — which is the engine Smart Organisation uses (FastCopy, an external process, can't do per-file companion handling). The Smart Organisation description now notes that subtitles travel with each video.
+- **Conflict handling:** follows the same File Conflict Resolution setting as the video (Skip skips an existing subtitle; other modes overwrite). Subtitle transfer is best-effort — a subtitle failure never fails the video transfer, and subtitles aren't counted as separate files in the result.
+- **Toggle:** Settings → Behaviour → "Move/copy subtitle sidecars with their video" (default on).
+
+---
+
 ## v1.4.0 Build 147 — Fix: auto-embed failed to match shows whose title has an apostrophe
 
 Auto-embed couldn't confidently match shows like "Marvel's The Defenders" when the files dropped the apostrophe (`Marvels.The.Defenders`), leaving every episode queued for manual processing with "no confident match."

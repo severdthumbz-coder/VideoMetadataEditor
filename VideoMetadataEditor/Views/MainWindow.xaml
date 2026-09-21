@@ -1934,6 +1934,8 @@
                                         🗂 <Bold>Smart Organisation is active.</Bold>
                                         Movies → destination\Movies\
                                         TV Episodes → destination\TV Shows\Show (Year)\Season ##\
+                                        Matching subtitle sidecars (.srt, .ass, .vtt, …) travel with each
+                                        video and are renamed to match it.
                                         FastCopy and Auto are disabled — Smart Organisation requires
                                         per-file routing which only Custom Fast supports.
                                     </TextBlock>
@@ -2557,6 +2559,10 @@
                                                   IsChecked="{Binding Settings.AutoCleanStalePanelEntries}"
                                                   Margin="0,0,0,6"
                                                   ToolTip="After a file is auto-renamed, reconcile the Files panel: remove rows whose file no longer exists at that path, and collapse duplicate rows that point at the same file (keeping the verified one) — e.g. the yellow re-detection the watch adds when auto-embed renames a file. Only removes rows that are safe to remove (file gone or a duplicate of an existing entry) and never one holding undo history. Recommended ON — turning it off brings back the duplicate/stale rows."/>
+                                        <CheckBox Content="Move/copy subtitle sidecars with their video"
+                                                  IsChecked="{Binding Settings.MoveSubtitleSidecars}"
+                                                  Margin="0,0,0,6"
+                                                  ToolTip="During a Custom Fast move/copy, also transfer subtitle files (.srt, .ass, .ssa, .vtt, .sub/.idx, .sbv) that share a video's base name, and rename them to match the video's final name so Plex/Jellyfin keep pairing them. Applies to the Custom Fast engine (the one Smart Organisation uses). Default on."/>
                                         <TextBlock Text="AUTO-SEARCH DEBOUNCE (ms)" Style="{StaticResource LabelText}"/>
                                         <TextBox Text="{Binding Settings.AutoSearchDebounceMs, UpdateSourceTrigger=PropertyChanged}"
                                                  Margin="0,0,0,0"
@@ -5142,6 +5148,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 148 — Move/copy subtitle sidecars with their video
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Move/Copy (Custom Fast engine) now also transfers subtitle sidecars so they aren't left behind. Any subtitle sharing a video's base name travels with it — .srt, .ass, .ssa, .vtt, .sub/.idx (VobSub), .sbv (.lrc is excluded as a lyrics format). Each is renamed to the video's final name while keeping its exact language/flag suffix verbatim, so Show.S01E01.en.forced.srt following the video stays paired in Plex/Jellyfin (.en, .forced, .hi/.sdh and multi-token suffixes all survive). Scope is the Custom Fast engine (the one Smart Organisation uses; external FastCopy can't do per-file companions), and the Smart Organisation description now notes subtitles travel too. Conflicts follow the File Conflict Resolution setting; subtitle transfer is best-effort and never fails the video transfer. Toggle in Settings → Behaviour → "Move/copy subtitle sidecars with their video" (default on).
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 147 — Fix: auto-embed failed to match shows whose title has an apostrophe
                                     </TextBlock>
