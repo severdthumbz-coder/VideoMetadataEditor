@@ -33,6 +33,23 @@
         <conv:BoolToStringConverter x:Key="BoolToStringDetected" TrueValue="✓ Found"   FalseValue="Not found"/>
         <conv:BoolToStringConverter x:Key="BoolToWatchedLabel"   TrueValue="♥ Watched" FalseValue="Unwatched"/>
         <conv:StringEqualsBoolConverter x:Key="StringEqualsBool"/>
+
+        <!-- ── Onboarding hint marker (ⓘ) ──────────────────────────────────────
+             A small info glyph shown next to a tricky control. Set the ToolTip at
+             the usage site with the tip text. Visibility is gated by the master
+             "Show onboarding helpers" setting, so all hints hide together when it's
+             turned off. Hover reveals the tip. -->
+        <Style x:Key="HintMarker" TargetType="TextBlock">
+            <Setter Property="Text" Value="&#x24D8;"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Help"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Visibility"
+                    Value="{Binding Settings.ShowOnboardingHelpers, Converter={StaticResource BoolVis}}"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="200"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -699,8 +716,24 @@
                                 <!-- Left: Metadata form -->
                                 <StackPanel Grid.Column="0" Margin="0,0,20,0">
 
-                                    <TextBlock Text="Embedded Metadata"
-                                               Style="{StaticResource SectionHeader}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Embedded Metadata"
+                                                   Style="{StaticResource SectionHeader}"/>
+                                        <TextBlock Style="{StaticResource HintMarker}"
+                                                   Margin="8,0,0,0">
+                                            <TextBlock.ToolTip>
+                                                <ToolTip MaxWidth="320">
+                                                    <TextBlock TextWrapping="Wrap">
+                                                        <Run FontWeight="SemiBold" Text="Raw Data"/>
+                                                        <Run Text=" shows the metadata currently written inside this file. Edit it here, then Apply + Embed to save it back."/>
+                                                        <LineBreak/><LineBreak/>
+                                                        <Run FontWeight="SemiBold" Text="Retrieved Data"/>
+                                                        <Run Text=" (next tab) is what TMDB / OMDB found online — search there, then send the results over to fill these fields."/>
+                                                    </TextBlock>
+                                                </ToolTip>
+                                            </TextBlock.ToolTip>
+                                        </TextBlock>
+                                    </StackPanel>
 
                                     <!-- Original Filename (read-only, always shows the on-disk name) -->
                                     <TextBlock Text="ORIGINAL FILENAME" Style="{StaticResource LabelText}"/>
@@ -1318,10 +1351,33 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
+                                <!-- Onboarding hint: what Retrieved Data is -->
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8"
+                                            Visibility="{Binding Settings.ShowOnboardingHelpers, Converter={StaticResource BoolVis}}">
+                                    <TextBlock Text="Online lookup"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                                    <TextBlock Style="{StaticResource HintMarker}"
+                                               Margin="6,0,0,0">
+                                        <TextBlock.ToolTip>
+                                            <ToolTip MaxWidth="320">
+                                                <TextBlock TextWrapping="Wrap">
+                                                    <Run FontWeight="SemiBold" Text="Retrieved Data"/>
+                                                    <Run Text=" searches TMDB / OMDB for this file and shows what it found. Pick a result to load it, then it fills the "/>
+                                                    <Run FontWeight="SemiBold" Text="Raw Data"/>
+                                                    <Run Text=" fields — which is the metadata actually written into the file when you embed."/>
+                                                </TextBlock>
+                                            </ToolTip>
+                                        </TextBlock.ToolTip>
+                                    </TextBlock>
+                                </StackPanel>
+
                                 <!-- Title search -->
-                                <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <Grid Grid.Row="1" Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="8"/>
@@ -1339,7 +1395,7 @@
                                 </Grid>
 
                                 <!-- ID lookup -->
-                                <Grid Grid.Row="1" Margin="0,0,0,8">
+                                <Grid Grid.Row="2" Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="8"/>
@@ -1357,7 +1413,7 @@
                                 </Grid>
 
                                 <!-- Refine-by-ID tip: shown when IMDB or TMDB ID is entered in Raw Data -->
-                                <Border Grid.Row="2"
+                                <Border Grid.Row="3"
                                         Background="{DynamicResource SurfaceAltBrush}"
                                         BorderBrush="{DynamicResource PrimaryBrush}"
                                         BorderThickness="0,0,0,2"
@@ -5322,6 +5378,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 152 — Onboarding, part 2: contextual hints (Raw vs Retrieved Data)
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Reusable ⓘ hint markers that explain a control on hover, starting with the two data tabs — the most common confusion. A marker by the Raw Data "Embedded Metadata" header and one above the Retrieved Data search each explain the split: Raw Data is what's written inside the file (edit + embed), Retrieved Data is what TMDB/OMDB found online (search, pick, it fills Raw Data). The marker is a shared style so future builds can add the same ⓘ anywhere in one line. All hints hide with the Settings → Behaviour → "Show onboarding helpers" toggle.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 151 — Onboarding, part 1: icon &amp; colour Legend
                                     </TextBlock>

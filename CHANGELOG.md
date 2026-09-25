@@ -2,6 +2,18 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 152 — Onboarding, part 2: contextual hints (Raw vs Retrieved Data)
+
+Second piece of the onboarding work: reusable ⓘ hint markers that explain a control on hover, starting with the most common point of confusion — the two data tabs.
+
+- **ⓘ hint markers** appear next to the "Embedded Metadata" header on the Raw Data tab and above the search on the Retrieved Data tab. Hovering either one explains the distinction: Raw Data is what's written inside the file (and what you edit + embed), Retrieved Data is what TMDB/OMDB found online (search, pick a result, and it fills the Raw Data fields).
+- **Reusable pattern:** the hint marker is a shared style, so future builds can drop the same ⓘ next to any other tricky control with one line.
+- **Gated by the master toggle:** all hints hide when Settings → Behaviour → "Show onboarding helpers" is turned off, alongside the Legend and the coming first-run tour.
+
+Next in this arc: the first-run guided tour (part 3).
+
+---
+
 ## v1.4.0 Build 151 — Onboarding, part 1: icon & colour Legend
 
 First piece of the progressive-disclosure onboarding work: a Legend that explains the app's icons and row colours, so newcomers aren't left guessing what a yellow row or a ♥ means.
