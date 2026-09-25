@@ -2,6 +2,20 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 151 — Onboarding, part 1: icon & colour Legend
+
+First piece of the progressive-disclosure onboarding work: a Legend that explains the app's icons and row colours, so newcomers aren't left guessing what a yellow row or a ♥ means.
+
+- **❔ Legend button** in the top-right toolbar (next to the theme toggle) opens a popup flyout listing every row colour and icon with a plain-language meaning. Click away to dismiss.
+- **Row colours explained:** green = written & renamed successfully this session, red = write failed, yellow/gold = newly watch-detected and not yet processed — the states that show up in the Files panel.
+- **Icons & concepts:** 🔒/🔓 lock state, ♥ watched, ⚠ write error, ⬇ subtitle download, 🎬 launch external app, the Raw Data vs Retrieved Data distinction, and sidecar vs embedded tags.
+- **Also in Help:** the same reference appears as a "Legend" section in the Help tab.
+- **Master toggle:** new Settings → Behaviour → "Show onboarding helpers (legend, hints, first-run tour)" (default on). It governs the coming contextual hints and first-run tour; the Legend itself stays reachable from the toolbar either way.
+
+Next in this arc: contextual hint markers (part 2), then the first-run guided tour (part 3).
+
+---
+
 ## v1.4.0 Build 150 — Subtitles panel padding fix
 
 Small visual fix following Build 149: the Subtitles panel content sat flush against the expander edges.

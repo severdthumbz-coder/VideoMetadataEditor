@@ -2328,6 +2328,57 @@ public partial class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    // ONBOARDING — LEGEND (icon & colour reference)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// One row in the Legend. <see cref="Glyph"/> is the icon/swatch text, <see cref="Swatch"/>
+    /// is an optional colour (as a hex string) for row-colour entries — when set, the UI shows
+    /// a colour chip instead of a glyph. <see cref="Meaning"/> is the plain-language explanation.
+    /// </summary>
+    public sealed record LegendItem(string Glyph, string Meaning, string? Swatch = null)
+    {
+        public bool HasSwatch => !string.IsNullOrEmpty(Swatch);
+        public bool HasGlyph  => string.IsNullOrEmpty(Swatch);
+    }
+
+    /// <summary>The curated icon/colour reference shown in the Legend flyout and the Help tab.</summary>
+    public System.Collections.ObjectModel.ObservableCollection<LegendItem> LegendItems { get; } = new()
+    {
+        // Files-panel row colours (match the DataTriggers in MainWindow.xaml)
+        new("", "File row: written & renamed successfully this session",       "#4CAF82"),
+        new("", "File row: write failed after all retries — see ⚠ / the Log", "#E05252"),
+        new("", "File row: newly watch-detected, not yet processed",           "#D9B44A"),
+        // Lock state
+        new("🔒", "File is locked (read-only) — unlock before embedding"),
+        new("🔓", "File is unlocked and writable"),
+        // Status / watched
+        new("♥",  "Marked as watched (syncs to Trakt when connected)"),
+        new("⚠",  "This file has a write error — click ⚠ Next Error to jump to it"),
+        // Subtitle actions
+        new("⬇",  "Download the selected OpenSubtitles subtitle beside the video"),
+        new("🎬", "Open the selected video in your mapped external subtitle app"),
+        // Tabs — the two data views people confuse
+        new("🔍", "RETRIEVED DATA: what TMDB / OMDB found online for this file"),
+        new("📄", "RAW DATA: the metadata currently written inside the file"),
+        // Sidecar vs embedded
+        new("🗂", "Sidecar files (.nfo, poster.jpg, .srt) sit beside the video — Plex/Jellyfin read these"),
+        new("🏷", "Embedded tags live inside the container and travel with the file when moved"),
+    };
+
+    private bool _isLegendOpen;
+    /// <summary>Drives the Legend popup's IsOpen. Toggled by the ❔ toolbar button.</summary>
+    public bool IsLegendOpen
+    {
+        get => _isLegendOpen;
+        set => Set(ref _isLegendOpen, value);
+    }
+
+    private ICommand? _toggleLegendCommand;
+    public ICommand ToggleLegendCommand =>
+        _toggleLegendCommand ??= new RelayCommand(_ => IsLegendOpen = !IsLegendOpen);
+
     /// <summary>
     /// Common languages offered in the Subtitles-panel dropdown. Each entry is a
     /// friendly label plus the ISO 639-1 code that OpenSubtitles expects. Picking one

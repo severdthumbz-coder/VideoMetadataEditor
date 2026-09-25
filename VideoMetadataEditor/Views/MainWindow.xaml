@@ -156,8 +156,77 @@
                             Visibility="{Binding IsBusy, Converter={StaticResource BoolVis}}"/>
                 </StackPanel>
 
-                <!-- Theme toggle & close -->
+                <!-- Legend, theme toggle & close -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="LegendButton"
+                            Style="{StaticResource IconButton}"
+                            Command="{Binding ToggleLegendCommand}"
+                            Content="❔"
+                            ToolTip="Legend — what the icons and row colours mean"
+                            Margin="0,0,4,0"/>
+                    <Popup PlacementTarget="{Binding ElementName=LegendButton}"
+                           Placement="Bottom"
+                           StaysOpen="False"
+                           AllowsTransparency="True"
+                           IsOpen="{Binding IsLegendOpen, Mode=TwoWay}">
+                        <Border Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="14"
+                                MaxWidth="420"
+                                Margin="0,4,8,8">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="14" ShadowDepth="2" Opacity="0.35"/>
+                            </Border.Effect>
+                            <StackPanel>
+                                <TextBlock Text="Legend"
+                                           FontWeight="SemiBold" FontSize="14"
+                                           Foreground="{DynamicResource ForegroundBrush}"
+                                           Margin="0,0,0,8"/>
+                                <ItemsControl ItemsSource="{Binding LegendItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,3">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="34"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <!-- Colour swatch (for row-colour entries) -->
+                                                <Border Grid.Column="0"
+                                                        Width="22" Height="14"
+                                                        CornerRadius="3"
+                                                        HorizontalAlignment="Left"
+                                                        VerticalAlignment="Center"
+                                                        Background="{Binding Swatch}"
+                                                        BorderBrush="{DynamicResource BorderBrush}"
+                                                        BorderThickness="1"
+                                                        Visibility="{Binding HasSwatch, Converter={StaticResource BoolVis}}"/>
+                                                <!-- Glyph (for icon entries) -->
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding Glyph}"
+                                                           FontSize="14"
+                                                           HorizontalAlignment="Left"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource ForegroundBrush}"
+                                                           Visibility="{Binding HasGlyph, Converter={StaticResource BoolVis}}"/>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding Meaning}"
+                                                           FontSize="12"
+                                                           TextWrapping="Wrap"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource ForegroundBrush}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="Full reference: Help tab → Legend"
+                                           FontSize="10"
+                                           Foreground="{DynamicResource ForegroundMutedBrush}"
+                                           Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Popup>
                     <Button Style="{StaticResource IconButton}"
                             Command="{Binding ToggleThemeCommand}"
                             Content="{Binding IsDark, Converter={StaticResource ThemeIcon}}"
@@ -2625,6 +2694,10 @@
                                                   IsChecked="{Binding Settings.MoveSubtitleSidecars}"
                                                   Margin="0,0,0,6"
                                                   ToolTip="During a Custom Fast move/copy, also transfer subtitle files (.srt, .ass, .ssa, .vtt, .sub/.idx, .sbv) that share a video's base name, and rename them to match the video's final name so Plex/Jellyfin keep pairing them. Applies to the Custom Fast engine (the one Smart Organisation uses). Default on."/>
+                                        <CheckBox Content="Show onboarding helpers (legend, hints, first-run tour)"
+                                                  IsChecked="{Binding Settings.ShowOnboardingHelpers}"
+                                                  Margin="0,0,0,6"
+                                                  ToolTip="Master switch for the newcomer aids: the ❔ icon/colour Legend, small ⓘ hint markers on tricky panels, and the first-run guided tour. Turn off once you know your way around — the Legend stays reachable from the toolbar either way. Default on."/>
                                         <TextBlock Text="AUTO-SEARCH DEBOUNCE (ms)" Style="{StaticResource LabelText}"/>
                                         <TextBox Text="{Binding Settings.AutoSearchDebounceMs, UpdateSourceTrigger=PropertyChanged}"
                                                  Margin="0,0,0,0"
@@ -4852,6 +4925,45 @@
                                     </Grid>
                                 </Border>
 
+                                <!-- Legend -->
+                                <TextBlock Text="Legend" Style="{StaticResource SectionHeader}"/>
+                                <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="0,0,0,8" TextWrapping="Wrap">
+                                    What the icons and row colours across the app mean. This same reference is available any time from the ❔ button in the top-right toolbar.
+                                </TextBlock>
+                                <ItemsControl ItemsSource="{Binding LegendItems}" Margin="0,0,0,16">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,3">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="40"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0"
+                                                        Width="24" Height="15"
+                                                        CornerRadius="3"
+                                                        HorizontalAlignment="Left"
+                                                        VerticalAlignment="Center"
+                                                        Background="{Binding Swatch}"
+                                                        BorderBrush="{DynamicResource BorderBrush}"
+                                                        BorderThickness="1"
+                                                        Visibility="{Binding HasSwatch, Converter={StaticResource BoolVis}}"/>
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding Glyph}"
+                                                           FontSize="15"
+                                                           HorizontalAlignment="Left"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource ForegroundBrush}"
+                                                           Visibility="{Binding HasGlyph, Converter={StaticResource BoolVis}}"/>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding Meaning}"
+                                                           Style="{StaticResource BaseText}"
+                                                           TextWrapping="Wrap"
+                                                           VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
                                 <!-- Features -->
                                 <TextBlock Text="Features" Style="{StaticResource SectionHeader}"/>
                                 <StackPanel Margin="0,0,0,16">
@@ -5210,6 +5322,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 151 — Onboarding, part 1: icon &amp; colour Legend
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        First piece of the progressive-disclosure onboarding work. A ❔ Legend button in the top-right toolbar opens a popup explaining every row colour (green = success, red = write failed, yellow = newly watch-detected) and icon (🔒/🔓 lock, ♥ watched, ⚠ error, ⬇ download, 🎬 launch app), plus the Raw vs Retrieved Data and sidecar vs embedded distinctions. The same reference is in the Help tab. New Settings → Behaviour → "Show onboarding helpers" master toggle (default on) governs the upcoming hints and first-run tour; the Legend stays reachable regardless.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 150 — Subtitles panel padding fix
                                     </TextBlock>

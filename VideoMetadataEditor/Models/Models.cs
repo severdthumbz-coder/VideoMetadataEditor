@@ -46,6 +46,13 @@ public class AppSettings
     /// name that was then auto-renamed). Purely a display cleanup; never touches files
     /// or entries that still hold undo state. Default on.</summary>
     public bool   AutoCleanStalePanelEntries { get; set; } = true;
+    /// <summary>Master switch for the onboarding helpers — the icon/colour Legend, contextual
+    /// hint markers, and the first-run guided tour. On by default so newcomers get help; power
+    /// users can turn it off. The Legend stays reachable on demand regardless of this flag.</summary>
+    public bool   ShowOnboardingHelpers { get; set; } = true;
+    /// <summary>Set true once the first-run guided tour has been shown (or skipped), so it
+    /// doesn't auto-launch again. Re-runnable manually from the Help tab.</summary>
+    public bool   HasSeenTour           { get; set; } = false;
     public bool   LibraryTvTreeView    { get; set; } = false;
     public string LanguageCode          { get; set; } = "System";
     // "List" = flat DataGrid (default), "Tree" = Show>Season>Episode hierarchy
