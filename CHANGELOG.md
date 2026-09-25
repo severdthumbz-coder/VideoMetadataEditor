@@ -2,6 +2,18 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 149 — Finish the OpenSubtitles arc: language picker, best-match sort, external-app hook
+
+Completes the subtitle-download feature end to end and makes it discoverable — the panel was easy to skip over even though the download plumbing was already there.
+
+- **Language dropdown.** The Retrieved Data → 🗒 Subtitles panel now has a "Language" dropdown of common languages (English, Spanish, French, Japanese, Portuguese-BR, and ~25 more). Picking one fills the language box; the box stays free-text, so raw codes like `pt-BR` or a multi-language list `en,fr` still work by hand.
+- **Best match first.** Search results are now sorted by download count (then rating) instead of raw API order, and the top result is pre-selected — so for the common "just get me the English sub" case, one ⬇ Download grabs the best match.
+- **Discoverable.** The Subtitles expander now opens by default and its header reads "🗒 Subtitles — download from OpenSubtitles", so the feature is visible rather than collapsed and unlabelled.
+- **External subtitle app hook (optional).** New Settings → Metadata & APIs → 🗒 OpenSubtitles → **External Subtitle App** field: Browse to map any subtitle/dubbing tool (Subtitle Edit, or your own app). A **🎬 Launch Subtitle App** button then appears in two places — the Files-panel toolbar and the 🗒 Subtitles panel — and opens the currently-selected video in that app, passing the file path as an argument. Left blank, the button stays hidden/disabled. This is scaffolding for an external AI subtitle/dubbing workflow.
+- No change to the download naming or transfer: subtitles still save as `<VideoBase>.<lang>[.forced][.hi].<ext>` and travel with the video via the Build 148 sidecar transfer.
+
+---
+
 ## v1.4.0 Build 148 — Move/copy subtitle sidecars with their video
 
 Move/Copy (Custom Fast engine) now also transfers subtitle sidecar files, so subtitles no longer get left behind in the source folder.

@@ -225,6 +225,12 @@
                                             Style="{StaticResource SecondaryButton}"
                                             Command="{Binding ClearFilesCommand}"
                                             Padding="6,3" FontSize="11"/>
+                                    <Button Content="🎬"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Command="{Binding LaunchSubtitleAppCommand}"
+                                            Padding="6,3" FontSize="11" Margin="4,0,0,0"
+                                            ToolTip="Open the selected video in the external subtitle app"
+                                            Visibility="{Binding HasExternalSubtitleApp, Converter={StaticResource BoolVis}}"/>
                                     <Button Content="⚠ Next Error"
                                             Style="{StaticResource SecondaryButton}"
                                             Command="{Binding JumpToNextFailureCommand}"
@@ -1575,10 +1581,29 @@
 
                             <!-- ── Subtitles ──────────────────────────────────── -->
                             <Expander Grid.Row="3"
-                                      Header="🗒 Subtitles"
+                                      Header="🗒 Subtitles — download from OpenSubtitles"
                                       Margin="0,12,0,0"
-                                      IsExpanded="False">
+                                      IsExpanded="True">
                                 <StackPanel Margin="0,8,0,0">
+                                    <!-- Language picker: choose a common language (fills the box), or type raw codes -->
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   Text="Language:"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                                        <ComboBox Grid.Column="2"
+                                                  ItemsSource="{Binding CommonSubtitleLanguages}"
+                                                  SelectedItem="{Binding SelectedLanguagePick}"
+                                                  DisplayMemberPath="Label"
+                                                  FontSize="12"
+                                                  ToolTip="Pick a common language to fill the box below. You can still type raw codes (e.g. pt-BR) or a list (en,fr) by hand."/>
+                                    </Grid>
                                     <!-- Language filter + search -->
                                     <Grid Margin="0,0,0,8">
                                         <Grid.ColumnDefinitions>
@@ -1653,14 +1678,21 @@
                                                 Padding="12,6"
                                                 Margin="0,0,8,0"
                                                 ToolTip="Download the selected subtitle and save it alongside the video file"/>
+                                        <Button Content="🎬 Launch Subtitle App"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Command="{Binding LaunchSubtitleAppCommand}"
+                                                Padding="12,6"
+                                                Margin="0,0,8,0"
+                                                ToolTip="Open the selected video in the external subtitle/dubbing app mapped in Settings. Disabled until an app is mapped."/>
                                         <TextBlock Text="{Binding SubtitleDownloadStatus}"
                                                    VerticalAlignment="Center"
                                                    FontSize="12"
                                                    Foreground="{DynamicResource AccentBrush}"/>
                                     </StackPanel>
-                                    <TextBlock Text="Requires OpenSubtitles API key in Settings → Metadata &amp; APIs"
+                                    <TextBlock Text="Requires OpenSubtitles API key in Settings → Metadata &amp; APIs. Map an external app under Settings → Metadata &amp; APIs → External Subtitle App."
                                                FontSize="10"
                                                Foreground="{DynamicResource ForegroundMutedBrush}"
+                                               TextWrapping="Wrap"
                                                Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Expander>
@@ -2415,6 +2447,36 @@
                                             Free account: 5 downloads/day · 100 searches/day.
                                             Register at opensubtitles.com then go to
                                             Profile → API Consumer to generate your key.
+                                        </TextBlock>
+
+                                        <!-- ── External subtitle / dubbing app ─────────────── -->
+                                        <Separator Margin="0,12,0,10"/>
+                                        <TextBlock Text="EXTERNAL SUBTITLE APP (OPTIONAL)" Style="{StaticResource LabelText}"/>
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0"
+                                                     Text="{Binding ExternalSubtitleAppPath, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="Full path to an external subtitle/dubbing app. When set, the 🎬 Launch Subtitle App button is enabled and opens the selected video in this app."/>
+                                            <Button Grid.Column="1" Content="📁 Browse"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Command="{Binding BrowseExternalSubtitleAppCommand}"
+                                                    Margin="4,0,0,0" Padding="10,6"/>
+                                            <Button Grid.Column="2" Content="✕"
+                                                    Style="{StaticResource IconButton}"
+                                                    Command="{Binding ClearExternalSubtitleAppCommand}"
+                                                    Visibility="{Binding HasExternalSubtitleApp, Converter={StaticResource BoolVis}}"
+                                                    ToolTip="Clear the mapped app" Margin="4,0,0,0" Padding="6"/>
+                                        </Grid>
+                                        <TextBlock FontSize="11" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource ForegroundMutedBrush}">
+                                            Map any subtitle or dubbing tool here (e.g. Subtitle Edit, or your own app).
+                                            The 🎬 Launch Subtitle App button — on the Files toolbar and in the
+                                            Retrieved Data → 🗒 Subtitles panel — opens the selected video in it,
+                                            passing the file path as an argument. Left blank, the button stays disabled.
                                         </TextBlock>
                                     </StackPanel>
                                 </GroupBox>
@@ -5148,6 +5210,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 149 — Finish the OpenSubtitles arc: language picker, best-match sort, external-app hook
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Completes the subtitle-download feature and makes it discoverable. The Retrieved Data → 🗒 Subtitles panel now has a Language dropdown of common languages that fills the (still free-text) language box — raw codes like pt-BR or a list en,fr still work by hand. Results are sorted by download count (then rating) with the top result pre-selected, so one ⬇ Download grabs the best match. The Subtitles expander now opens by default and is labelled "download from OpenSubtitles" so it's no longer easy to skip. New optional Settings → Metadata &amp; APIs → 🗒 OpenSubtitles → External Subtitle App field: Browse to map any subtitle/dubbing tool, and a 🎬 Launch Subtitle App button appears in the Files-panel toolbar and the Subtitles panel, opening the selected video in that app (path passed as an argument); blank leaves the button hidden. Download naming and sidecar transfer are unchanged (&lt;VideoBase&gt;.&lt;lang&gt;.srt, travels with the video).
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 148 — Move/copy subtitle sidecars with their video
                                     </TextBlock>

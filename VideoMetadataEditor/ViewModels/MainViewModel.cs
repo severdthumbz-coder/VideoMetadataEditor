@@ -2286,6 +2286,35 @@ public partial class MainViewModel : INotifyPropertyChanged
         set => Set(ref _isSearchingSubtitles, value);
     }
 
+    // ── External subtitle app (user-mapped) ────────────────────────────────────
+    /// <summary>
+    /// The mapped external subtitle/dubbing app path (bound to the Settings TextBox).
+    /// When empty, the "Launch subtitle app" button stays disabled everywhere.
+    /// </summary>
+    public string ExternalSubtitleAppPath
+    {
+        get => Settings.ExternalSubtitleAppPath;
+        set
+        {
+            if (Settings.ExternalSubtitleAppPath == value) return;
+            Settings.ExternalSubtitleAppPath = value ?? string.Empty;
+            RaiseProperty(nameof(ExternalSubtitleAppPath));
+            RaiseProperty(nameof(HasExternalSubtitleApp));
+            RaiseProperty(nameof(ExternalSubtitleAppName));
+            _ = App.ConfigService.SaveAsync();
+        }
+    }
+
+    /// <summary>True when a non-empty app path is mapped (gates the Launch button).</summary>
+    public bool HasExternalSubtitleApp =>
+        !string.IsNullOrWhiteSpace(Settings.ExternalSubtitleAppPath);
+
+    /// <summary>Just the file name of the mapped app, for button tooltips/labels.</summary>
+    public string ExternalSubtitleAppName =>
+        HasExternalSubtitleApp
+            ? System.IO.Path.GetFileNameWithoutExtension(Settings.ExternalSubtitleAppPath)
+            : string.Empty;
+
     private string _subtitleSearchLanguages = "en";
     private string _lastAutoQueryFile = string.Empty; // tracks which file populated SearchQuery
     public string SubtitleSearchLanguages
@@ -2296,6 +2325,65 @@ public partial class MainViewModel : INotifyPropertyChanged
             Set(ref _subtitleSearchLanguages, value);
             Settings.OpenSubsLastLanguages = value;
             _ = App.ConfigService.SaveAsync();
+        }
+    }
+
+    /// <summary>
+    /// Common languages offered in the Subtitles-panel dropdown. Each entry is a
+    /// friendly label plus the ISO 639-1 code that OpenSubtitles expects. Picking one
+    /// fills the (still free-text) language box; power users can type raw codes such as
+    /// "pt-BR" or a multi-language list "en,fr" directly.
+    /// </summary>
+    public sealed record LanguagePick(string Label, string Code);
+
+    public System.Collections.ObjectModel.ObservableCollection<LanguagePick>
+        CommonSubtitleLanguages { get; } = new()
+        {
+            new("English (en)",     "en"),
+            new("Spanish (es)",     "es"),
+            new("French (fr)",      "fr"),
+            new("German (de)",      "de"),
+            new("Italian (it)",     "it"),
+            new("Portuguese (pt)",  "pt"),
+            new("Portuguese-BR (pt-BR)", "pt-BR"),
+            new("Dutch (nl)",       "nl"),
+            new("Japanese (ja)",    "ja"),
+            new("Korean (ko)",      "ko"),
+            new("Chinese (zh)",     "zh"),
+            new("Russian (ru)",     "ru"),
+            new("Arabic (ar)",      "ar"),
+            new("Polish (pl)",      "pl"),
+            new("Turkish (tr)",     "tr"),
+            new("Swedish (sv)",     "sv"),
+            new("Danish (da)",      "da"),
+            new("Norwegian (no)",   "no"),
+            new("Finnish (fi)",     "fi"),
+            new("Czech (cs)",       "cs"),
+            new("Greek (el)",       "el"),
+            new("Hebrew (he)",      "he"),
+            new("Hindi (hi)",       "hi"),
+            new("Thai (th)",        "th"),
+            new("Vietnamese (vi)",  "vi"),
+            new("Indonesian (id)",  "id"),
+            new("Ukrainian (uk)",   "uk"),
+            new("Romanian (ro)",    "ro"),
+            new("Hungarian (hu)",   "hu"),
+        };
+
+    private LanguagePick? _selectedLanguagePick;
+    /// <summary>
+    /// Bound to the dropdown. Setting it replaces the language box with the chosen code
+    /// (single-language pick is the common case). The box remains editable afterwards, so
+    /// a user can still turn it into a multi-language list by hand.
+    /// </summary>
+    public LanguagePick? SelectedLanguagePick
+    {
+        get => _selectedLanguagePick;
+        set
+        {
+            Set(ref _selectedLanguagePick, value);
+            if (value != null)
+                SubtitleSearchLanguages = value.Code;
         }
     }
 
@@ -2317,11 +2405,14 @@ public partial class MainViewModel : INotifyPropertyChanged
     }
 
     // Commands
-    public ICommand ValidateOpenSubsKeyCommand  { get; private set; } = null!;
-    public ICommand UnlockOpenSubsKeyCommand    { get; private set; } = null!;
-    public ICommand SearchSubtitlesCommand      { get; private set; } = null!;
-    public ICommand DownloadSubtitleCommand     { get; private set; } = null!;
-    public ICommand ClearSubtitleResultsCommand { get; private set; } = null!;
+    public ICommand ValidateOpenSubsKeyCommand    { get; private set; } = null!;
+    public ICommand UnlockOpenSubsKeyCommand      { get; private set; } = null!;
+    public ICommand SearchSubtitlesCommand        { get; private set; } = null!;
+    public ICommand DownloadSubtitleCommand       { get; private set; } = null!;
+    public ICommand ClearSubtitleResultsCommand   { get; private set; } = null!;
+    public ICommand BrowseExternalSubtitleAppCommand { get; private set; } = null!;
+    public ICommand ClearExternalSubtitleAppCommand  { get; private set; } = null!;
+    public ICommand LaunchSubtitleAppCommand      { get; private set; } = null!;
 
     private void InitOpenSubsCommands()
     {
@@ -2356,6 +2447,61 @@ public partial class MainViewModel : INotifyPropertyChanged
             SelectedSubtitleResult = null;
             SubtitleDownloadStatus = string.Empty;
         });
+
+        BrowseExternalSubtitleAppCommand = new RelayCommand(_ =>
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title  = "Select the external subtitle / dubbing app to launch",
+                Filter = "Applications (*.exe)|*.exe|All files (*.*)|*.*"
+            };
+            if (dlg.ShowDialog() == true)
+                ExternalSubtitleAppPath = dlg.FileName;
+        });
+
+        ClearExternalSubtitleAppCommand = new RelayCommand(_ =>
+        {
+            ExternalSubtitleAppPath = string.Empty;
+        });
+
+        LaunchSubtitleAppCommand = new RelayCommand(
+            _ => LaunchExternalSubtitleApp(SelectedFile),
+            _ => HasExternalSubtitleApp && SelectedFile != null);
+    }
+
+    /// <summary>
+    /// Launches the user-mapped external subtitle/dubbing app, passing the selected
+    /// video's full path as a quoted argument (so the app can open straight to that file).
+    /// No-ops if no app is mapped or no file is selected.
+    /// </summary>
+    public void LaunchExternalSubtitleApp(VideoFile? file)
+    {
+        if (!HasExternalSubtitleApp) { StatusText = "No external subtitle app is mapped (set one in Settings)."; return; }
+        if (file == null) { StatusText = "Select a video file first."; return; }
+
+        try
+        {
+            var app = Settings.ExternalSubtitleAppPath;
+            if (!System.IO.File.Exists(app))
+            {
+                StatusText = $"Mapped subtitle app not found: {app}";
+                Log($"[{DateTime.Now:HH:mm:ss}] ✗ Subtitle app missing: {app}");
+                return;
+            }
+
+            var psi = new System.Diagnostics.ProcessStartInfo(app, "\"" + file.FilePath + "\"")
+            {
+                UseShellExecute = false
+            };
+            System.Diagnostics.Process.Start(psi);
+            StatusText = $"Launched {ExternalSubtitleAppName} for {file.FileName}";
+            Log($"[{DateTime.Now:HH:mm:ss}] 🎬 Launched {ExternalSubtitleAppName}: {file.FileName}");
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Could not launch {ExternalSubtitleAppName}: {ex.Message}";
+            Log($"[{DateTime.Now:HH:mm:ss}] ✗ Failed to launch subtitle app: {ex.Message}");
+        }
     }
 
     private async Task ValidateOpenSubsKeyAsync()
@@ -2424,7 +2570,14 @@ public partial class MainViewModel : INotifyPropertyChanged
         if (err != null) { StatusText = $"OpenSubtitles error: {err}"; return; }
         if (results.Count == 0) { StatusText = "No subtitles found. Try different languages or check the IMDb ID."; return; }
 
-        foreach (var r in results) SubtitleSearchResults.Add(r);
+        // Surface the best match first: most-downloaded, then highest-rated.
+        foreach (var r in results
+                     .OrderByDescending(x => x.DownloadCount)
+                     .ThenByDescending(x => x.Rating))
+            SubtitleSearchResults.Add(r);
+
+        // Pre-select the top result so a single ⬇ Download grabs the best match.
+        SelectedSubtitleResult = SubtitleSearchResults.FirstOrDefault();
         var titleLabel = meta?.Title ?? file.FileName;
         StatusText = $"Found {results.Count} subtitle(s). Select one and click Download.";
         Log( $"[{DateTime.Now:HH:mm:ss}] OpenSubtitles: {results.Count} result(s) for '{titleLabel}'");
