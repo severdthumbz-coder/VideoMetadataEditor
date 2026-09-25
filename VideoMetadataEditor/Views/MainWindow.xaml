@@ -5038,6 +5038,17 @@
                                 </Border>
 
                                 <!-- Legend -->
+                                <TextBlock Text="Guided Tour" Style="{StaticResource SectionHeader}"/>
+                                <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="0,0,0,8" TextWrapping="Wrap">
+                                    A one-minute walkthrough of the main tabs. It runs automatically the first time you launch the app (while onboarding helpers are on) — replay it any time here.
+                                </TextBlock>
+                                <Button Content="▶ Replay guided tour"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Command="{Binding StartTourCommand}"
+                                        HorizontalAlignment="Left"
+                                        Padding="14,7"
+                                        Margin="0,0,0,16"/>
+
                                 <TextBlock Text="Legend" Style="{StaticResource SectionHeader}"/>
                                 <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="0,0,0,8" TextWrapping="Wrap">
                                     What the icons and row colours across the app mean. This same reference is available any time from the ❔ button in the top-right toolbar.
@@ -5434,6 +5445,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 154 — Onboarding, part 3: first-run guided tour
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        The final onboarding piece: an eight-step guided tour that introduces the main tabs on first launch, each step switching to the relevant tab behind a dimmed overlay. Back/Next/Finish and Skip, with a step counter. Auto-launches once on first run (when helpers are on and it hasn't been seen), then remembers it was seen; replay any time from Help → "▶ Replay guided tour". Completes the Legend + hints + tour onboarding set started in Build 151.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 153 — Onboarding, part 2b: contextual hints on every tab
                                     </TextBlock>
@@ -7981,6 +7998,85 @@ ative\ on first run. Registers
                 </Grid>
             </StackPanel>
         </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <!-- FIRST-RUN GUIDED TOUR OVERLAY -->
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="0" Grid.RowSpan="4"
+              Panel.ZIndex="500"
+              Background="#B0000000"
+              Visibility="{Binding IsTourActive, Converter={StaticResource BoolVis}}">
+            <Border Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource AccentBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="24"
+                    MaxWidth="460"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="24" ShadowDepth="3" Opacity="0.5"/>
+                </Border.Effect>
+                <StackPanel>
+                    <!-- Progress -->
+                    <TextBlock Text="{Binding TourProgress}"
+                               FontSize="11"
+                               Foreground="{DynamicResource AccentBrush}"
+                               Margin="0,0,0,6"/>
+                    <!-- Title -->
+                    <TextBlock Text="{Binding CurrentTourStep.Title}"
+                               FontSize="18" FontWeight="SemiBold"
+                               Foreground="{DynamicResource ForegroundBrush}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,10"/>
+                    <!-- Body -->
+                    <TextBlock Text="{Binding CurrentTourStep.Body}"
+                               FontSize="13"
+                               Foreground="{DynamicResource ForegroundBrush}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,18"/>
+                    <!-- Buttons -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0"
+                                Content="Skip tour"
+                                Style="{StaticResource SecondaryButton}"
+                                Command="{Binding SkipTourCommand}"
+                                Padding="12,6"
+                                Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                        <Button Grid.Column="2"
+                                Content="← Back"
+                                Style="{StaticResource SecondaryButton}"
+                                Command="{Binding PrevTourStepCommand}"
+                                Padding="12,6"
+                                IsEnabled="{Binding IsFirstTourStep, Converter={StaticResource InvBool}}"/>
+                        <Button Grid.Column="4"
+                                Style="{StaticResource PrimaryButton}"
+                                Command="{Binding NextTourStepCommand}"
+                                Padding="14,6">
+                            <TextBlock>
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Next →"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsLastTourStep}" Value="True">
+                                                <Setter Property="Text" Value="Finish ✓"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
 
     </Grid>
 </Window>

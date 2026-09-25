@@ -2,6 +2,20 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 154 — Onboarding, part 3: first-run guided tour
+
+The final onboarding piece: a short guided tour that introduces the main tabs on first launch, completing the progressive-disclosure set (Legend + hints + tour).
+
+- **Eight-step walkthrough** covering Raw Data, Retrieved Data, Move/Copy, Library, Duplicates & Health Check, Settings, and a wrap-up. Each step switches to the relevant tab behind a dimmed overlay so you see the real area as it's described.
+- **Controls:** Back / Next through the steps, Finish on the last one, and Skip tour at any point. A step counter ("Step 3 of 8") shows progress.
+- **Auto-launch on first run:** the tour runs once automatically when onboarding helpers are on and it hasn't been seen yet; finishing or skipping sets a "seen" flag so it won't nag again.
+- **Replay any time:** Help tab → "▶ Replay guided tour".
+- **Respects the master toggle:** turning off Settings → Behaviour → "Show onboarding helpers" prevents the auto-launch (you can still replay it manually from Help).
+
+This completes the onboarding arc started in Build 151.
+
+---
+
 ## v1.4.0 Build 153 — Onboarding, part 2b: contextual hints on every tab
 
 Extends the Build 152 hint markers to the remaining tabs so the ⓘ helper is consistent across the whole app.

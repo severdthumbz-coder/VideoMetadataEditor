@@ -2379,6 +2379,132 @@ public partial class MainViewModel : INotifyPropertyChanged
     public ICommand ToggleLegendCommand =>
         _toggleLegendCommand ??= new RelayCommand(_ => IsLegendOpen = !IsLegendOpen);
 
+    // ══════════════════════════════════════════════════════════════════════════
+    // ONBOARDING — FIRST-RUN GUIDED TOUR
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// One step of the guided tour. <see cref="TabIndex"/> is the tab the tour switches to
+    /// while this step is shown (-1 = leave the current tab as-is). <see cref="Title"/> and
+    /// <see cref="Body"/> are the step-card text.
+    /// </summary>
+    public sealed record TourStep(int TabIndex, string Title, string Body);
+
+    /// <summary>
+    /// The tour script. Tab indices match the TabControl order:
+    /// 0 Raw Data · 1 Retrieved Data · 2 Move/Copy · 3 Settings · 4 Library ·
+    /// 5 Duplicates · 6 Health Check · 7 Help.
+    /// </summary>
+    private readonly List<TourStep> _tourSteps = new()
+    {
+        new(-1, "Welcome to Video Metadata Editor",
+            "A quick tour of the main areas. It takes about a minute — you can skip any time, and replay it later from the Help tab. Add some video files first (Add Folder, top-left) to follow along."),
+        new(0, "Raw Data — what's in the file",
+            "This tab shows the metadata currently written inside the selected file. Edit any field here, then Apply + Embed to save it back into the file (and optionally rename it to your pattern)."),
+        new(1, "Retrieved Data — look it up online",
+            "Search TMDB / OMDB for the correct title, cast, artwork, and rating. Pick a result and it fills the Raw Data fields for you. This tab also has the 🗒 Subtitles panel for OpenSubtitles downloads."),
+        new(2, "Move / Copy — organise your library",
+            "Move or copy the checked files to another folder. The Custom Fast engine also carries matching subtitle sidecars and renames them so they stay paired in Plex/Jellyfin."),
+        new(4, "Library — see your whole collection",
+            "Point this at your movie/TV folders and Scan Library to index everything already tagged. It's read-only unless you ask it to act, and you can export CSV / XLSX / NFO from here."),
+        new(5, "Duplicates & Health Check",
+            "Duplicates finds repeated or alternate-quality copies so you can reclaim space. Health Check spots files that would fail to embed or play, with optional lossless fixes. Nothing is deleted or changed without your confirmation."),
+        new(3, "Settings — make it yours",
+            "Add your API keys (TMDB / OMDB / OpenSubtitles), set naming patterns, and tune behaviour. These onboarding helpers — the ❔ Legend, the ⓘ hints, and this tour — can be turned off any time under Behaviour."),
+        new(7, "You're all set",
+            "That's the tour. The ❔ Legend (top-right) explains every icon and colour, and the ⓘ markers explain each tab on hover. Replay this tour any time from the Help tab. Happy tagging!"),
+    };
+
+    private bool _isTourActive;
+    public bool IsTourActive
+    {
+        get => _isTourActive;
+        set => Set(ref _isTourActive, value);
+    }
+
+    private int _tourIndex;
+    public int TourIndex
+    {
+        get => _tourIndex;
+        set
+        {
+            if (_tourIndex == value) return;
+            _tourIndex = value;
+            RaiseProperty(nameof(TourIndex));
+            RaiseProperty(nameof(CurrentTourStep));
+            RaiseProperty(nameof(TourProgress));
+            RaiseProperty(nameof(IsFirstTourStep));
+            RaiseProperty(nameof(IsLastTourStep));
+            // Drive the tab selection for the new step.
+            var step = CurrentTourStep;
+            if (step != null && step.TabIndex >= 0)
+                SelectedTabIndex = step.TabIndex;
+        }
+    }
+
+    public TourStep? CurrentTourStep =>
+        (_tourIndex >= 0 && _tourIndex < _tourSteps.Count) ? _tourSteps[_tourIndex] : null;
+
+    public string TourProgress => $"Step {_tourIndex + 1} of {_tourSteps.Count}";
+    public bool IsFirstTourStep => _tourIndex <= 0;
+    public bool IsLastTourStep  => _tourIndex >= _tourSteps.Count - 1;
+
+    private ICommand? _startTourCommand;
+    public ICommand StartTourCommand => _startTourCommand ??= new RelayCommand(_ => StartTour());
+
+    private ICommand? _nextTourStepCommand;
+    public ICommand NextTourStepCommand => _nextTourStepCommand ??= new RelayCommand(_ =>
+    {
+        if (IsLastTourStep) FinishTour();
+        else TourIndex++;
+    });
+
+    private ICommand? _prevTourStepCommand;
+    public ICommand PrevTourStepCommand => _prevTourStepCommand ??= new RelayCommand(_ =>
+    {
+        if (!IsFirstTourStep) TourIndex--;
+    });
+
+    private ICommand? _skipTourCommand;
+    public ICommand SkipTourCommand => _skipTourCommand ??= new RelayCommand(_ => FinishTour());
+
+    /// <summary>Starts (or restarts) the guided tour from step 1.</summary>
+    public void StartTour()
+    {
+        // Reset to step 0. Set the field directly first so the tab-switch in the
+        // TourIndex setter fires for step 0 too.
+        _tourIndex = 0;
+        RaiseProperty(nameof(TourIndex));
+        RaiseProperty(nameof(CurrentTourStep));
+        RaiseProperty(nameof(TourProgress));
+        RaiseProperty(nameof(IsFirstTourStep));
+        RaiseProperty(nameof(IsLastTourStep));
+        var step = CurrentTourStep;
+        if (step != null && step.TabIndex >= 0) SelectedTabIndex = step.TabIndex;
+        IsTourActive = true;
+    }
+
+    /// <summary>Ends the tour (via Finish or Skip) and remembers it was seen.</summary>
+    public void FinishTour()
+    {
+        IsTourActive = false;
+        if (!Settings.HasSeenTour)
+        {
+            Settings.HasSeenTour = true;
+            _ = App.ConfigService.SaveAsync();
+        }
+    }
+
+    /// <summary>
+    /// Called once from the window's Loaded handler. Auto-launches the tour on first run
+    /// when onboarding helpers are on and the tour hasn't been seen yet.
+    /// </summary>
+    public void MaybeAutoStartTour()
+    {
+        if (Settings.ShowOnboardingHelpers && !Settings.HasSeenTour)
+            StartTour();
+    }
+
     /// <summary>
     /// Common languages offered in the Subtitles-panel dropdown. Each entry is a
     /// friendly label plus the ISO 639-1 code that OpenSubtitles expects. Picking one

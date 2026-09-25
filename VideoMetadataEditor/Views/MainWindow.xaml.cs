@@ -147,6 +147,12 @@ public partial class MainWindow : Window
                     StopPreview_Click(this, new RoutedEventArgs());
             };
             VM.PropertyChanged += _vmPropertyChangedHandler;
+
+            // First-run guided tour: launch once the window has fully rendered, so the
+            // scrim overlays a laid-out UI. No-ops unless helpers are on and it's unseen.
+            Dispatcher.BeginInvoke(
+                System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+                new Action(() => VM.MaybeAutoStartTour()));
         }
         catch (Exception ex)
         {
