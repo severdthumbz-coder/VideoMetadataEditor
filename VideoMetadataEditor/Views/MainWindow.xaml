@@ -1584,7 +1584,7 @@
                                       Header="🗒 Subtitles — download from OpenSubtitles"
                                       Margin="0,12,0,0"
                                       IsExpanded="True">
-                                <StackPanel Margin="0,8,0,0">
+                                <StackPanel Margin="10,8,12,6">
                                     <!-- Language picker: choose a common language (fills the box), or type raw codes -->
                                     <Grid Margin="0,0,0,6">
                                         <Grid.ColumnDefinitions>
@@ -1671,7 +1671,7 @@
                                     </ListBox>
 
                                     <!-- Download + status -->
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                    <StackPanel Orientation="Horizontal" Margin="4,2,0,4">
                                         <Button Content="⬇ Download Selected"
                                                 Style="{StaticResource PrimaryButton}"
                                                 Command="{Binding DownloadSubtitleCommand}"
@@ -5210,6 +5210,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 150 — Subtitles panel padding fix
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Small visual fix following Build 149: the Subtitles panel content sat flush against the expander edges. The "Language:" label and dropdown are now inset from the left, panel content is pulled off the right edge, and the Download Selected / Launch Subtitle App row is nudged in to align with the rest. Layout only — no behaviour change.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 149 — Finish the OpenSubtitles arc: language picker, best-match sort, external-app hook
                                     </TextBlock>

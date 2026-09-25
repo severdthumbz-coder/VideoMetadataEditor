@@ -2,6 +2,16 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 150 — Subtitles panel padding fix
+
+Small visual fix following Build 149: the Subtitles panel content sat flush against the expander edges.
+
+- The "Language:" label and dropdown are now inset from the left edge, and all panel content (results list, buttons, status text) is pulled off the right edge.
+- The Download Selected / Launch Subtitle App button row is nudged in slightly so it aligns with the rest of the panel.
+- No behaviour change — layout only.
+
+---
+
 ## v1.4.0 Build 149 — Finish the OpenSubtitles arc: language picker, best-match sort, external-app hook
 
 Completes the subtitle-download feature end to end and makes it discoverable — the panel was easy to skip over even though the download plumbing was already there.
