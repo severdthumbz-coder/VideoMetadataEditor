@@ -2,6 +2,17 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 155 — Fix default-window-size clipping
+
+At the default window size, the top toolbar and a couple of dense areas ran past the right edge, so you had to maximise to see everything. Fixed.
+
+- **Wider default window:** opens at 1400×860 (was 1260×820), with a higher minimum (1040×660), so the toolbar and tab content fit without maximising.
+- **Toolbar never clips:** the top action-button strip (Add Files … Batch Edit) now sits in a horizontal scroll region, so at narrow widths it scrolls instead of bleeding under the ❔ Legend / theme controls. It still centres when it fits.
+- **Duplicates intro wraps:** the "Scans for duplicate video files…" description now wraps to the panel width instead of running off the right edge.
+- No behaviour change — layout only.
+
+---
+
 ## v1.4.0 Build 154 — Onboarding, part 3: first-run guided tour
 
 The final onboarding piece: a short guided tour that introduces the main tabs on first launch, completing the progressive-disclosure set (Legend + hints + tour).

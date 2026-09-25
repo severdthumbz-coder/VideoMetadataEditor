@@ -7,8 +7,8 @@
         xmlns:models="clr-namespace:VideoMetadataEditor.Models"
         xmlns:views="clr-namespace:VideoMetadataEditor.Views"
         Title="{Binding AppVersionFull, StringFormat='Video Metadata Editor {0}', Mode=OneTime}"
-        Width="1260" Height="820"
-        MinWidth="960" MinHeight="640"
+        Width="1400" Height="860"
+        MinWidth="1040" MinHeight="660"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource BackgroundBrush}"
         Foreground="{DynamicResource ForegroundBrush}"
@@ -107,7 +107,14 @@
                 </StackPanel>
 
                 <!-- File action toolbar -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                <!-- Horizontal scroll so the action buttons stay reachable at any window
+                     width instead of bleeding under the Legend/theme controls. The bar
+                     centres when it fits and scrolls only when the window is too narrow. -->
+                <ScrollViewer Grid.Column="1"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled"
+                              VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal"
                             HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Button Content="{DynamicResource Btn.AddFiles}"
                             Style="{StaticResource SecondaryButton}"
@@ -172,6 +179,7 @@
                             Foreground="{DynamicResource ErrorBrush}"
                             Visibility="{Binding IsBusy, Converter={StaticResource BoolVis}}"/>
                 </StackPanel>
+                </ScrollViewer>
 
                 <!-- Legend, theme toggle & close -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
@@ -4209,7 +4217,8 @@
                                         </TextBlock.ToolTip>
                                     </TextBlock>
                                 </StackPanel>
-                                <TextBlock FontSize="12" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="0,2,0,0">
+                                <TextBlock FontSize="12" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="0,2,0,0"
+                                           TextWrapping="Wrap">
                                     Scans for duplicate video files by size, metadata, content hash, and alternate versions.
                                     Finds same-title files at different quality (different file sizes), TV episode duplicates,
                                     and exact copies. Select a group and use Compare Side-by-Side to visually identify which to keep.
@@ -5445,6 +5454,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 155 — Fix default-window-size clipping
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        At the default window size the top toolbar and a couple of dense areas ran past the right edge. The window now opens wider (1400×860, min 1040×660), the top action-button strip scrolls horizontally instead of bleeding under the ❔ Legend / theme controls at narrow widths, and the Duplicates intro text wraps to the panel width. Layout only.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 154 — Onboarding, part 3: first-run guided tour
                                     </TextBlock>
