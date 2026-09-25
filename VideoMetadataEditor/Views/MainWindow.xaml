@@ -1831,8 +1831,18 @@
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="24,20">
 
-                                <TextBlock Text="Move or Copy Selected Files"
-                                           Style="{StaticResource SectionHeader}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Move or Copy Selected Files"
+                                               Style="{StaticResource SectionHeader}"/>
+                                    <TextBlock Style="{StaticResource HintMarker}" Margin="8,0,0,0">
+                                        <TextBlock.ToolTip>
+                                            <ToolTip MaxWidth="320">
+                                                <TextBlock TextWrapping="Wrap"
+                                                           Text="Move or copy the files you've checked in the Files panel to another folder. The Custom Fast engine also carries matching subtitle sidecars and renames them to stay paired in Plex/Jellyfin. Choose an engine and destination, then Start."/>
+                                            </ToolTip>
+                                        </TextBlock.ToolTip>
+                                    </TextBlock>
+                                </StackPanel>
 
                                 <!-- Engine status -->
                                 <Border Background="{DynamicResource SurfaceAltBrush}"
@@ -2238,9 +2248,19 @@
                                            VerticalScrollBarVisibility="Auto">
                                  <StackPanel Margin="20,16,20,20" MaxWidth="620">
 
-                                     <TextBlock Text="Settings"
-                                                Style="{StaticResource SectionHeader}"
-                                                FontSize="20"/>
+                                     <StackPanel Orientation="Horizontal">
+                                         <TextBlock Text="Settings"
+                                                    Style="{StaticResource SectionHeader}"
+                                                    FontSize="20"/>
+                                         <TextBlock Style="{StaticResource HintMarker}" Margin="8,0,0,0">
+                                             <TextBlock.ToolTip>
+                                                 <ToolTip MaxWidth="320">
+                                                     <TextBlock TextWrapping="Wrap"
+                                                                Text="Pick a category on the left to jump to its settings. API keys (TMDB/OMDB/OpenSubtitles) power search and subtitle download; Files &amp; Renaming controls your naming patterns; Behaviour holds auto-embed, tray, and these onboarding helpers. Changes auto-save."/>
+                                                 </ToolTip>
+                                             </TextBlock.ToolTip>
+                                         </TextBlock>
+                                     </StackPanel>
 
                                     <!-- ── 0 ──────────────────────────────────────────────── -->
                                     <StackPanel>
@@ -3549,9 +3569,20 @@
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="Folder:"
-                                                   VerticalAlignment="Center" Margin="0,0,8,0"
-                                                   Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal"
+                                                    VerticalAlignment="Center" Margin="0,0,8,0">
+                                            <TextBlock Text="Folder:"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                                            <TextBlock Style="{StaticResource HintMarker}" Margin="6,0,0,0">
+                                                <TextBlock.ToolTip>
+                                                    <ToolTip MaxWidth="320">
+                                                        <TextBlock TextWrapping="Wrap"
+                                                                   Text="Your media library — point it at your movie/TV folders and Scan Library to index everything already tagged. Add several folders with + Folder. The Library reads and displays your collection; it doesn't move or re-tag files unless you ask it to. Export CSV/XLSX/NFO from here."/>
+                                                    </ToolTip>
+                                                </TextBlock.ToolTip>
+                                            </TextBlock>
+                                        </StackPanel>
                                         <TextBox x:Name="LibraryFolderBox"
                                                  Grid.Column="1"
                                                  Text="{Binding LibraryFolderDisplay, Mode=OneWay}"
@@ -4165,9 +4196,19 @@
 
                             <!-- Header row -->
                             <StackPanel Grid.Row="0" Margin="0,0,0,12">
-                                <TextBlock Text="Duplicate File Scanner"
-                                           FontSize="18" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource ForegroundBrush}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Duplicate File Scanner"
+                                               FontSize="18" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource ForegroundBrush}"/>
+                                    <TextBlock Style="{StaticResource HintMarker}" Margin="8,0,0,0">
+                                        <TextBlock.ToolTip>
+                                            <ToolTip MaxWidth="320">
+                                                <TextBlock TextWrapping="Wrap"
+                                                           Text="Finds duplicate videos by size, metadata, content hash, and alternate versions — same title at different quality, repeated TV episodes, and exact copies. Select a group and use Compare Side-by-Side to decide which to keep. Nothing is deleted without your confirmation."/>
+                                            </ToolTip>
+                                        </TextBlock.ToolTip>
+                                    </TextBlock>
+                                </StackPanel>
                                 <TextBlock FontSize="12" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="0,2,0,0">
                                     Scans for duplicate video files by size, metadata, content hash, and alternate versions.
                                     Finds same-title files at different quality (different file sizes), TV episode duplicates,
@@ -4780,12 +4821,27 @@
                             </Grid.RowDefinitions>
 
                             <!-- Intro -->
-                            <TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,10"
-                                       Foreground="{DynamicResource ForegroundMutedBrush}" FontSize="12">
-                                Scans files for compliance problems that cause metadata-embed failures,
-                                playback issues, or slow seeking. Detection is read-only. Stage 2 fixes
-                                (faststart / remux) use ffmpeg and are lossless stream-copies — no re-encode.
-                            </TextBlock>
+                            <StackPanel Grid.Row="0" Margin="0,0,0,10">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Media Health Check"
+                                               FontWeight="SemiBold" FontSize="14"
+                                               Foreground="{DynamicResource ForegroundBrush}"/>
+                                    <TextBlock Style="{StaticResource HintMarker}" Margin="8,0,0,0">
+                                        <TextBlock.ToolTip>
+                                            <ToolTip MaxWidth="320">
+                                                <TextBlock TextWrapping="Wrap"
+                                                           Text="Checks files for problems that break metadata embedding, playback, or fast seeking (e.g. a non-faststart MP4, a wrong extension). Detection is read-only. The optional Stage 2 fixes use ffmpeg and are lossless stream-copies — no re-encode, no quality loss."/>
+                                            </ToolTip>
+                                        </TextBlock.ToolTip>
+                                    </TextBlock>
+                                </StackPanel>
+                                <TextBlock TextWrapping="Wrap" Margin="0,4,0,0"
+                                           Foreground="{DynamicResource ForegroundMutedBrush}" FontSize="12">
+                                    Scans files for compliance problems that cause metadata-embed failures,
+                                    playback issues, or slow seeking. Detection is read-only. Stage 2 fixes
+                                    (faststart / remux) use ffmpeg and are lossless stream-copies — no re-encode.
+                                </TextBlock>
+                            </StackPanel>
 
                             <!-- Folder picker -->
                             <Grid Grid.Row="1" Margin="0,0,0,8">
@@ -5378,6 +5434,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 153 — Onboarding, part 2b: contextual hints on every tab
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Extends the Build 152 ⓘ hint markers to the remaining tabs for consistency: Move/Copy, Settings, Library, Duplicates, and Health Check each get a hover tip explaining what the tab does. Same reusable pattern and the same master gate — all markers hide with Settings → Behaviour → "Show onboarding helpers". Layout only.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 152 — Onboarding, part 2: contextual hints (Raw vs Retrieved Data)
                                     </TextBlock>

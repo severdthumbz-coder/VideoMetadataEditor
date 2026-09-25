@@ -2,6 +2,18 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 153 — Onboarding, part 2b: contextual hints on every tab
+
+Extends the Build 152 hint markers to the remaining tabs so the ⓘ helper is consistent across the whole app.
+
+- **New ⓘ markers** on: Move/Copy (what the transfer does + subtitle sidecars), Settings (how the category nav works + auto-save), Library (what indexing does, that it's read-only), Duplicates (how detection works, nothing deleted without confirmation), and Health Check (read-only detection + lossless Stage 2 fixes).
+- Same reusable hover pattern and the same master gate — all markers appear/disappear with Settings → Behaviour → "Show onboarding helpers".
+- Layout only; no behaviour change.
+
+Next in this arc: the first-run guided tour (part 3).
+
+---
+
 ## v1.4.0 Build 152 — Onboarding, part 2: contextual hints (Raw vs Retrieved Data)
 
 Second piece of the onboarding work: reusable ⓘ hint markers that explain a control on hover, starting with the most common point of confusion — the two data tabs.
