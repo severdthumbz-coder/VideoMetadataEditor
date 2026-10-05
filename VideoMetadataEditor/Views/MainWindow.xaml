@@ -5625,6 +5625,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 160 — External Tools (part 3a): 7-Zip support for .7z extraction
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Groundwork for auto-downloading MKVToolNix, which ships only as .7z (a format .NET can't unzip). New "7-Zip (7zr)" row in External Tools shows whether a 7z extractor is available and its source — a system 7-Zip (found via Program Files, registry, or PATH) or VME's own native\7zr.exe. When no system 7-Zip exists, VME can fetch the tiny official 7zr.exe into native\ in one click. A shared SevenZipService resolves the best 7z and unpacks .7z; MKVToolNix (next build) uses it.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 159 — Choose your FFmpeg build source (Master vs gyan.dev release)
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

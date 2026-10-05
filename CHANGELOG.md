@@ -2,6 +2,19 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 160 — External Tools (part 3a): 7-Zip support for .7z extraction
+
+Groundwork for auto-downloading MKVToolNix (which ships only as .7z, a format .NET can't unzip). Adds a 7-Zip extractor VME can use, with a new tool row.
+
+- **New "7-Zip (7zr)" row** in Settings → External Tools. It shows whether a 7-Zip extractor is available and where it comes from — a system 7-Zip install (detected via Program Files, the registry, or PATH) or VME's own copy in native\.
+- **Hybrid approach:** VME uses your installed 7-Zip when present; if none is found, it can download the tiny official 7zr.exe (~0.5 MB) into native\ with one click, so .7z extraction works even on a clean machine.
+- **Shared extractor service:** a new SevenZipService resolves the best available 7z and unpacks .7z archives. MKVToolNix (next build) uses it.
+- No change to existing tools; this build only adds the 7-Zip capability.
+
+Next: MKVToolNix in-app download using this extractor, with a download-page fallback if 7-Zip isn't available.
+
+---
+
 ## v1.4.0 Build 159 — Choose your FFmpeg build source (Master vs gyan.dev release)
 
 Settings → External Tools now lets you pick which FFmpeg build the in-app downloader fetches, with a description of each.

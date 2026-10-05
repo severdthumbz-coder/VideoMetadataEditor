@@ -142,5 +142,34 @@ public static class ManagedToolsService
             },
             Redetect = null, // fpcalc is resolved by file existence; nothing to re-probe
         },
+
+        // ── 7-Zip (7zr.exe) ─────────────────────────────────────────────────
+        // Needed to extract .7z archives (MKVToolNix). Uses a system 7-Zip if
+        // present, otherwise VME can fetch the tiny official 7zr.exe into native\.
+        new ManagedTool
+        {
+            Key             = "sevenzip",
+            DisplayName     = "7-Zip (7zr)",
+            Purpose         = "Extracts .7z archives — required to auto-download MKVToolNix.",
+            DownloadPageUrl = "https://www.7-zip.org/download.html",
+            CanAutoDownload = true,
+            IsInstalled     = () => SevenZipService.IsAvailable,
+            ExePath         = () => SevenZipService.ExePath,
+            GetInstalledVersionAsync = () => Task.FromResult<string?>(
+                SevenZipService.Source switch
+                {
+                    SevenZipService.SourceKind.Native => "VME copy (native\\7zr.exe)",
+                    SevenZipService.SourceKind.System => "system install",
+                    _ => null
+                }),
+            InstallOrUpdateAsync = async (progress, ct) =>
+            {
+                var (result, message) = await SevenZipInstallerService.DownloadAsync(progress, ct);
+                var ok = result is SevenZipInstallerService.InstallResult.Installed
+                              or SevenZipInstallerService.InstallResult.Updated;
+                return (ok, message);
+            },
+            Redetect = () => SevenZipService.Redetect(),
+        },
     };
 }
