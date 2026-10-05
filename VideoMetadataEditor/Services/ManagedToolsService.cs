@@ -32,6 +32,11 @@ public sealed class ManagedTool
     public required System.Func<string> ExePath          { get; init; }
     public required System.Func<Task<string?>> GetInstalledVersionAsync { get; init; }
     public System.Func<CancellationToken, Task<string?>>? GetLatestVersionAsync { get; init; }
+
+    /// <summary>Optional per-tool "is an update available" check. When set, the UI uses it
+    /// instead of comparing version strings — needed for tools whose build strings aren't
+    /// clean semver (e.g. FFmpeg's BtbN "N-..." builds).</summary>
+    public System.Func<CancellationToken, Task<bool>>? IsUpdateAvailableAsync { get; init; }
     public System.Func<System.IProgress<(int pct, string msg)>?, CancellationToken, Task<(bool ok, string message)>>? InstallOrUpdateAsync { get; init; }
     public System.Action? Redetect { get; init; }
 }
@@ -74,6 +79,16 @@ public static class ManagedToolsService
             {
                 var r = await FfmpegInstallerService.GetLatestReleaseAsync(ct);
                 return r?.Version;
+            },
+            IsUpdateAvailableAsync = async ct =>
+            {
+                // Update available only when VME has installed a build AND the current
+                // latest release id differs from the stamped one. No build strings parsed.
+                if (!File.Exists(Path.Combine(NativeDir, "ffmpeg.exe"))) return false;
+                var stamped = App.ConfigService.Settings.FfmpegInstalledReleaseId;
+                if (string.IsNullOrEmpty(stamped)) return false; // present but not VME-installed → don't nag
+                var r = await FfmpegInstallerService.GetLatestReleaseAsync(ct);
+                return r != null && r.ReleaseId != stamped;
             },
             InstallOrUpdateAsync = async (progress, ct) =>
             {

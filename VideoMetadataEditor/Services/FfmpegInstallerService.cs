@@ -37,7 +37,13 @@ public static class FfmpegInstallerService
 
     public enum InstallResult { AlreadyCurrent, Installed, Updated, Failed, NoAssetFound }
 
-    public record ReleaseInfo(string Version, string DownloadUrl, long SizeBytes);
+    /// <summary>
+    /// A BtbN release. <see cref="ReleaseId"/> is the release's publish timestamp —
+    /// a stable identity we stamp after install and compare against, so we never have
+    /// to parse BtbN's non-semver build strings (e.g. "N-127203-ga35c879992") to decide
+    /// whether an update exists.
+    /// </summary>
+    public record ReleaseInfo(string Version, string DownloadUrl, long SizeBytes, string ReleaseId);
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -65,6 +71,10 @@ public static class FfmpegInstallerService
             var version = tagName.StartsWith("n", StringComparison.OrdinalIgnoreCase)
                 ? tagName[1..] : tagName;
 
+            // Stable identity for "up to date" checks: publish timestamp, else tag.
+            var releaseId = root.TryGetProperty("published_at", out var pub)
+                ? (pub.GetString() ?? tagName) : tagName;
+
             var assets = root.GetProperty("assets");
             // Prefer: win64, gpl, NOT shared, NOT lgpl-only, .zip
             // e.g. ffmpeg-n7.1-latest-win64-gpl-7.1.zip
@@ -79,7 +89,7 @@ public static class FfmpegInstallerService
                 {
                     var url  = asset.GetProperty("browser_download_url").GetString()!;
                     var size = asset.TryGetProperty("size", out var s) ? s.GetInt64() : 0L;
-                    return new ReleaseInfo(version, url, size);
+                    return new ReleaseInfo(version, url, size, releaseId);
                 }
             }
 
@@ -117,8 +127,13 @@ public static class FfmpegInstallerService
             return (InstallResult.Failed, msg);
         }
 
-        // If installed and we can parse both to a clean version, skip when current.
-        if (installed != null && IsCleanAndSameOrNewer(installed, latest.Version))
+        // "Up to date" when an ffmpeg is present AND the build VME last installed
+        // matches the current latest release (compared by stable release id, so
+        // BtbN's non-semver "N-..." strings never cause a false "update available").
+        var stampedId = App.ConfigService.Settings.FfmpegInstalledReleaseId;
+        if (installed != null
+            && !string.IsNullOrEmpty(stampedId)
+            && stampedId == latest.ReleaseId)
         {
             var msg = $"✓ ffmpeg {installed} is up to date.";
             progress?.Report((100, msg));
@@ -136,6 +151,10 @@ public static class FfmpegInstallerService
             progress?.Report((100, msg));
             return (InstallResult.Failed, msg);
         }
+
+        // Stamp the installed release identity so the next check reports "up to date".
+        App.ConfigService.Settings.FfmpegInstalledReleaseId = latest.ReleaseId;
+        _ = App.ConfigService.SaveAsync();
 
         var successMsg = installed == null
             ? $"✓ ffmpeg {latest.Version} installed successfully."
@@ -224,30 +243,5 @@ public static class FfmpegInstallerService
         }
         catch (OperationCanceledException) { return (false, "Cancelled."); }
         catch (Exception ex)              { return (false, ex.Message); }
-    }
-
-    /// <summary>
-    /// True only when BOTH strings parse to a clean System.Version and installed
-    /// is the same or newer. Build-flavoured strings that don't parse return
-    /// false, so the caller offers a (re)install rather than a false "up to date".
-    /// </summary>
-    private static bool IsCleanAndSameOrNewer(string installed, string latest)
-    {
-        var instClean = ExtractVersionPrefix(installed);
-        var lateClean = ExtractVersionPrefix(latest);
-        return System.Version.TryParse(instClean, out var a)
-            && System.Version.TryParse(lateClean, out var b)
-            && a >= b;
-    }
-
-    /// <summary>
-    /// Pulls the leading numeric version out of a build-flavoured string, e.g.
-    /// "8.1.1-full_build-www.gyan.dev" → "8.1.1", "n7.1" → "7.1".
-    /// </summary>
-    private static string ExtractVersionPrefix(string s)
-    {
-        s = s.TrimStart('n', 'N', 'v', 'V');
-        var token = new string(s.TakeWhile(c => char.IsDigit(c) || c == '.').ToArray());
-        return token.Trim('.');
     }
 }

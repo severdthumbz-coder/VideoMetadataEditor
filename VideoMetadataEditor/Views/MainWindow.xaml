@@ -5590,6 +5590,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 158 — Fix FFmpeg "update available" loop + CI Node 20 warning
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        FFmpeg stopped reporting "update available" right after updating. BtbN's rolling build has a non-semver version string (e.g. N-127203-ga35c879992) the old comparison could never match, so it always flagged an update; VME now records and compares the installed build's release identity instead. A pre-existing ffmpeg VME didn't install won't nag — one Download stamps it. CI: GitHub Actions bumped to checkout@v5 / setup-dotnet@v5, clearing the Node 20 deprecation warning.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 157 — External Tools manager (part 2): FFmpeg in-app download
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

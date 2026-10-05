@@ -148,11 +148,21 @@ public sealed class ToolRowViewModel : ViewModelBase
             {
                 var latest = await _tool.GetLatestVersionAsync(CancellationToken.None);
                 LatestVersion = latest ?? string.Empty;
-                UpdateAvailable = IsInstalled
-                    && !string.IsNullOrWhiteSpace(latest)
-                    && !string.IsNullOrWhiteSpace(InstalledVersion)
-                    && InstalledVersion != "unknown"
-                    && IsNewer(latest!, InstalledVersion);
+
+                if (_tool.IsUpdateAvailableAsync != null)
+                {
+                    // Tool supplies its own check (e.g. FFmpeg's non-semver BtbN builds).
+                    UpdateAvailable = IsInstalled
+                        && await _tool.IsUpdateAvailableAsync(CancellationToken.None);
+                }
+                else
+                {
+                    UpdateAvailable = IsInstalled
+                        && !string.IsNullOrWhiteSpace(latest)
+                        && !string.IsNullOrWhiteSpace(InstalledVersion)
+                        && InstalledVersion != "unknown"
+                        && IsNewer(latest!, InstalledVersion);
+                }
             }
             else
             {

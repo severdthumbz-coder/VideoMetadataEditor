@@ -2,6 +2,13 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 158 — Fix FFmpeg "update available" loop + CI Node 20 warning
+
+- **FFmpeg no longer keeps saying "update available" after it just updated.** BtbN's download is a rolling build whose version string (e.g. `N-127203-ga35c879992`) isn't a parseable version number, so the old semver comparison could never match and always flagged an update. VME now records the installed build's release identity and compares that, so a fresh install correctly reads "up to date." (A pre-existing ffmpeg that VME didn't install itself won't nag — one click of Download stamps it and settles it.)
+- **CI:** the GitHub Actions workflow now uses `actions/checkout@v5` and `actions/setup-dotnet@v5`, clearing the "Node.js 20 is deprecated" annotation. A reference copy of the workflow is included at `.github/workflows/build.yml`.
+
+---
+
 ## v1.4.0 Build 157 — External Tools manager (part 2): FFmpeg in-app download
 
 FFmpeg can now be downloaded and updated in-app from Settings → External Tools, the same way fpcalc already works.

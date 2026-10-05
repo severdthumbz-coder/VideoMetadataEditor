@@ -24,6 +24,10 @@ public class AppSettings
     public string OpenSubsLastLanguages { get; set; } = "en";  // persisted search langs
     /// <summary>Full path to an external subtitle/dubbing app the user maps. When set, the "Launch subtitle app" button is enabled and passes the selected video's path as an argument.</summary>
     public string ExternalSubtitleAppPath { get; set; } = string.Empty;
+    /// <summary>Identity of the ffmpeg build VME last installed from BtbN (the release's
+    /// publish timestamp). Used to tell "up to date" from "update available" without parsing
+    /// BtbN's non-semver build strings (e.g. N-127203-ga35c879992). Empty = never installed by VME.</summary>
+    public string FfmpegInstalledReleaseId { get; set; } = string.Empty;
     public string TraktClientId     { get; set; } = string.Empty;
     public string TraktClientSecret { get; set; } = string.Empty;
     public string TraktAccessToken  { get; set; } = string.Empty;  // DPAPI encrypted
