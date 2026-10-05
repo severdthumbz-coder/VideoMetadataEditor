@@ -2,6 +2,16 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 162 — Fix: MKVToolNix update check always said "up to date"
+
+Clicking Check for Update on MKVToolNix reported "98.0 is up to date" even though 102.0 is out.
+
+- **Cause:** the version reader took the first number it found in `latest-release.xml`. That number is in the file's own `<?xml version="1.0"?>` declaration, so VME thought the newest MKVToolNix was 1.0, which is older than any install.
+- **Fix:** VME now reads the Windows releases folder listing (`mkvtoolnix.download/windows/releases/`) and picks the **highest version number** (102.0 beats 99.0 and 1.7.0). It doesn't use the folders' modified dates, because the mirror re-syncs every folder at once and they all share the same timestamp. `latest-release.xml` is kept as a backup, now read properly (declaration skipped, `<version>` element preferred).
+- **More resilient download:** if the newest folder exists but its .7z isn't uploaded yet (404), VME steps back to the next newest release, and never "updates" to a version that isn't newer than what's installed.
+
+---
+
 ## v1.4.0 Build 161 — External Tools (part 3b): MKVToolNix in-app download
 
 MKVToolNix can now be downloaded and updated in-app from Settings → External Tools, completing the tools manager — all four tools (FFmpeg, MKVToolNix, fpcalc, 7-Zip) are now installable without leaving the app.

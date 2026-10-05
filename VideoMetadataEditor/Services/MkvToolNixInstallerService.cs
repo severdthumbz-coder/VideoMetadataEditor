@@ -22,6 +22,11 @@ namespace VideoMetadataEditor.Services;
 /// </summary>
 public static class MkvToolNixInstallerService
 {
+    // Primary: the static directory listing of Windows release folders (102.0/, 101.0/, …).
+    // We pick the highest VERSION NUMBER — not the newest modified date, because the
+    // mirror re-syncs every folder at once, so they all share the same timestamp.
+    private const string ReleasesIndexUrl = "https://mkvtoolnix.download/windows/releases/";
+    // Fallback: the official latest-release feed.
     private const string LatestXmlUrl = "https://mkvtoolnix.download/latest-release.xml";
     private const string UserAgent =
         "VideoMetadataEditor/1.4 (mkvtoolnix auto-updater; contact@videometadataeditor.app)";
@@ -34,7 +39,15 @@ public static class MkvToolNixInstallerService
 
     public enum InstallResult { AlreadyCurrent, Installed, Updated, Failed, NoExtractor }
 
-    public record ReleaseInfo(string Version, string DownloadUrl);
+    /// <summary>
+    /// <see cref="Version"/>/<see cref="DownloadUrl"/> are the newest release.
+    /// <see cref="Fallbacks"/> holds the next-newest versions (descending) so the
+    /// installer can step back if the newest folder exists but its .7z isn't uploaded yet.
+    /// </summary>
+    public record ReleaseInfo(string Version, string DownloadUrl, IReadOnlyList<string> Fallbacks);
+
+    private static string SevenZipUrlFor(string version) =>
+        $"https://mkvtoolnix.download/windows/releases/{version}/mkvtoolnix-64-bit-{version}.7z";
 
     /// <summary>Where the portable MKVToolNix folder is installed.</summary>
     public static string InstallDir =>
@@ -43,10 +56,64 @@ public static class MkvToolNixInstallerService
     // ── Public API ────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Reads the latest release version from mkvtoolnix.download and builds the
-    /// portable 64-bit 7z URL from it. Returns null on network/parse error.
+    /// Finds the newest MKVToolNix release. Tries the Windows releases directory
+    /// listing first (highest version folder), then falls back to latest-release.xml.
+    /// Returns null if neither source can be read.
     /// </summary>
     public static async Task<ReleaseInfo?> GetLatestReleaseAsync(CancellationToken ct = default)
+    {
+        var versions = await GetVersionsFromIndexAsync(ct);
+        if (versions.Count == 0)
+        {
+            var fromXml = await GetVersionFromXmlAsync(ct);
+            if (fromXml != null) versions.Add(fromXml);
+        }
+        if (versions.Count == 0) return null;
+
+        var newest    = versions[0];
+        var fallbacks = versions.Skip(1).Take(2).ToList();
+        return new ReleaseInfo(newest, SevenZipUrlFor(newest), fallbacks);
+    }
+
+    /// <summary>
+    /// Reads the releases directory listing and returns every version folder,
+    /// sorted newest-first by numeric version (so 102.0 beats 99.0 and 1.7.0).
+    /// </summary>
+    private static async Task<List<string>> GetVersionsFromIndexAsync(CancellationToken ct)
+    {
+        var result = new List<string>();
+        try
+        {
+            using var resp = await _http.GetAsync(ReleasesIndexUrl, ct);
+            if (!resp.IsSuccessStatusCode) return result;
+            var html = await resp.Content.ReadAsStringAsync(ct);
+
+            // Folder links look like href="102.0/" or href="./102.0/". Only accept
+            // links whose target is purely a version number followed by a slash.
+            var seen = new HashSet<string>();
+            foreach (Match m in Regex.Matches(html,
+                         @"href\s*=\s*""(?:\./)?(\d+(?:\.\d+){1,2})/""", RegexOptions.IgnoreCase))
+            {
+                var v = m.Groups[1].Value;
+                if (System.Version.TryParse(v, out _) && seen.Add(v)) result.Add(v);
+            }
+
+            result.Sort((a, b) => System.Version.Parse(b).CompareTo(System.Version.Parse(a)));
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MkvToolNixInstaller] index error: {ex.Message}");
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Fallback: reads latest-release.xml. Skips the &lt;?xml version="1.0"?&gt;
+    /// declaration (Build 161 mistook that "1.0" for the latest release) and prefers
+    /// an explicit &lt;version&gt; element.
+    /// </summary>
+    private static async Task<string?> GetVersionFromXmlAsync(CancellationToken ct)
     {
         try
         {
@@ -54,19 +121,25 @@ public static class MkvToolNixInstallerService
             if (!resp.IsSuccessStatusCode) return null;
             var xml = await resp.Content.ReadAsStringAsync(ct);
 
-            // Parse defensively: grab the first N.N(.N) version token in the feed.
-            var m = Regex.Match(xml, @"(\d+\.\d+(?:\.\d+)?)");
-            if (!m.Success) return null;
-            var version = m.Value;
+            // Drop the XML declaration so its version="1.0" can never match.
+            xml = Regex.Replace(xml, @"<\?xml[^>]*\?>", string.Empty);
 
-            // Stable portable path convention.
-            var url = $"https://mkvtoolnix.download/windows/releases/{version}/mkvtoolnix-64-bit-{version}.7z";
-            return new ReleaseInfo(version, url);
+            var tagged = Regex.Match(xml, @"<version>\s*(\d+(?:\.\d+){1,2})\s*</version>",
+                                     RegexOptions.IgnoreCase);
+            if (tagged.Success) return tagged.Groups[1].Value;
+
+            // Last resort: the highest version-looking token in the document.
+            var best = Regex.Matches(xml, @"\b(\d+\.\d+(?:\.\d+)?)\b")
+                .Select(m => m.Groups[1].Value)
+                .Where(v => System.Version.TryParse(v, out _))
+                .OrderByDescending(v => System.Version.Parse(v))
+                .FirstOrDefault();
+            return best;
         }
         catch (OperationCanceledException) { return null; }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[MkvToolNixInstaller] error: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[MkvToolNixInstaller] xml error: {ex.Message}");
             return null;
         }
     }
@@ -110,36 +183,61 @@ public static class MkvToolNixInstallerService
             return (InstallResult.AlreadyCurrent, msg);
         }
 
-        var action = installed == null ? "Installing" : $"Updating {installed} →";
-        progress?.Report((10, $"{action} MKVToolNix {latest.Version}…"));
+        // Newest first; step back only when a version's .7z isn't published yet (404).
+        // Never "update" to a version that isn't newer than what's installed.
+        var candidates = new List<string> { latest.Version };
+        candidates.AddRange(latest.Fallbacks);
+        if (installed != null && System.Version.TryParse(installed, out var instV))
+            candidates = candidates
+                .Where(v => System.Version.TryParse(v, out var cv) && cv > instV)
+                .ToList();
 
-        var (ok, err) = await DownloadAndExtractAsync(latest, progress, ct);
-        if (!ok)
-            return (InstallResult.Failed, $"⚠ Install failed: {err}");
+        string? lastError = null;
+        foreach (var version in candidates)
+        {
+            var action = installed == null ? "Installing" : $"Updating {installed} →";
+            progress?.Report((10, $"{action} MKVToolNix {version}…"));
 
-        var successMsg = installed == null
-            ? $"✓ MKVToolNix {latest.Version} installed."
-            : $"✓ MKVToolNix updated to {latest.Version}.";
-        progress?.Report((100, successMsg));
-        return (installed == null ? InstallResult.Installed : InstallResult.Updated, successMsg);
+            var (ok, notFound, err) = await DownloadAndExtractAsync(
+                version, SevenZipUrlFor(version), progress, ct);
+            if (ok)
+            {
+                var successMsg = installed == null
+                    ? $"✓ MKVToolNix {version} installed."
+                    : $"✓ MKVToolNix updated to {version}.";
+                progress?.Report((100, successMsg));
+                return (installed == null ? InstallResult.Installed : InstallResult.Updated, successMsg);
+            }
+
+            lastError = err;
+            if (!notFound) break; // a real failure (network, extract) — don't keep trying
+        }
+
+        if (candidates.Count == 0)
+            return (InstallResult.AlreadyCurrent, $"✓ MKVToolNix {installed} is up to date.");
+
+        return (InstallResult.Failed, $"⚠ Install failed: {lastError ?? "no downloadable build found"}. Use Page.");
     }
 
     // ── Private ────────────────────────────────────────────────────────────────
 
-    private static async Task<(bool ok, string? error)> DownloadAndExtractAsync(
-        ReleaseInfo release, IProgress<(int pct, string status)>? progress, CancellationToken ct)
+    /// <returns>ok; notFound = the .7z returned 404 (caller may try an older version); error text.</returns>
+    private static async Task<(bool ok, bool notFound, string? error)> DownloadAndExtractAsync(
+        string version, string url, IProgress<(int pct, string status)>? progress, CancellationToken ct)
     {
         // Download the .7z to a temp file (7-Zip needs a real file on disk to extract).
         var tempArchive = Path.Combine(Path.GetTempPath(),
-            $"vme-mkvtoolnix-{release.Version}-{Guid.NewGuid():N}.7z");
+            $"vme-mkvtoolnix-{version}-{Guid.NewGuid():N}.7z");
         try
         {
-            progress?.Report((15, $"Downloading MKVToolNix {release.Version}…"));
+            progress?.Report((15, $"Downloading MKVToolNix {version}…"));
             using (var resp = await _http.GetAsync(
-                release.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, ct))
+                url, HttpCompletionOption.ResponseHeadersRead, ct))
             {
+                if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    return (false, true, $"MKVToolNix {version} .7z not found (HTTP 404)");
                 if (!resp.IsSuccessStatusCode)
-                    return (false, $"HTTP {(int)resp.StatusCode} fetching the 7z (the version URL may have moved). Use Page.");
+                    return (false, false, $"HTTP {(int)resp.StatusCode} fetching MKVToolNix {version}");
 
                 var total    = resp.Content.Headers.ContentLength ?? 0L;
                 var received = 0L;
@@ -164,7 +262,7 @@ public static class MkvToolNixInstallerService
             Directory.CreateDirectory(InstallDir);
 
             var (exOk, exErr) = await SevenZipService.ExtractAsync(tempArchive, InstallDir, null, ct);
-            if (!exOk) return (false, $"7-Zip extraction failed: {exErr}");
+            if (!exOk) return (false, false, $"7-Zip extraction failed: {exErr}");
 
             // MKVToolNix 7z unpacks into a "mkvtoolnix\" subfolder. Flatten so
             // native\MKVToolNix\mkvpropedit.exe exists (what detection looks for).
@@ -184,14 +282,14 @@ public static class MkvToolNixInstallerService
             progress?.Report((95, "Verifying…"));
             MkvPropEditService.Redetect();
             if (!MkvPropEditService.IsAvailable)
-                return (false,
+                return (false, false,
                     "Extracted to native\\MKVToolNix\\ but mkvpropedit.exe wasn't found afterward. " +
                     "Check the folder, or use Page to install manually.");
 
-            return (true, null);
+            return (true, false, null);
         }
-        catch (OperationCanceledException) { return (false, "Cancelled."); }
-        catch (Exception ex)              { return (false, ex.Message); }
+        catch (OperationCanceledException) { return (false, false, "Cancelled."); }
+        catch (Exception ex)              { return (false, false, ex.Message); }
         finally
         {
             try { if (File.Exists(tempArchive)) File.Delete(tempArchive); } catch { }

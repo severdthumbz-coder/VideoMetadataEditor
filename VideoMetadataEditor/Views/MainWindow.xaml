@@ -5625,6 +5625,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 162 — Fix: MKVToolNix update check always said "up to date"
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Check for Update reported "98.0 is up to date" even though 102.0 is out. The version reader took the first number in latest-release.xml, which is the file's own &lt;?xml version="1.0"?&gt; declaration, so VME thought the newest release was 1.0. VME now reads the Windows releases folder listing and picks the highest version number (not the modified date, since the mirror gives every folder the same timestamp), with latest-release.xml as a properly parsed backup. If the newest .7z isn't uploaded yet, it steps back to the next newest, and never "updates" to an older or equal version.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 161 — External Tools (part 3b): MKVToolNix in-app download
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
