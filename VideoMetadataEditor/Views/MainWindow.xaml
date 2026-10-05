@@ -5625,6 +5625,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 161 — External Tools (part 3b): MKVToolNix in-app download
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        MKVToolNix can now be downloaded/updated in-app, completing the tools manager. VME reads the latest version from mkvtoolnix.download, fetches the portable 64-bit .7z, and extracts it with 7-Zip (your system install or VME's 7zr.exe) into native\MKVToolNix\ — mkvpropedit plus its required files. If no 7-Zip extractor is available, the row says so and points to the 7-Zip row (or Page for manual download). Update detection compares installed vs latest mkvpropedit version. Completes the External Tools arc (builds 156–161).
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 160 — External Tools (part 3a): 7-Zip support for .7z extraction
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

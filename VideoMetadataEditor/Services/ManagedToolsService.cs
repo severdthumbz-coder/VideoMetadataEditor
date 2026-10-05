@@ -108,11 +108,34 @@ public static class ManagedToolsService
             DisplayName     = "MKVToolNix (mkvpropedit)",
             Purpose         = "Proper Matroska cover.jpg embedding for MKV artwork (Plex/Jellyfin).",
             DownloadPageUrl = "https://mkvtoolnix.download/downloads.html",
-            CanAutoDownload = false, // real download added in a later build
+            CanAutoDownload = true,
             IsInstalled     = () => MkvPropEditService.IsAvailable,
             ExePath         = () => MkvPropEditService.ExePath,
             GetInstalledVersionAsync = () => Task.FromResult<string?>(
                 string.IsNullOrWhiteSpace(MkvPropEditService.Version) ? null : MkvPropEditService.Version),
+            GetLatestVersionAsync = async ct =>
+            {
+                var r = await MkvToolNixInstallerService.GetLatestReleaseAsync(ct);
+                return r?.Version;
+            },
+            IsUpdateAvailableAsync = async ct =>
+            {
+                if (!MkvPropEditService.IsAvailable) return false;
+                var inst = MkvToolNixInstallerService.GetInstalledVersionNumber();
+                var r = await MkvToolNixInstallerService.GetLatestReleaseAsync(ct);
+                return inst != null && r != null
+                    && System.Version.TryParse(inst, out var iv)
+                    && System.Version.TryParse(r.Version, out var lv)
+                    && lv > iv;
+            },
+            InstallOrUpdateAsync = async (progress, ct) =>
+            {
+                var (result, message) = await MkvToolNixInstallerService.CheckAndInstallAsync(progress, ct);
+                var ok = result is MkvToolNixInstallerService.InstallResult.Installed
+                              or MkvToolNixInstallerService.InstallResult.Updated
+                              or MkvToolNixInstallerService.InstallResult.AlreadyCurrent;
+                return (ok, message);
+            },
             Redetect        = () => MkvPropEditService.Redetect(),
         },
 

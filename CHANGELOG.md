@@ -2,6 +2,19 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 161 — External Tools (part 3b): MKVToolNix in-app download
+
+MKVToolNix can now be downloaded and updated in-app from Settings → External Tools, completing the tools manager — all four tools (FFmpeg, MKVToolNix, fpcalc, 7-Zip) are now installable without leaving the app.
+
+- **Auto-download:** reads the latest version from mkvtoolnix.download, fetches the portable 64-bit .7z, and extracts it with 7-Zip into native\MKVToolNix\ — mkvpropedit plus its required files, so MKV cover-art embedding works.
+- **Uses the 7-Zip support from Build 160:** your system 7-Zip or VME's 7zr.exe. If no 7-Zip extractor is available, the MKVToolNix row says so and points you to install 7-Zip first (or use Page to download manually).
+- **Update detection** compares the installed mkvpropedit version to the latest release; "Check for Update" only prompts when a newer version exists.
+- **Graceful fallbacks:** if the version URL has moved or the site is unreachable, you get a clear message and the Page link rather than a failure.
+
+This completes the External Tools manager arc (builds 156–161).
+
+---
+
 ## v1.4.0 Build 160 — External Tools (part 3a): 7-Zip support for .7z extraction
 
 Groundwork for auto-downloading MKVToolNix (which ships only as .7z, a format .NET can't unzip). Adds a 7-Zip extractor VME can use, with a new tool row.
