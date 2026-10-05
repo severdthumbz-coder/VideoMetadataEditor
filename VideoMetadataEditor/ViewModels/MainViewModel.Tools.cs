@@ -36,6 +36,36 @@ public partial class MainViewModel
 
     public bool NativeFolderExists => ManagedToolsService.NativeFolderExists;
 
+    // ── FFmpeg build source selector ────────────────────────────────────────────
+    public sealed record FfmpegSourceOption(string Key, string Label, string Description);
+
+    public ObservableCollection<FfmpegSourceOption> FfmpegSourceOptions { get; } = new()
+    {
+        new("Master", "Master autobuild (BtbN)",
+            "Newest build, rebuilt from ffmpeg's master branch almost daily. Gets the latest features and fixes first, but is a rolling build rather than a numbered release. Recommended default."),
+        new("GyanRelease", "Release build (gyan.dev)",
+            "Tracks ffmpeg's official numbered releases (e.g. 8.1). More conservative and predictable — updates only when ffmpeg cuts a new release. Choose this if you prefer stable, versioned builds."),
+    };
+
+    public FfmpegSourceOption SelectedFfmpegSource
+    {
+        get => FfmpegSourceOptions.FirstOrDefault(o => o.Key == Settings.FfmpegSource)
+               ?? FfmpegSourceOptions[0];
+        set
+        {
+            if (value == null || value.Key == Settings.FfmpegSource) return;
+            Settings.FfmpegSource = value.Key;
+            _ = App.ConfigService.SaveAsync();
+            RaiseProperty(nameof(SelectedFfmpegSource));
+            RaiseProperty(nameof(FfmpegSourceDescription));
+            // Re-check the ffmpeg row so its status reflects the newly chosen source.
+            var row = ExternalTools.FirstOrDefault(t => t.Key == "ffmpeg");
+            if (row != null) _ = row.RefreshAsync();
+        }
+    }
+
+    public string FfmpegSourceDescription => SelectedFfmpegSource.Description;
+
     private ICommand? _createNativeFolderCommand;
     public ICommand CreateNativeFolderCommand => _createNativeFolderCommand ??= new RelayCommand(_ =>
     {
@@ -101,6 +131,7 @@ public sealed class ToolRowViewModel : ViewModelBase
         _owner = owner;
     }
 
+    public string Key         => _tool.Key;
     public string DisplayName => _tool.DisplayName;
     public string Purpose     => _tool.Purpose;
     public bool   CanAutoDownload => _tool.CanAutoDownload;

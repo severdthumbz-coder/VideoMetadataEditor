@@ -9,23 +9,27 @@ using System.Threading.Tasks;
 namespace VideoMetadataEditor.Services;
 
 /// <summary>
-/// Downloads and installs a stable Windows ffmpeg build into the portable
-/// native\ folder. Mirrors <see cref="FpcalcInstallerService"/>'s hardened
-/// pattern: in-memory download (so Windows Defender can't lock a temp zip),
-/// atomic temp→replace, Mark-of-the-Web stripping, settle delay, and a
-/// post-install --version verification.
+/// Downloads and installs a Windows ffmpeg build into the portable native\ folder.
+/// Mirrors <see cref="FpcalcInstallerService"/>'s hardened pattern: in-memory
+/// download (so Windows Defender can't lock a temp zip), atomic temp→replace,
+/// Mark-of-the-Web stripping, settle delay, and a post-install --version verify.
 ///
-/// Source: BtbN/FFmpeg-Builds GitHub releases. The user asked for stable over
-/// bleeding-edge, so we take the latest *release* (not the rolling "latest"
-/// master pre-release) and pick the win64-gpl, non-shared asset — a single
-/// self-contained ffmpeg.exe once extracted.
+/// Two selectable sources (AppSettings.FfmpegSource):
+///   • "Master"      — BtbN/FFmpeg-Builds rolling master autobuild (GitHub API).
+///                     Newest features/fixes; version is a non-semver "N-..." build id.
+///   • "GyanRelease" — gyan.dev official release build (direct download).
+///                     Tracks ffmpeg's tagged N.N releases; clean semver version.
+/// Either way the installed build's identity is stamped so "up to date" is reliable.
 /// </summary>
 public static class FfmpegInstallerService
 {
-    // "releases/latest" returns the newest NON-prerelease release — i.e. a
-    // stable tagged build, not the rolling master autobuild.
     private const string GitHubApiUrl =
         "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest";
+
+    // gyan.dev release build — stable permanent URLs.
+    private const string GyanVersionUrl = "https://www.gyan.dev/ffmpeg/builds/release-version";
+    private const string GyanZipUrl     = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
+
     private const string UserAgent =
         "VideoMetadataEditor/1.4 (ffmpeg auto-updater; contact@videometadataeditor.app)";
 
@@ -38,12 +42,15 @@ public static class FfmpegInstallerService
     public enum InstallResult { AlreadyCurrent, Installed, Updated, Failed, NoAssetFound }
 
     /// <summary>
-    /// A BtbN release. <see cref="ReleaseId"/> is the release's publish timestamp —
-    /// a stable identity we stamp after install and compare against, so we never have
-    /// to parse BtbN's non-semver build strings (e.g. "N-127203-ga35c879992") to decide
-    /// whether an update exists.
+    /// A resolvable ffmpeg build. <see cref="ReleaseId"/> is a stable identity we stamp
+    /// after install and compare against — for BtbN it's the release publish timestamp
+    /// (its build strings aren't semver), for gyan.dev it's the clean release version.
     /// </summary>
     public record ReleaseInfo(string Version, string DownloadUrl, long SizeBytes, string ReleaseId);
+
+    private static bool UseGyan =>
+        string.Equals(App.ConfigService.Settings.FfmpegSource, "GyanRelease",
+                      StringComparison.OrdinalIgnoreCase);
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -51,10 +58,38 @@ public static class FfmpegInstallerService
     public static Task<string?> GetInstalledVersionAsync() => FfmpegService.GetVersionAsync();
 
     /// <summary>
-    /// Queries BtbN for the latest stable release and finds the win64-gpl
-    /// (non-shared) zip. Returns null on network error or if no asset matches.
+    /// Resolves the latest build for the currently selected source. Returns null on
+    /// network error or if no asset matches.
     /// </summary>
-    public static async Task<ReleaseInfo?> GetLatestReleaseAsync(CancellationToken ct = default)
+    public static Task<ReleaseInfo?> GetLatestReleaseAsync(CancellationToken ct = default)
+        => UseGyan ? GetLatestGyanReleaseAsync(ct) : GetLatestBtbNReleaseAsync(ct);
+
+    /// <summary>gyan.dev release build — version from the release-version endpoint,
+    /// zip from the permanent essentials URL.</summary>
+    private static async Task<ReleaseInfo?> GetLatestGyanReleaseAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            using var resp = await _http.GetAsync(GyanVersionUrl, ct);
+            if (!resp.IsSuccessStatusCode) return null;
+            var version = (await resp.Content.ReadAsStringAsync(ct)).Trim();
+            if (string.IsNullOrWhiteSpace(version)) return null;
+            // ReleaseId == clean version for gyan; stamping/compare is a plain string match.
+            return new ReleaseInfo(version, GyanZipUrl, 0L, version);
+        }
+        catch (OperationCanceledException) { return null; }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[FfmpegInstaller] gyan.dev error: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Queries BtbN for the latest release and finds the win64-gpl (non-shared) zip.
+    /// Returns null on network error or if no asset matches.
+    /// </summary>
+    private static async Task<ReleaseInfo?> GetLatestBtbNReleaseAsync(CancellationToken ct = default)
     {
         try
         {
@@ -204,7 +239,8 @@ public static class FfmpegInstallerService
             using var zip = new System.IO.Compression.ZipArchive(
                 memStream, System.IO.Compression.ZipArchiveMode.Read, leaveOpen: false);
 
-            // Zip layout: ffmpeg-<ver>-win64-gpl/bin/ffmpeg.exe — match by filename.
+            // Zip layout differs by source (BtbN: ffmpeg-<ver>-win64-gpl/bin/ffmpeg.exe,
+            // gyan: ffmpeg-<ver>-essentials_build/bin/ffmpeg.exe) — match by filename.
             var entry = zip.Entries.FirstOrDefault(e =>
                 e.Name.Equals("ffmpeg.exe", StringComparison.OrdinalIgnoreCase));
             if (entry == null)

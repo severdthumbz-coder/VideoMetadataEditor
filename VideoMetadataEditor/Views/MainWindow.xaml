@@ -3587,6 +3587,41 @@
                                                 HorizontalAlignment="Left"
                                                 Padding="12,6" Margin="0,0,0,10"/>
 
+                                        <!-- FFmpeg build source selector -->
+                                        <Border Background="{DynamicResource SurfaceAltBrush}"
+                                                BorderBrush="{DynamicResource BorderBrush}"
+                                                BorderThickness="1" CornerRadius="6"
+                                                Padding="12,10" Margin="0,0,0,10">
+                                            <StackPanel>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="FFmpeg build source:"
+                                                               VerticalAlignment="Center"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource ForegroundBrush}"/>
+                                                    <ComboBox Grid.Column="2"
+                                                              ItemsSource="{Binding FfmpegSourceOptions}"
+                                                              SelectedItem="{Binding SelectedFfmpegSource}"
+                                                              DisplayMemberPath="Label"
+                                                              FontSize="12"
+                                                              HorizontalAlignment="Left"
+                                                              MinWidth="240"/>
+                                                </Grid>
+                                                <TextBlock Text="{Binding FfmpegSourceDescription}"
+                                                           FontSize="11" TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                           Margin="0,6,0,0"/>
+                                                <TextBlock FontSize="11" TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                           Margin="0,4,0,0"
+                                                           Text="Switching source then clicking Download below installs FFmpeg from the chosen source."/>
+                                            </StackPanel>
+                                        </Border>
+
                                         <!-- tool rows -->
                                         <ItemsControl ItemsSource="{Binding ExternalTools}">
                                             <ItemsControl.ItemTemplate>
@@ -5589,6 +5624,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 159 — Choose your FFmpeg build source (Master vs gyan.dev release)
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Settings → External Tools now has an FFmpeg build-source dropdown with a live description: Master autobuild (BtbN, default — newest, rolling) or Release build (gyan.dev — tracks ffmpeg's numbered releases, clean version). Switching source then clicking Download installs from the chosen source; the installed build's identity is stamped per source so "update available" stays accurate. Both use the same hardened install into native\, and the extractor handles both zip layouts.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 158 — Fix FFmpeg "update available" loop + CI Node 20 warning
                                     </TextBlock>

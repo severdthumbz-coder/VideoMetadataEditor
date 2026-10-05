@@ -2,6 +2,17 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 159 — Choose your FFmpeg build source (Master vs gyan.dev release)
+
+Settings → External Tools now lets you pick which FFmpeg build the in-app downloader fetches, with a description of each.
+
+- **Master autobuild (BtbN)** — default. Rebuilt from ffmpeg's master branch almost daily; newest features and fixes first, but a rolling build rather than a numbered release.
+- **Release build (gyan.dev)** — tracks ffmpeg's official numbered releases (e.g. 8.1). More conservative and predictable; updates only when ffmpeg cuts a release. Uses a clean version number, so "up to date" is exact.
+- A dropdown with a live description sits above the tool list; switching source then clicking Download installs from the chosen source. The installed build's identity is stamped per source, so "update available" stays accurate for whichever you pick.
+- Both sources use the same hardened install (in-memory download, atomic replace, Mark-of-the-Web strip, verify) into the portable native\ folder, and the extractor handles both zip layouts.
+
+---
+
 ## v1.4.0 Build 158 — Fix FFmpeg "update available" loop + CI Node 20 warning
 
 - **FFmpeg no longer keeps saying "update available" after it just updated.** BtbN's download is a rolling build whose version string (e.g. `N-127203-ga35c879992`) isn't a parseable version number, so the old semver comparison could never match and always flagged an update. VME now records the installed build's release identity and compares that, so a fresh install correctly reads "up to date." (A pre-existing ffmpeg that VME didn't install itself won't nag — one click of Download stamps it and settles it.)

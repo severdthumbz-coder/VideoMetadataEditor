@@ -28,6 +28,10 @@ public class AppSettings
     /// publish timestamp). Used to tell "up to date" from "update available" without parsing
     /// BtbN's non-semver build strings (e.g. N-127203-ga35c879992). Empty = never installed by VME.</summary>
     public string FfmpegInstalledReleaseId { get; set; } = string.Empty;
+    /// <summary>Which FFmpeg build source the in-app downloader uses:
+    /// "Master" = BtbN rolling master autobuild (newest features/fixes, default),
+    /// "GyanRelease" = gyan.dev official release build (tracks ffmpeg's tagged N.N releases).</summary>
+    public string FfmpegSource { get; set; } = "Master";
     public string TraktClientId     { get; set; } = string.Empty;
     public string TraktClientSecret { get; set; } = string.Empty;
     public string TraktAccessToken  { get; set; } = string.Empty;  // DPAPI encrypted
