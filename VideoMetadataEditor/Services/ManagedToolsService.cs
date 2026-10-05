@@ -31,12 +31,13 @@ public sealed class ManagedTool
     public required System.Func<bool>   IsInstalled      { get; init; }
     public required System.Func<string> ExePath          { get; init; }
     public required System.Func<Task<string?>> GetInstalledVersionAsync { get; init; }
-    public System.Func<CancellationToken, Task<string?>>? GetLatestVersionAsync { get; init; }
+    /// <summary>(force, ct) → latest version. force = bypass the 12-hour cache.</summary>
+    public System.Func<bool, CancellationToken, Task<string?>>? GetLatestVersionAsync { get; init; }
 
     /// <summary>Optional per-tool "is an update available" check. When set, the UI uses it
     /// instead of comparing version strings — needed for tools whose build strings aren't
     /// clean semver (e.g. FFmpeg's BtbN "N-..." builds).</summary>
-    public System.Func<CancellationToken, Task<bool>>? IsUpdateAvailableAsync { get; init; }
+    public System.Func<bool, CancellationToken, Task<bool>>? IsUpdateAvailableAsync { get; init; }
     public System.Func<System.IProgress<(int pct, string msg)>?, CancellationToken, Task<(bool ok, string message)>>? InstallOrUpdateAsync { get; init; }
     public System.Action? Redetect { get; init; }
 }
@@ -75,19 +76,19 @@ public static class ManagedToolsService
             IsInstalled     = () => FfmpegService.IsAvailable,
             ExePath         = () => FfmpegService.ExePath ?? string.Empty,
             GetInstalledVersionAsync = () => FfmpegService.GetVersionAsync(),
-            GetLatestVersionAsync = async ct =>
+            GetLatestVersionAsync = async (force, ct) =>
             {
-                var r = await FfmpegInstallerService.GetLatestReleaseAsync(ct);
+                var r = await FfmpegInstallerService.GetLatestReleaseAsync(ct, force);
                 return r?.Version;
             },
-            IsUpdateAvailableAsync = async ct =>
+            IsUpdateAvailableAsync = async (force, ct) =>
             {
                 // Update available only when VME has installed a build AND the current
                 // latest release id differs from the stamped one. No build strings parsed.
                 if (!File.Exists(Path.Combine(NativeDir, "ffmpeg.exe"))) return false;
                 var stamped = App.ConfigService.Settings.FfmpegInstalledReleaseId;
                 if (string.IsNullOrEmpty(stamped)) return false; // present but not VME-installed → don't nag
-                var r = await FfmpegInstallerService.GetLatestReleaseAsync(ct);
+                var r = await FfmpegInstallerService.GetLatestReleaseAsync(ct, force);
                 return r != null && r.ReleaseId != stamped;
             },
             InstallOrUpdateAsync = async (progress, ct) =>
@@ -113,12 +114,12 @@ public static class ManagedToolsService
             ExePath         = () => MkvPropEditService.ExePath,
             GetInstalledVersionAsync = () => Task.FromResult<string?>(
                 string.IsNullOrWhiteSpace(MkvPropEditService.Version) ? null : MkvPropEditService.Version),
-            GetLatestVersionAsync = async ct =>
+            GetLatestVersionAsync = async (force, ct) =>
             {
                 var r = await MkvToolNixInstallerService.GetLatestReleaseAsync(ct);
                 return r?.Version;
             },
-            IsUpdateAvailableAsync = async ct =>
+            IsUpdateAvailableAsync = async (force, ct) =>
             {
                 if (!MkvPropEditService.IsAvailable) return false;
                 var inst = MkvToolNixInstallerService.GetInstalledVersionNumber();
@@ -150,9 +151,9 @@ public static class ManagedToolsService
             IsInstalled     = () => File.Exists(Path.Combine(NativeDir, "fpcalc.exe")),
             ExePath         = () => Path.Combine(NativeDir, "fpcalc.exe"),
             GetInstalledVersionAsync = () => FpcalcInstallerService.GetInstalledVersionAsync(),
-            GetLatestVersionAsync = async ct =>
+            GetLatestVersionAsync = async (force, ct) =>
             {
-                var r = await FpcalcInstallerService.GetLatestReleaseAsync(ct);
+                var r = await FpcalcInstallerService.GetLatestReleaseAsync(ct, force);
                 return r?.Version;
             },
             InstallOrUpdateAsync = async (progress, ct) =>

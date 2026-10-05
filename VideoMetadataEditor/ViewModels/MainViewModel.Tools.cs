@@ -98,7 +98,7 @@ public partial class MainViewModel
 
     private ICommand? _checkAllToolsCommand;
     public ICommand CheckAllToolsCommand => _checkAllToolsCommand ??= new AsyncRelayCommand(
-        () => RefreshAllToolsAsync());
+        () => RefreshAllToolsAsync(force: true)); // explicit click → fresh lookups
 
     /// <summary>True when any tool reports an available update. Drives the cross-tab hint.</summary>
     private bool _anyToolUpdateAvailable;
@@ -108,10 +108,11 @@ public partial class MainViewModel
         private set => Set(ref _anyToolUpdateAvailable, value);
     }
 
-    public async Task RefreshAllToolsAsync()
+    /// <param name="force">True when the user asked; bypasses the 12-hour cache.</param>
+    public async Task RefreshAllToolsAsync(bool force = false)
     {
         foreach (var r in ExternalTools)
-            await r.RefreshAsync();
+            await r.RefreshAsync(force);
         RecomputeUpdateFlag();
     }
 
@@ -164,7 +165,7 @@ public sealed class ToolRowViewModel : ViewModelBase
         RaiseProperty(nameof(ActionLabel));
     }
 
-    public async Task RefreshAsync()
+    public async Task RefreshAsync(bool force = false)
     {
         try
         {
@@ -177,14 +178,14 @@ public sealed class ToolRowViewModel : ViewModelBase
             // Only hit the network for a latest-version when the tool supports it.
             if (_tool.GetLatestVersionAsync != null)
             {
-                var latest = await _tool.GetLatestVersionAsync(CancellationToken.None);
+                var latest = await _tool.GetLatestVersionAsync(force, CancellationToken.None);
                 LatestVersion = latest ?? string.Empty;
 
                 if (_tool.IsUpdateAvailableAsync != null)
                 {
                     // Tool supplies its own check (e.g. FFmpeg's non-semver BtbN builds).
                     UpdateAvailable = IsInstalled
-                        && await _tool.IsUpdateAvailableAsync(CancellationToken.None);
+                        && await _tool.IsUpdateAvailableAsync(force, CancellationToken.None);
                 }
                 else
                 {

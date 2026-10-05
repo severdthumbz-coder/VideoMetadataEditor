@@ -13,6 +13,18 @@ public enum WriteStatus
     Failed     // write failed after all retries — light pink/red
 }
 
+// ─── Tool release cache entry ─────────────────────────────────────────────────
+
+/// <summary>One cached "latest release" lookup for an external tool (see AppSettings.ToolReleaseCache).</summary>
+public class ToolReleaseCacheEntry
+{
+    public string   Version     { get; set; } = string.Empty;
+    public string   DownloadUrl { get; set; } = string.Empty;
+    public long     SizeBytes   { get; set; }
+    public string   ReleaseId   { get; set; } = string.Empty;
+    public DateTime FetchedUtc  { get; set; }
+}
+
 // ─── App Settings ────────────────────────────────────────────────────────────
 
 public class AppSettings
@@ -32,6 +44,10 @@ public class AppSettings
     /// "Master" = BtbN rolling master autobuild (newest features/fixes, default),
     /// "GyanRelease" = gyan.dev official release build (tracks ffmpeg's tagged N.N releases).</summary>
     public string FfmpegSource { get; set; } = "Master";
+    /// <summary>Cached "latest release" lookups for tools that use GitHub's API (fpcalc,
+    /// FFmpeg BtbN), keyed by tool. Avoids spending GitHub's 60-requests-per-hour anonymous
+    /// limit on every launch; refreshed after 12 hours or when the user clicks a check button.</summary>
+    public Dictionary<string, ToolReleaseCacheEntry> ToolReleaseCache { get; set; } = new();
     public string TraktClientId     { get; set; } = string.Empty;
     public string TraktClientSecret { get; set; } = string.Empty;
     public string TraktAccessToken  { get; set; } = string.Empty;  // DPAPI encrypted

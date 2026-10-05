@@ -2,6 +2,19 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 164 — More reliable update checks, with clear reasons
+
+Older builds didn't show the update badge after 163 was published, and the log couldn't say why: "no newer release" and "couldn't check" produced the same message.
+
+- **New primary check that isn't rate-limited.** VME now reads where GitHub's `…/releases/latest` address redirects (`…/releases/tag/v1.4.0.164`). That's an ordinary web request, so it doesn't use GitHub's 60-per-hour anonymous API limit. The API check remains as a fallback.
+- **Clear outcomes.** The Log and Settings now say exactly what happened: update available, on the latest release, no releases published, GitHub's request limit reached (with the time it resets), the repository isn't publicly visible (private repos can't be checked anonymously), or GitHub couldn't be reached.
+- **Re-checks while open.** VME checks again every 6 hours, so a build left running in the tray still notices new releases.
+- **"Check for app updates now"** button in Settings → Behaviour, with a "Last checked …" line showing the result. It works even if automatic checks are turned off.
+- **Fewer GitHub calls from the tools manager.** The FFmpeg (BtbN) and fpcalc "latest version" lookups are cached for 12 hours instead of being fetched on every launch. "Check all for updates" and Download still fetch fresh.
+- Tests added for reading the release tag from GitHub's redirect.
+
+---
+
 ## v1.4.0 Build 163 — Tray icon shows which build is running
 
 With several builds open at once, every tray icon used to say just "Video Metadata Editor", so closing a specific one meant guessing.

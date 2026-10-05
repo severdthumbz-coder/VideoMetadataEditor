@@ -348,20 +348,51 @@ public partial class MainViewModel : INotifyPropertyChanged
     /// <summary>Set by MainWindow code-behind to sync DataGrid widths before save.</summary>
     public Action? SyncLibraryGridBeforeSave { get; set; }
 
-    /// <summary>
-    /// Checks GitHub releases for a newer version and raises the update badge if one
-    /// exists. Fires once per session on startup, independently of any other startup
-    /// work. Never throws. Every outcome is logged: previously this failed silently in
-    /// every case, which made "no badge" indistinguishable from "check never ran".
-    /// </summary>
-    private async Task CheckForUpdateAsync()
+    // ── App update check ─────────────────────────────────────────────────────────
+    // Runs at startup, again every 6 hours while the app stays open (so a build left in
+    // the tray still notices new releases), and on demand from Settings → Behaviour.
+    // Every outcome gets its own message, so a missing badge is never ambiguous.
+
+    private static readonly TimeSpan UpdateRecheckInterval = TimeSpan.FromHours(6);
+    private System.Windows.Threading.DispatcherTimer? _updateRecheckTimer;
+    private int _updateCheckRunning; // 0/1 guard so overlapping checks don't stack up
+
+    private string _lastUpdateCheckText = "Not checked yet this session.";
+    /// <summary>Shown under the update setting: when the last check ran and what it found.</summary>
+    public string LastUpdateCheckText
     {
+        get => _lastUpdateCheckText;
+        private set { _lastUpdateCheckText = value; RaiseProperty(); }
+    }
+
+    private ICommand? _checkForAppUpdatesNowCommand;
+    /// <summary>"Check for app updates now" — runs even when the startup check is turned off.</summary>
+    public ICommand CheckForAppUpdatesNowCommand => _checkForAppUpdatesNowCommand ??=
+        new AsyncRelayCommand(() => CheckForUpdateAsync(manual: true));
+
+    /// <summary>Starts the 6-hourly re-check. Called once, after the startup check is scheduled.</summary>
+    private void StartUpdateRecheckTimer()
+    {
+        if (_updateRecheckTimer != null) return;
+        _updateRecheckTimer = new System.Windows.Threading.DispatcherTimer { Interval = UpdateRecheckInterval };
+        _updateRecheckTimer.Tick += (_, _) => { _ = CheckForUpdateAsync(manual: false); };
+        _updateRecheckTimer.Start();
+    }
+
+    /// <summary>
+    /// Checks GitHub for a newer release and raises the update badge if one exists.
+    /// Automatic checks (startup + every 6 hours) respect the Settings toggle; a manual
+    /// check always runs. Never throws.
+    /// </summary>
+    private async Task CheckForUpdateAsync(bool manual = false)
+    {
+        if (System.Threading.Interlocked.Exchange(ref _updateCheckRunning, 1) == 1) return;
         try
         {
-            // Respect the opt-out setting.
-            if (!Settings.CheckForUpdatesOnStartup)
+            if (!manual && !Settings.CheckForUpdatesOnStartup)
             {
                 Log($"[{DateTime.Now:HH:mm:ss}] Update check skipped (disabled in Settings → Behaviour).");
+                await OnUiAsync(() => LastUpdateCheckText = "Automatic checks are off. Use “Check for app updates now”.");
                 return;
             }
 
@@ -373,32 +404,75 @@ public partial class MainViewModel : INotifyPropertyChanged
             }
 
             Log($"[{DateTime.Now:HH:mm:ss}] Checking GitHub for updates (current: v{localVer})…");
+            if (manual) await OnUiAsync(() => StatusText = "Checking GitHub for app updates…");
 
-            // Pure service does the fetch + parse + compare; returns null on any failure
-            // or when the published release is not newer than the running build.
-            var info = await Services.UpdateCheckService.CheckAsync(localVer).ConfigureAwait(false);
-            if (info == null)
+            var r = await Services.UpdateCheckService.CheckDetailedAsync(localVer).ConfigureAwait(false);
+            var at = DateTime.Now.ToString("h:mm tt");
+
+            string summary;
+            switch (r.Status)
             {
-                Log($"[{DateTime.Now:HH:mm:ss}] Update check: no newer release found (or GitHub was unreachable).");
-                return;
+                case Services.UpdateCheckStatus.UpdateAvailable:
+                    summary = $"Update available: v{r.Update!.LatestVersion} (you have v{localVer}).";
+                    await OnUiAsync(() =>
+                    {
+                        UpdateUrl       = r.Update!.ReleaseUrl;
+                        UpdateBadgeText = $"⬆ Update available: v{r.Update.LatestVersion}";
+                        UpdateAvailable = true;
+                        StatusText      = $"🆕 Update available: v{r.Update.LatestVersion} — click the badge below the title, or visit GitHub";
+                    });
+                    break;
+
+                case Services.UpdateCheckStatus.UpToDate:
+                    summary = r.Latest != null && r.Latest < localVer
+                        ? $"You're ahead of the latest published release (v{r.Latest})."
+                        : $"You're on the latest release (v{r.Latest ?? localVer}).";
+                    break;
+
+                case Services.UpdateCheckStatus.NoReleases:
+                    summary = "No releases are published on GitHub yet.";
+                    break;
+
+                case Services.UpdateCheckStatus.NotVisible:
+                    summary = "GitHub can't show this repository's releases publicly (the repository looks private). " +
+                              "Update checks need public releases.";
+                    break;
+
+                case Services.UpdateCheckStatus.RateLimited:
+                    summary = r.RateLimitResetsAt is { } reset
+                        ? $"GitHub's request limit was reached; it resets at {reset.ToLocalTime():h:mm tt}. Will retry later."
+                        : "GitHub's request limit was reached. Will retry later.";
+                    break;
+
+                default: // Unreachable
+                    summary = $"Couldn't check: {r.Detail}. Will retry later.";
+                    break;
             }
 
-            // Newer release available — raise the persistent badge (not just a transient
-            // status message, which the next action would overwrite).
-            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            Log($"[{DateTime.Now:HH:mm:ss}] Update check: {summary} ({r.Detail})");
+            await OnUiAsync(() =>
             {
-                UpdateUrl       = info.ReleaseUrl;
-                UpdateBadgeText = $"⬆ Update available: v{info.LatestVersion}";
-                UpdateAvailable = true;
-                StatusText      = $"🆕 Update available: v{info.LatestVersion} — click the badge below the title, or visit GitHub";
-                Log($"[{DateTime.Now:HH:mm:ss}] Update available: v{info.LatestVersion} (current: v{localVer})");
+                LastUpdateCheckText = $"Last checked {at}: {summary}";
+                if (manual && r.Status != Services.UpdateCheckStatus.UpdateAvailable)
+                    StatusText = summary;
             });
         }
         catch (Exception ex)
         {
-            // Non-fatal by design, but no longer invisible.
             Log($"[{DateTime.Now:HH:mm:ss}] ⚠ Update check failed: {ex.Message}");
         }
+        finally
+        {
+            System.Threading.Interlocked.Exchange(ref _updateCheckRunning, 0);
+        }
+    }
+
+    /// <summary>Runs an action on the UI thread (update checks finish on a background thread).</summary>
+    private static Task OnUiAsync(Action action)
+    {
+        var d = System.Windows.Application.Current?.Dispatcher;
+        if (d == null || d.CheckAccess()) { action(); return Task.CompletedTask; }
+        return d.InvokeAsync(action).Task;
     }
 
     /// <summary>
@@ -1734,7 +1808,11 @@ public partial class MainViewModel : INotifyPropertyChanged
         // entirely. It's an independent concern and must not depend on library state.
         System.Windows.Application.Current?.Dispatcher.BeginInvoke(
             System.Windows.Threading.DispatcherPriority.ApplicationIdle,
-            new Action(() => { _ = CheckForUpdateAsync(); }));
+            new Action(() =>
+            {
+                _ = CheckForUpdateAsync();
+                StartUpdateRecheckTimer(); // re-check every 6 hours while the app stays open
+            }));
 
         ScanLibraryCommand         = new AsyncRelayCommand(ScanLibraryAsync,
             _ => CanScanLibrary);

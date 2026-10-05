@@ -61,8 +61,8 @@ public static class FfmpegInstallerService
     /// Resolves the latest build for the currently selected source. Returns null on
     /// network error or if no asset matches.
     /// </summary>
-    public static Task<ReleaseInfo?> GetLatestReleaseAsync(CancellationToken ct = default)
-        => UseGyan ? GetLatestGyanReleaseAsync(ct) : GetLatestBtbNReleaseAsync(ct);
+    public static Task<ReleaseInfo?> GetLatestReleaseAsync(CancellationToken ct = default, bool forceRefresh = false)
+        => UseGyan ? GetLatestGyanReleaseAsync(ct) : GetLatestBtbNReleaseAsync(ct, forceRefresh);
 
     /// <summary>gyan.dev release build — version from the release-version endpoint,
     /// zip from the permanent essentials URL.</summary>
@@ -89,8 +89,13 @@ public static class FfmpegInstallerService
     /// Queries BtbN for the latest release and finds the win64-gpl (non-shared) zip.
     /// Returns null on network error or if no asset matches.
     /// </summary>
-    private static async Task<ReleaseInfo?> GetLatestBtbNReleaseAsync(CancellationToken ct = default)
+    private static async Task<ReleaseInfo?> GetLatestBtbNReleaseAsync(CancellationToken ct = default, bool forceRefresh = false)
     {
+        // BtbN is looked up through GitHub's API, so reuse a recent result when allowed.
+        var cached = ToolReleaseCache.Get("ffmpeg-btbn", forceRefresh);
+        if (cached != null)
+            return new ReleaseInfo(cached.Version, cached.DownloadUrl, cached.SizeBytes, cached.ReleaseId);
+
         try
         {
             using var resp = await _http.GetAsync(GitHubApiUrl, ct);
@@ -124,6 +129,7 @@ public static class FfmpegInstallerService
                 {
                     var url  = asset.GetProperty("browser_download_url").GetString()!;
                     var size = asset.TryGetProperty("size", out var s) ? s.GetInt64() : 0L;
+                    ToolReleaseCache.Put("ffmpeg-btbn", version, url, size, releaseId);
                     return new ReleaseInfo(version, url, size, releaseId);
                 }
             }
@@ -152,7 +158,8 @@ public static class FfmpegInstallerService
         var installed = await GetInstalledVersionAsync();
 
         progress?.Report((5, "Checking latest release on GitHub…"));
-        var latest = await GetLatestReleaseAsync(ct);
+        // About to install: always use a fresh lookup, not a cached one.
+        var latest = await GetLatestReleaseAsync(ct, forceRefresh: true);
         if (latest == null)
         {
             var msg = installed != null

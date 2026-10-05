@@ -102,4 +102,34 @@ public class UpdateCheckServiceTests
         var json = @"{""tag_name"":""v2.0.0.0"",""html_url"":""https://x""}";
         Assert.Null(UpdateCheckService.Evaluate(json, null!));
     }
+
+    // ── ParseTagFromLocation (redirect-based check, Build 164) ───────────────────
+
+    [Theory]
+    [InlineData("https://github.com/severdthumbz-coder/VideoMetadataEditor/releases/tag/v1.4.0.163", "v1.4.0.163")]
+    [InlineData("/severdthumbz-coder/VideoMetadataEditor/releases/tag/v1.4.0.163",                   "v1.4.0.163")]
+    [InlineData("https://github.com/o/r/releases/tag/v1.4.0.163/",                                    "v1.4.0.163")]
+    [InlineData("https://github.com/o/r/releases/tag/v1.4.0.163?x=1",                                 "v1.4.0.163")]
+    public void ParseTagFromLocation_ExtractsTag(string location, string expected)
+    {
+        Assert.Equal(expected, UpdateCheckService.ParseTagFromLocation(location));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("https://github.com/o/r/releases")]      // no releases → GitHub redirects here
+    [InlineData("https://github.com/o/r/releases/tag/")]
+    public void ParseTagFromLocation_ReturnsNullWhenNoTag(string? location)
+    {
+        Assert.Null(UpdateCheckService.ParseTagFromLocation(location));
+    }
+
+    [Fact]
+    public void ParseTagFromLocation_FeedsParseTag()
+    {
+        var tag = UpdateCheckService.ParseTagFromLocation(
+            "https://github.com/o/r/releases/tag/v1.4.0.163");
+        Assert.Equal(new Version(1, 4, 0, 163), UpdateCheckService.ParseTag(tag));
+    }
 }

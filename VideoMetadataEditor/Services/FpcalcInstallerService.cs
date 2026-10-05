@@ -97,8 +97,13 @@ public static class FpcalcInstallerService
     /// Returns null on network error or if the Windows x64 asset isn't found.
     /// </summary>
     public static async Task<ReleaseInfo?> GetLatestReleaseAsync(
-        CancellationToken ct = default)
+        CancellationToken ct = default, bool forceRefresh = false)
     {
+        // Reuse a recent lookup so routine launches don't spend GitHub's API limit.
+        var cached = ToolReleaseCache.Get("fpcalc", forceRefresh);
+        if (cached != null)
+            return new ReleaseInfo(cached.Version, cached.DownloadUrl, cached.SizeBytes);
+
         try
         {
             using var resp = await _http.GetAsync(GitHubApiUrl, ct);
@@ -124,6 +129,7 @@ public static class FpcalcInstallerService
                 {
                     var url  = asset.GetProperty("browser_download_url").GetString()!;
                     var size = asset.TryGetProperty("size", out var s) ? s.GetInt64() : 0L;
+                    ToolReleaseCache.Put("fpcalc", version, url, size, version);
                     return new ReleaseInfo(version, url, size);
                 }
             }
@@ -152,7 +158,8 @@ public static class FpcalcInstallerService
         var installed = await GetInstalledVersionAsync();
         progress?.Report((5, "Checking latest release on GitHub…"));
 
-        var latest = await GetLatestReleaseAsync(ct);
+        // About to install: always use a fresh lookup, not a cached one.
+        var latest = await GetLatestReleaseAsync(ct, forceRefresh: true);
         if (latest == null)
         {
             var msg = installed != null

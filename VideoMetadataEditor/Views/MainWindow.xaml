@@ -2763,10 +2763,22 @@
                                         <CheckBox Content="Auto-switch to Retrieved Data tab after search"
                                                   IsChecked="{Binding Settings.AutoSwitchToResults}"
                                                   Margin="0,0,0,6"/>
-                                        <CheckBox Content="Check GitHub for updates on startup"
+                                        <CheckBox Content="Check GitHub for updates on startup (and every 6 hours while open)"
                                                   IsChecked="{Binding Settings.CheckForUpdatesOnStartup}"
-                                                  Margin="0,0,0,6"
-                                                  ToolTip="On launch, checks the GitHub Releases page for a newer version. If one exists, a badge appears under the title. No download happens automatically."/>
+                                                  Margin="0,0,0,4"
+                                                  ToolTip="On launch, and again every 6 hours while VME stays open, checks GitHub Releases for a newer version. If one exists, a badge appears under the title. No download happens automatically."/>
+                                        <StackPanel Orientation="Horizontal" Margin="22,0,0,8">
+                                            <Button Content="🔄 Check for app updates now"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Command="{Binding CheckForAppUpdatesNowCommand}"
+                                                    Padding="10,4" FontSize="12"
+                                                    VerticalAlignment="Center"
+                                                    ToolTip="Check GitHub right now, even if automatic checks are turned off."/>
+                                            <TextBlock Text="{Binding LastUpdateCheckText}"
+                                                       FontSize="11" TextWrapping="Wrap" MaxWidth="420"
+                                                       VerticalAlignment="Center" Margin="10,0,0,0"
+                                                       Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                                        </StackPanel>
                                         <CheckBox Content="Minimise to system tray (keep watching in background)"
                                                   IsChecked="{Binding Settings.MinimizeToTray}"
                                                   Margin="0,0,0,6"
@@ -5624,6 +5636,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 164 — More reliable update checks, with clear reasons
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        The update check now reads where GitHub's releases/latest address redirects, an ordinary web request that doesn't use the 60-per-hour API limit (the API remains a fallback). Each outcome gets its own message: update available, on the latest, no releases, request limit reached (with reset time), repository not publicly visible, or GitHub unreachable. VME re-checks every 6 hours while open, and Settings → Behaviour has a "Check for app updates now" button with a "Last checked" line. FFmpeg (BtbN) and fpcalc version lookups are cached for 12 hours to save GitHub requests; "Check all" and Download still fetch fresh.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 163 — Tray icon shows which build is running
                                     </TextBlock>
