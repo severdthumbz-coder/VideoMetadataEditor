@@ -41,6 +41,17 @@ public sealed class TrayIconService : IDisposable
     public bool IsVisible => _icon?.Visible == true;
 
     /// <summary>
+    /// The running build's version (e.g. "1.4.0.162"), read from the assembly so each
+    /// build labels itself — useful when several builds are open side by side.
+    /// AssemblyVersion is set from &lt;FullVersion&gt; in the csproj.
+    /// </summary>
+    private static readonly string BuildVersion =
+        System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
+
+    /// <summary>"Video Metadata Editor v1.4.0.162" — 32 chars, well under the tooltip limit.</summary>
+    private static readonly string AppLabel = $"Video Metadata Editor v{BuildVersion}";
+
+    /// <summary>
     /// Creates and shows the tray icon. Safe to call more than once; subsequent calls
     /// are ignored while an icon already exists.
     /// </summary>
@@ -51,7 +62,7 @@ public sealed class TrayIconService : IDisposable
         _icon = new WinForms.NotifyIcon
         {
             Icon    = LoadAppIcon(),
-            Text    = "Video Metadata Editor",   // NotifyIcon tooltip caps at 63 chars
+            Text    = AppLabel,   // NotifyIcon tooltip caps at 63 chars; AppLabel is ~32
             Visible = true
         };
 
@@ -59,6 +70,12 @@ public sealed class TrayIconService : IDisposable
         _icon.DoubleClick += (_, _) => RestoreRequested?.Invoke();
 
         var menu = new WinForms.ContextMenuStrip();
+
+        // Non-clickable header naming the exact build, so with several builds in the
+        // tray you can tell which one's menu you've opened.
+        var header = new WinForms.ToolStripMenuItem(AppLabel) { Enabled = false };
+        menu.Items.Add(header);
+        menu.Items.Add(new WinForms.ToolStripSeparator());
 
         var restore = new WinForms.ToolStripMenuItem("Restore window");
         restore.Click += (_, _) => RestoreRequested?.Invoke();
@@ -92,7 +109,7 @@ public sealed class TrayIconService : IDisposable
 
         menu.Items.Add(new WinForms.ToolStripSeparator());
 
-        var exit = new WinForms.ToolStripMenuItem("Exit");
+        var exit = new WinForms.ToolStripMenuItem($"Exit v{BuildVersion}");
         exit.Click += (_, _) => ExitRequested?.Invoke();
         menu.Items.Add(exit);
 
@@ -116,7 +133,7 @@ public sealed class TrayIconService : IDisposable
         try
         {
             _icon.BalloonTipTitle = "Still running";
-            _icon.BalloonTipText  = "Video Metadata Editor is in the tray and still watching. " +
+            _icon.BalloonTipText  = $"{AppLabel} is in the tray and still watching. " +
                                     "Double-click the icon to restore, or right-click for Exit.";
             _icon.BalloonTipIcon  = WinForms.ToolTipIcon.Info;
             _icon.ShowBalloonTip(4000);

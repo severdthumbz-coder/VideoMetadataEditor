@@ -5625,6 +5625,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 163 — Tray icon shows which build is running
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        With several builds open, every tray icon said just "Video Metadata Editor". The tray tooltip now shows the exact build (e.g. "Video Metadata Editor v1.4.0.163"), the right-click menu has the build name as a header and an "Exit v1.4.0.163" item, and the tray notification names the build too. The version is read from the running program, so it's always correct for that build.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 162 — Fix: MKVToolNix update check always said "up to date"
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

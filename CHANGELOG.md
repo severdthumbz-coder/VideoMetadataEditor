@@ -2,6 +2,17 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 163 — Tray icon shows which build is running
+
+With several builds open at once, every tray icon used to say just "Video Metadata Editor", so closing a specific one meant guessing.
+
+- **Tooltip:** hovering the tray icon now shows the exact build, e.g. "Video Metadata Editor v1.4.0.163".
+- **Right-click menu:** the build name appears as a header at the top, and Exit reads "Exit v1.4.0.163", so you know exactly which copy you're closing.
+- The "still running in the tray" notification also names the build.
+- The version is read from the running program itself, so it's always correct for that build with nothing to update by hand.
+
+---
+
 ## v1.4.0 Build 162 — Fix: MKVToolNix update check always said "up to date"
 
 Clicking Check for Update on MKVToolNix reported "98.0 is up to date" even though 102.0 is out.
