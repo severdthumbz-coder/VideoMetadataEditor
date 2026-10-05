@@ -1,21 +1,30 @@
-# Build output
-[Bb]in/
-[Oo]bj/
+# ── Build output ──────────────────────────────────────────────────────────────
+bin/
+obj/
 publish/
-*.user
+*.pdb
 
-# Rider / VS
+# ── Personal settings & secrets: never commit these ───────────────────────────
+# VME stores API keys (DPAPI-encrypted, but still personal) in config.json next
+# to the EXE; keep any local copy out of the repo. Same for Subtitle Studio.
+config.json
+subt_settings.json
+error.log
+*.diag.txt
+
+# ── Visual Studio / Rider / VS Code user files ────────────────────────────────
 .vs/
 .idea/
+.vscode/
+*.user
+*.suo
+*.userprefs
 
-# Runtime data that shouldn't be versioned
-appsettings.json
-fingerprints.json
-library_cache.json
-native/fpcalc.exe
-native/ffmpeg.exe
-*.log
-
-# OS
+# ── OS clutter ────────────────────────────────────────────────────────────────
 Thumbs.db
+Desktop.ini
 .DS_Store
+
+# NOTE: do NOT add "native/" here. Git on Windows matches case-insensitively, so it
+# would also hide the source folder VideoMetadataEditor/Native/. The runtime native\
+# tools folder lives inside publish\, which is already ignored above.

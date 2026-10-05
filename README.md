@@ -23,17 +23,26 @@ A portable Windows desktop application for embedding metadata into video files.
 ## Requirements
 
 - Windows 10 or 11 (x64)
-- .NET 8 Desktop Runtime (prompted on first launch if missing)
+- Nothing else — the EXE is self-contained (the .NET runtime is built in)
 
 ## Optional tools
 
-These are not required but enable additional features:
+These are not required but enable additional features. All of them can be downloaded,
+updated and re-detected from **Settings → External Tools**, and are stored in the
+portable `native\` folder next to the app.
 
-| Tool | Feature | How to install |
-|---|---|---|
-| ffmpeg | Fix All Faststart, remux | Settings → External Tools → Download |
-| fpcalc (Chromaprint) | Audio fingerprint duplicate detection | Duplicates tab → Install fpcalc |
-| MKVToolNix (mkvpropedit) | Better MKV artwork for Plex/Jellyfin | Drop `mkvpropedit.exe` in the `native\` folder, or install normally |
+| Tool | Feature |
+|---|---|
+| FFmpeg | Fix All Faststart, lossless remux (choose BtbN master or gyan.dev release builds) |
+| fpcalc (Chromaprint) | Audio-fingerprint duplicate detection |
+| MKVToolNix (mkvpropedit) | Proper MKV cover art for Plex/Jellyfin |
+| 7-Zip (7zr) | Extracts the MKVToolNix download (uses your installed 7-Zip if present) |
+
+## Updates
+
+VME checks GitHub Releases on startup and every 6 hours while open, and shows a badge
+when a newer version is available. You can also check any time from
+**Settings → Behaviour → Check for app updates now**.
 
 ## Write safety
 
@@ -58,4 +67,5 @@ This product uses the TMDB API but is not endorsed or certified by TMDB.
 
 ## License
 
-See [LICENSE](LICENSE) for details.
+Video Metadata Editor is released under the [MIT License](LICENSE). Third-party
+libraries and tools listed under Attribution keep their own licenses.

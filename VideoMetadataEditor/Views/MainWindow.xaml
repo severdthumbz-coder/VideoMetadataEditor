@@ -5637,6 +5637,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 165 — Ready for a public repository
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Housekeeping before making the repository public; no change to app behaviour. Adds the MIT License (third-party components keep their own licenses), a .gitignore that keeps build output and personal settings files such as config.json out of the repository, and a refreshed README (self-contained EXE, tools managed under Settings → External Tools, update checks). Also removes a personal username from a code comment, and fixes the splash screen footer, which was hard-coded to "build 148" and now reads the running version.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 164 — More reliable update checks, with clear reasons
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

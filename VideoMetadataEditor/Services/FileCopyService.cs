@@ -81,7 +81,7 @@ public class FileCopyService
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "FastCopy", "FastCopy.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "FastCopy", "FastCopy.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "FastCopy4", "FastCopy.exe"),
-            // Non-standard: user profile root (e.g. C:\Users\ragin\FastCopy)
+            // Non-standard: user profile root (e.g. C:\Users\<you>\FastCopy)
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "FastCopy", "FastCopy.exe"),
             // Also check adjacent version-numbered folders
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "FastCopy4", "FastCopy.exe"),

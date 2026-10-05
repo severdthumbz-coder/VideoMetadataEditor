@@ -21,6 +21,11 @@ public partial class SplashScreen : Window
             ? $"Version {v.Major}.{v.Minor}.{v.Build}  ·  Build {v.Revision}"
             : "Version 1.0.0  ·  Build 1";
 
+        // Footer used to be hard-coded ("build 148") and went stale; read it from the
+        // running assembly like the line above so it's always correct.
+        if (v != null)
+            FooterText.Text = $"© 2026 VideoMetadataEditor  ·  v{v.Major}.{v.Minor}.{v.Build} build {v.Revision}";
+
         // Animate the progress bar to fill over ~2 seconds (40 ticks × 50 ms)
         _progressTimer.Interval = TimeSpan.FromMilliseconds(50);
         _progressTimer.Tick += (_, _) =>

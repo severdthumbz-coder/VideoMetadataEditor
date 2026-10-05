@@ -2,6 +2,19 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 165 — Ready for a public repository
+
+Housekeeping before making the repository public. No change to how the app behaves.
+
+- **MIT License** added (`LICENSE`). The README already linked to it; the link now works. Third-party components keep their own licenses, listed under Attribution.
+- **`.gitignore`** added so build output, IDE files, and personal settings files (`config.json`, `subt_settings.json`, error logs) can't be committed by accident.
+- **README refreshed:** the app is a self-contained EXE (no separate .NET install needed), the optional-tools table now points to Settings → External Tools, and there's a short section on update checks.
+- Removed a personal username from a code comment.
+- **Fix:** the splash screen footer was hard-coded to "build 148" and had been wrong since build 149. It now reads the version from the running program.
+- The source ZIP no longer includes a reference CI workflow file; the repository's own `build-and-test.yml` is the one that runs.
+
+---
+
 ## v1.4.0 Build 164 — More reliable update checks, with clear reasons
 
 Older builds didn't show the update badge after 163 was published, and the log couldn't say why: "no newer release" and "couldn't check" produced the same message.
