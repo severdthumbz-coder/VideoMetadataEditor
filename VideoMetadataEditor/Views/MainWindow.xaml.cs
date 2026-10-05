@@ -153,6 +153,12 @@ public partial class MainWindow : Window
             Dispatcher.BeginInvoke(
                 System.Windows.Threading.DispatcherPriority.ApplicationIdle,
                 new Action(() => VM.MaybeAutoStartTour()));
+
+            // Build the External Tools rows and run an initial (network) status check
+            // in the background once the UI is idle, so startup isn't blocked on it.
+            Dispatcher.BeginInvoke(
+                System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+                new Action(() => VM.InitExternalTools()));
         }
         catch (Exception ex)
         {

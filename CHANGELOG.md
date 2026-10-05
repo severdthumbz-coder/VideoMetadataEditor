@@ -2,6 +2,22 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 156 — External Tools manager (part 1): unified section + fpcalc download
+
+First step toward managing all of VME's external command-line tools from one place. New **Settings → External Tools** section brings FFmpeg, MKVToolNix (mkvpropedit), and fpcalc together with consistent status, versioning, and actions.
+
+- **Unified tool list:** each tool shows installed state, installed version, and (where available) the latest version, with a one-line note on what VME uses it for.
+- **fpcalc download/update works in-app:** the existing Chromaprint installer is now surfaced with a button — check for updates and install/update fpcalc straight from Settings.
+- **FFmpeg & MKVToolNix:** show status and re-detect now; each offers "Page" to open its official download site (real in-app download for these lands in the next builds).
+- **native\ folder controls:** a "Create native folder" button (and "Open") so you can set up the portable tools folder without leaving the app.
+- **"Check all for updates"** refreshes every tool's status at once; tools are also checked in the background at startup.
+- The MKV Artwork Engine block (Artwork & Performance) now points to the new section; its existing Re-detect / Download buttons still work.
+- Built on a new `ManagedTool` abstraction so the remaining tools' downloads slot in without reworking the UI.
+
+Next: real in-app download for FFmpeg (stable build), then MKVToolNix, then an "update available" indicator on the tabs that use each tool.
+
+---
+
 ## v1.4.0 Build 155 — Fix default-window-size clipping
 
 At the default window size, the top toolbar and a couple of dense areas ran past the right edge, so you had to maximise to see everything. Fixed.

@@ -2248,6 +2248,7 @@
                                      <ListBoxItem Padding="12,8">📦  Move / Copy</ListBoxItem>
                                      <ListBoxItem Padding="12,8">📚  Library</ListBoxItem>
                                      <ListBoxItem Padding="12,8">⚕  Recovery</ListBoxItem>
+                                     <ListBoxItem Padding="12,8">🧰  External Tools</ListBoxItem>
                                  </ListBox>
                              </Border>
 
@@ -3016,6 +3017,11 @@
                                             Required for proper Matroska cover.jpg embedding (Plex/Jellyfin/Emby).
                                             Without it, TagLib# is used as fallback (some media servers ignore it).
                                         </TextBlock>
+                                        <TextBlock FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"
+                                                   Foreground="{DynamicResource AccentBrush}">
+                                            🧰 All external tools (FFmpeg, MKVToolNix, fpcalc) can now be managed
+                                            together in Settings → External Tools.
+                                        </TextBlock>
                                     </StackPanel>
                                 </GroupBox>
                                 <GroupBox Header="Copy Engine — Retry Settings">
@@ -3517,6 +3523,135 @@
                                 </GroupBox>
 
                                     </StackPanel>
+
+                                    <!-- ══ 8: External Tools ═══════════════════════════════ -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=SettingsNavList}" Value="8">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="External Tools" Style="{StaticResource SectionHeader}" FontSize="20"/>
+                                            <TextBlock Style="{StaticResource HintMarker}" Margin="8,0,0,0">
+                                                <TextBlock.ToolTip>
+                                                    <ToolTip MaxWidth="340">
+                                                        <TextBlock TextWrapping="Wrap"
+                                                                   Text="VME uses a few small command-line tools for jobs .NET can't do alone — FFmpeg (remux/faststart), MKVToolNix (MKV cover art), and fpcalc (audio fingerprint for duplicates). Manage them here: see what's installed, check for updates, and download. They live in the portable native\ folder next to the app."/>
+                                                    </ToolTip>
+                                                </TextBlock.ToolTip>
+                                            </TextBlock>
+                                        </StackPanel>
+
+                                        <!-- native folder status -->
+                                        <Border Background="{DynamicResource SurfaceAltBrush}"
+                                                BorderBrush="{DynamicResource BorderBrush}"
+                                                BorderThickness="1" CornerRadius="6"
+                                                Padding="12,8" Margin="0,8,0,12">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                    <TextBlock Text="Tools folder (portable)" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource ForegroundBrush}"/>
+                                                    <TextBlock FontSize="11" Foreground="{DynamicResource ForegroundMutedBrush}">
+                                                        <Run Text="native\ folder — "/>
+                                                        <Run Text="{Binding NativeFolderExists, Mode=OneWay, Converter={StaticResource BoolToStringDetected}}"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                                <Button Grid.Column="1" Content="📁 Create native folder"
+                                                        Style="{StaticResource SecondaryButton}"
+                                                        Command="{Binding CreateNativeFolderCommand}"
+                                                        Padding="10,6" Margin="0,0,8,0"
+                                                        ToolTip="Create the native\ folder next to the app if it's missing"/>
+                                                <Button Grid.Column="2" Content="🗂 Open"
+                                                        Style="{StaticResource SecondaryButton}"
+                                                        Command="{Binding OpenNativeFolderCommand}"
+                                                        Padding="10,6"
+                                                        ToolTip="Open the native\ folder in Explorer"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <Button Content="🔄 Check all for updates"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Command="{Binding CheckAllToolsCommand}"
+                                                HorizontalAlignment="Left"
+                                                Padding="12,6" Margin="0,0,0,10"/>
+
+                                        <!-- tool rows -->
+                                        <ItemsControl ItemsSource="{Binding ExternalTools}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{DynamicResource SurfaceAltBrush}"
+                                                            BorderBrush="{DynamicResource BorderBrush}"
+                                                            BorderThickness="1" CornerRadius="6"
+                                                            Padding="12,10" Margin="0,0,0,8">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <!-- left: name, purpose, status -->
+                                                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                                                                <TextBlock Text="{Binding DisplayName}"
+                                                                           FontWeight="SemiBold" FontSize="14"
+                                                                           Foreground="{DynamicResource ForegroundBrush}"/>
+                                                                <TextBlock Text="{Binding Purpose}"
+                                                                           FontSize="11" TextWrapping="Wrap"
+                                                                           Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                                           Margin="0,1,0,3"/>
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <TextBlock Text="{Binding Status}"
+                                                                               FontSize="12" FontWeight="SemiBold"
+                                                                               Foreground="{DynamicResource AccentBrush}"/>
+                                                                    <TextBlock FontSize="11"
+                                                                               Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                                               Margin="8,0,0,0"
+                                                                               Text="{Binding InstalledVersion, StringFormat='installed: {0}'}"
+                                                                               Visibility="{Binding IsInstalled, Converter={StaticResource BoolVis}}"/>
+                                                                </StackPanel>
+                                                            </StackPanel>
+                                                            <!-- right: actions -->
+                                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <Button Content="{Binding ActionLabel}"
+                                                                        Style="{StaticResource PrimaryButton}"
+                                                                        Command="{Binding PrimaryActionCommand}"
+                                                                        Padding="12,6" Margin="0,0,6,0"
+                                                                        IsEnabled="{Binding IsBusy, Converter={StaticResource InvBool}}"/>
+                                                                <Button Content="🌐 Page"
+                                                                        Style="{StaticResource SecondaryButton}"
+                                                                        Command="{Binding OpenDownloadPageCommand}"
+                                                                        Padding="10,6" Margin="0,0,6,0"
+                                                                        ToolTip="Open the official download page"/>
+                                                                <Button Content="🔄"
+                                                                        Style="{StaticResource SecondaryButton}"
+                                                                        Command="{Binding RedetectCommand}"
+                                                                        Padding="8,6"
+                                                                        ToolTip="Re-detect this tool on disk / PATH"
+                                                                        Visibility="{Binding CanRedetect, Converter={StaticResource BoolVis}}"/>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <TextBlock FontSize="11" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource ForegroundMutedBrush}"
+                                                   Margin="0,4,0,0">
+                                            Tools are stored in the portable native\ folder next to the app, so they travel with it. Where a tool can't download itself automatically, "Page" opens its official download site — drop the extracted .exe into native\ and click 🔄.
+                                        </TextBlock>
+                                    </StackPanel>
+
                                      <!-- Save — always visible regardless of active panel -->
                                      <Button Content="💾 Save Settings"
                                              Style="{StaticResource PrimaryButton}"
@@ -5454,6 +5589,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 156 — External Tools manager (part 1): unified section + fpcalc download
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        New Settings → External Tools section brings FFmpeg, MKVToolNix (mkvpropedit) and fpcalc together with consistent status, installed/latest version, and actions, built on a new ManagedTool abstraction. fpcalc download/update now works in-app (surfacing the existing Chromaprint installer); FFmpeg and MKVToolNix show status + re-detect and offer "Page" to open their download site (real in-app download comes next). Adds Create/Open native\ folder buttons and a "Check all for updates" action. The MKV Artwork Engine block now points here.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 155 — Fix default-window-size clipping
                                     </TextBlock>
