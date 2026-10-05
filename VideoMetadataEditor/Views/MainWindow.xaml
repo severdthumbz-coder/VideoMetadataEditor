@@ -5590,6 +5590,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 157 — External Tools manager (part 2): FFmpeg in-app download
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        FFmpeg can now be downloaded/updated in-app from Settings → External Tools, mirroring the fpcalc path. Fetches the latest stable release from BtbN/FFmpeg-Builds (win64-gpl, not the master autobuild), with the same hardened install: in-memory download, atomic temp→replace, Mark-of-the-Web stripping, settle delay, and -version verification into the portable native\ folder. Version checking is lenient — since build strings vary by distributor, an update is only flagged when both parse cleanly and the latest is newer.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 156 — External Tools manager (part 1): unified section + fpcalc download
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

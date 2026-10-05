@@ -65,11 +65,24 @@ public static class ManagedToolsService
             Key             = "ffmpeg",
             DisplayName     = "FFmpeg",
             Purpose         = "Lossless remux / faststart fixes (Health Check) and audio extraction.",
-            DownloadPageUrl = "https://ffmpeg.org/download.html",
-            CanAutoDownload = false, // real download added in a later build
+            DownloadPageUrl = "https://www.gyan.dev/ffmpeg/builds/",
+            CanAutoDownload = true,
             IsInstalled     = () => FfmpegService.IsAvailable,
             ExePath         = () => FfmpegService.ExePath ?? string.Empty,
             GetInstalledVersionAsync = () => FfmpegService.GetVersionAsync(),
+            GetLatestVersionAsync = async ct =>
+            {
+                var r = await FfmpegInstallerService.GetLatestReleaseAsync(ct);
+                return r?.Version;
+            },
+            InstallOrUpdateAsync = async (progress, ct) =>
+            {
+                var (result, message) = await FfmpegInstallerService.CheckAndInstallAsync(progress, ct);
+                var ok = result is FfmpegInstallerService.InstallResult.Installed
+                              or FfmpegInstallerService.InstallResult.Updated
+                              or FfmpegInstallerService.InstallResult.AlreadyCurrent;
+                return (ok, message);
+            },
             Redetect        = () => FfmpegService.Detect(forceRedetect: true),
         },
 

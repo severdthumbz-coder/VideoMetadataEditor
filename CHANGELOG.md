@@ -2,6 +2,19 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 157 — External Tools manager (part 2): FFmpeg in-app download
+
+FFmpeg can now be downloaded and updated in-app from Settings → External Tools, the same way fpcalc already works.
+
+- **Stable builds:** fetches the latest stable release from BtbN/FFmpeg-Builds (not the rolling master autobuild), picking the self-contained win64-gpl build. As requested, stable over bleeding-edge.
+- **Hardened install** (mirrors the fpcalc path): in-memory download so antivirus can't lock a temp zip, atomic temp→replace, Mark-of-the-Web stripping, a brief settle delay, and a post-install `-version` verification. ffmpeg.exe lands in the portable native\ folder.
+- **Lenient version check:** because ffmpeg build strings vary by distributor (e.g. gyan.dev vs BtbN), an update is only flagged when both the installed and latest strings parse to a clean version and the latest is newer — otherwise the row just offers a reinstall rather than a misleading "update available."
+- The FFmpeg row's "Page" fallback now points at a known stable-build source if the automatic download can't resolve an asset.
+
+Next: MKVToolNix in-app download, then an "update available" indicator on the tabs that use each tool.
+
+---
+
 ## v1.4.0 Build 156 — External Tools manager (part 1): unified section + fpcalc download
 
 First step toward managing all of VME's external command-line tools from one place. New **Settings → External Tools** section brings FFmpeg, MKVToolNix (mkvpropedit), and fpcalc together with consistent status, versioning, and actions.
