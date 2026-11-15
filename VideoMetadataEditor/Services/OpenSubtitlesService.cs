@@ -139,10 +139,13 @@ public class OpenSubtitlesService
 
             qs.Append("per_page=30");
 
-            var req = new HttpRequestMessage(HttpMethod.Get, $"{Base}/subtitles{qs}");
-            req.Headers.Add("Api-Key", apiKey);
-
-            using var resp = await _http.SendAsync(req, ct);
+            var url = $"{Base}/subtitles{qs}";
+            using var resp = await SendWithRetryAsync(() =>
+            {
+                var req = new HttpRequestMessage(HttpMethod.Get, url);
+                req.Headers.Add("Api-Key", apiKey);
+                return req;
+            }, ct);
             if (!resp.IsSuccessStatusCode)
             {
                 var body = await resp.Content.ReadAsStringAsync(ct);
@@ -207,7 +210,58 @@ public class OpenSubtitlesService
             return (results, null);
         }
         catch (OperationCanceledException) { return (new(), "Cancelled."); }
-        catch (Exception ex)              { return (new(), ex.Message); }
+        catch (Exception ex)              { return (new(), Describe(ex)); }
+    }
+
+    // ── Network helpers (build 166) ──────────────────────────────────────────
+
+    /// <summary>
+    /// Sends a request, retrying ONCE after a short pause if the connection itself fails
+    /// (TLS handshake reset, DNS hiccup, connection refused). Those were showing up as
+    /// "The SSL connection could not be established" with no results — usually transient,
+    /// sometimes caused by antivirus HTTPS scanning or a VPN. HTTP error responses
+    /// (401, 429…) are NOT retried; they're returned to the caller as-is.
+    /// A fresh HttpRequestMessage is built per attempt because one can't be sent twice.
+    /// </summary>
+    private async Task<HttpResponseMessage> SendWithRetryAsync(
+        Func<HttpRequestMessage> makeRequest, CancellationToken ct)
+    {
+        try
+        {
+            return await _http.SendAsync(makeRequest(), ct);
+        }
+        catch (HttpRequestException) when (!ct.IsCancellationRequested)
+        {
+            await Task.Delay(1500, ct);
+            return await _http.SendAsync(makeRequest(), ct);
+        }
+    }
+
+    /// <summary>
+    /// Turns an exception into a message that actually says what went wrong. .NET's
+    /// top-level text for TLS failures is just "…see inner exception", so walk the
+    /// inner chain and append the distinct messages, plus a hint for the common causes.
+    /// </summary>
+    internal static string Describe(Exception ex)
+    {
+        var parts = new List<string>();
+        for (var e = ex; e != null; e = e.InnerException)
+        {
+            var m = e.Message.Trim();
+            if (m.EndsWith("see inner exception.", StringComparison.OrdinalIgnoreCase))
+            {
+                var cut = m.LastIndexOf(',');                 // drop the useless tail
+                m = (cut > 0 ? m[..cut] : m[..^"see inner exception.".Length]).Trim();
+            }
+            if (m.Length > 0 && !parts.Contains(m)) parts.Add(m);
+        }
+        var text = string.Join(" → ", parts);
+
+        if (ex is HttpRequestException && text.Contains("SSL", StringComparison.OrdinalIgnoreCase))
+            text += "  (Couldn't open a secure connection to api.opensubtitles.com. Usually temporary — " +
+                    "try again in a minute. If it keeps happening, antivirus HTTPS/web scanning, a VPN " +
+                    "or a firewall may be blocking that site.)";
+        return text;
     }
 
     // ── Download ──────────────────────────────────────────────────────────────
@@ -232,13 +286,15 @@ public class OpenSubtitlesService
         {
             // Step 1: Request a download link
             var body = JsonSerializer.Serialize(new { file_id = fileId });
-            var req1 = new HttpRequestMessage(HttpMethod.Post, $"{Base}/download")
+            using var resp1 = await SendWithRetryAsync(() =>
             {
-                Content = new StringContent(body, Encoding.UTF8, "application/json")
-            };
-            req1.Headers.Add("Api-Key", apiKey);
-
-            using var resp1 = await _http.SendAsync(req1, ct);
+                var req1 = new HttpRequestMessage(HttpMethod.Post, $"{Base}/download")
+                {
+                    Content = new StringContent(body, Encoding.UTF8, "application/json")
+                };
+                req1.Headers.Add("Api-Key", apiKey);
+                return req1;
+            }, ct);
             if (!resp1.IsSuccessStatusCode)
             {
                 var err = await resp1.Content.ReadAsStringAsync(ct);
@@ -254,8 +310,7 @@ public class OpenSubtitlesService
                 ? rem.GetInt32() : -1;
 
             // Step 2: Download the file from the link
-            var req2  = new HttpRequestMessage(HttpMethod.Get, link);
-            using var resp2 = await _http.SendAsync(req2, ct);
+            using var resp2 = await SendWithRetryAsync(() => new HttpRequestMessage(HttpMethod.Get, link), ct);
             resp2.EnsureSuccessStatusCode();
 
             var bytes = await resp2.Content.ReadAsByteArrayAsync(ct);
@@ -285,7 +340,7 @@ public class OpenSubtitlesService
             return (savedPath, null);
         }
         catch (OperationCanceledException) { return (null, "Cancelled."); }
-        catch (Exception ex)              { return (null, ex.Message); }
+        catch (Exception ex)              { return (null, Describe(ex)); }
     }
 
     // ── Language name lookup ──────────────────────────────────────────────────

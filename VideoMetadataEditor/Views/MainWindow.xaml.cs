@@ -1332,8 +1332,11 @@ public partial class MainWindow : Window
         _tray?.ShowFirstMinimiseHint();
     }
 
-    /// <summary>Restores and focuses the window from the tray.</summary>
-    private void RestoreFromTray()
+    /// <summary>
+    /// Restores and focuses the window from the tray. Internal so App can call it when
+    /// a second launch of this build asks the running copy to come forward.
+    /// </summary>
+    internal void RestoreFromTray()
     {
         Show();
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;

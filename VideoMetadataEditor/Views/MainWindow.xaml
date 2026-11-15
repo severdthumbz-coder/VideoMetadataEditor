@@ -188,7 +188,10 @@
                             Command="{Binding ToggleLegendCommand}"
                             Content="❔"
                             ToolTip="Legend — what the icons and row colours mean"
+                            Visibility="{Binding Settings.ShowOnboardingHelpers, Converter={StaticResource BoolVis}}"
                             Margin="0,0,4,0"/>
+                    <!-- Build 166: ❔ now hides with the other helpers (the setting's label promises
+                         "legend, hints, first-run tour"). The full legend stays on the Help tab. -->
                     <Popup PlacementTarget="{Binding ElementName=LegendButton}"
                            Placement="Bottom"
                            StaysOpen="False"
@@ -1363,8 +1366,9 @@
                                 </Grid.RowDefinitions>
 
                                 <!-- Onboarding hint: what Retrieved Data is -->
-                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8"
-                                            Visibility="{Binding Settings.ShowOnboardingHelpers, Converter={StaticResource BoolVis}}">
+                                <!-- Build 166: only the ⓘ (HintMarker style) hides with the helpers setting;
+                                     the "Online lookup" header itself always shows. -->
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
                                     <TextBlock Text="Online lookup"
                                                FontWeight="SemiBold"
                                                VerticalAlignment="Center"
@@ -2235,7 +2239,7 @@
                                      BorderThickness="0,0,1,0"
                                      BorderBrush="{DynamicResource BorderColorBrush}">
                                  <ListBox x:Name="SettingsNavList"
-                                          SelectedIndex="0"
+                                          SelectedIndex="{Binding SettingsPageIndex, Mode=TwoWay}"
                                           BorderThickness="0"
                                           Background="Transparent"
                                           Margin="0,12,0,0"
@@ -5636,6 +5640,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 166 — Fixes from the build 165 test pass
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Launching a build that's already running now brings the open copy forward (even from the tray) instead of starting a second one with its own tray icon and folder watchers; different builds can still run side by side. OpenSubtitles: errors now say what actually went wrong instead of "see inner exception", connection failures retry once, errors and "no results" are written to the Log, a search that finds no exact-file match falls back to IMDb ID or title, TV episodes search by show title with season and episode, and the Language dropdown shows the current language. Turning off onboarding helpers now hides the ❔ Legend button too (the legend stays on the Help tab), and no longer hides the "Online lookup" heading on Retrieved Data. The tour's Settings step now opens the page with the Behaviour section.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 165 — Ready for a public repository
                                     </TextBlock>

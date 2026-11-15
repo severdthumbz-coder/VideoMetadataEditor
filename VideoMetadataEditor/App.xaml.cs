@@ -13,6 +13,7 @@ public partial class App : System.Windows.Application
     public static bool IsDarkTheme { get; private set; } = true;
 
     private AppSplashScreen? _splash;
+    private Services.SingleInstanceService? _instance;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -41,6 +42,23 @@ public partial class App : System.Windows.Application
         try
         {
             base.OnStartup(e);
+
+            // One copy per BUILD (build 166). A second launch of this same build brings
+            // the running copy forward (even from the tray) and exits, instead of
+            // starting a duplicate with its own tray icon and folder watchers. Other
+            // builds use a different name, so side-by-side comparison still works.
+            var build = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "dev";
+            _instance = Services.SingleInstanceService.Acquire(build);
+            if (!_instance.IsPrimary)
+            {
+                _instance.SignalPrimary();
+                _instance.Dispose();
+                _instance = null;
+                Shutdown(0);
+                return;
+            }
+            _instance.ListenForShowRequests(() =>
+                Dispatcher.InvokeAsync(() => (MainWindow as Views.MainWindow)?.RestoreFromTray()));
 
             // Install the WPF-backed command requery provider before any ViewModel (and
             // thus any RelayCommand) is constructed. This preserves the automatic
@@ -117,6 +135,13 @@ public partial class App : System.Windows.Application
                 MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
         }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _instance?.Dispose();
+        _instance = null;
+        base.OnExit(e);
     }
 
     private static void LogError(string context, string? message)

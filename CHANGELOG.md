@@ -2,6 +2,21 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 166 — Fixes from the build 165 test pass
+
+Fixes for the problems found when build 165 was tested on a real library.
+
+- **One copy per build.** Launching a build that's already running (a second double-click, or a "Start with Windows" copy already in the tray) now brings the open window forward and exits, instead of starting a duplicate with its own tray icon and its own folder watchers on the same library. Different builds still run side by side, so you can compare versions.
+- **OpenSubtitles errors you can act on.** A failed connection used to show only "The SSL connection could not be established, see inner exception." The message now includes the underlying cause, plus a hint that antivirus HTTPS scanning, a VPN or a firewall can block api.opensubtitles.com. Connection failures are retried once automatically.
+- **Subtitle problems are written to the Log.** Search errors, download errors and "no subtitles found" now appear in the Processing Log, not just the status bar.
+- **Better subtitle matching.** When the exact-file (hash) search finds nothing, VME now searches again by IMDb ID or title before giving up. TV episodes search by the show's title with season and episode, rather than the episode title.
+- **Language dropdown** in the Subtitles panel now shows the current language instead of starting blank.
+- **Onboarding setting:** turning off "Show onboarding helpers" now hides the ❔ Legend button as well, as its label says. The legend is still on the Help tab. The setting also no longer hides the "Online lookup" heading on Retrieved Data along with its ⓘ.
+- **Tour:** the Settings step now opens the page that contains the Behaviour section it mentions.
+- Tests added for the clearer error messages and the one-copy-per-build check.
+
+---
+
 ## v1.4.0 Build 165 — Ready for a public repository
 
 Housekeeping before making the repository public. No change to how the app behaves.

@@ -1619,6 +1619,10 @@ public partial class MainViewModel : INotifyPropertyChanged
             OpenSubsKeyValid  = true;
         }
         _subtitleSearchLanguages = Settings.OpenSubsLastLanguages;
+        // Show the saved language in the dropdown instead of a blank box (build 166).
+        // Backing field only — no save, and no overwrite of a multi-language list.
+        _selectedLanguagePick = CommonSubtitleLanguages.FirstOrDefault(l =>
+            string.Equals(l.Code, _subtitleSearchLanguages?.Trim(), StringComparison.OrdinalIgnoreCase));
         if (Settings.OmdbKeyValidated && !string.IsNullOrWhiteSpace(OmdbKey))
         {
             OmdbKeyLocked = true;
@@ -2466,7 +2470,20 @@ public partial class MainViewModel : INotifyPropertyChanged
     /// while this step is shown (-1 = leave the current tab as-is). <see cref="Title"/> and
     /// <see cref="Body"/> are the step-card text.
     /// </summary>
-    public sealed record TourStep(int TabIndex, string Title, string Body);
+    public sealed record TourStep(int TabIndex, string Title, string Body, int SettingsPage = -1);
+
+    /// <summary>
+    /// Settings sub-page shown in the Settings tab's left nav: 0 Metadata &amp; APIs ·
+    /// 1 Files &amp; Renaming (holds Behaviour) · 2 Artwork · 3 Appearance · 4 Duplicates ·
+    /// 5 Move/Copy · 6 Library · 7 Recovery · 8 External Tools. Bindable so the tour (and
+    /// anything else) can open a specific page.
+    /// </summary>
+    private int _settingsPageIndex;
+    public int SettingsPageIndex
+    {
+        get => _settingsPageIndex;
+        set => Set(ref _settingsPageIndex, value < 0 ? 0 : value);
+    }
 
     /// <summary>
     /// The tour script. Tab indices match the TabControl order:
@@ -2488,7 +2505,7 @@ public partial class MainViewModel : INotifyPropertyChanged
         new(5, "Duplicates & Health Check",
             "Duplicates finds repeated or alternate-quality copies so you can reclaim space. Health Check spots files that would fail to embed or play, with optional lossless fixes. Nothing is deleted or changed without your confirmation."),
         new(3, "Settings — make it yours",
-            "Add your API keys (TMDB / OMDB / OpenSubtitles), set naming patterns, and tune behaviour. These onboarding helpers — the ❔ Legend, the ⓘ hints, and this tour — can be turned off any time under Behaviour."),
+            "Add your API keys (TMDB / OMDB / OpenSubtitles), set naming patterns, and tune behaviour. These onboarding helpers — the ❔ Legend, the ⓘ hints, and this tour — can be turned off any time under Behaviour (on this page, further down).", SettingsPage: 1),
         new(7, "You're all set",
             "That's the tour. The ❔ Legend (top-right) explains every icon and colour, and the ⓘ markers explain each tab on hover. Replay this tour any time from the Help tab. Happy tagging!"),
     };
@@ -2517,6 +2534,8 @@ public partial class MainViewModel : INotifyPropertyChanged
             var step = CurrentTourStep;
             if (step != null && step.TabIndex >= 0)
                 SelectedTabIndex = step.TabIndex;
+            if (step != null && step.SettingsPage >= 0)
+                SettingsPageIndex = step.SettingsPage;
         }
     }
 
@@ -2807,23 +2826,56 @@ public partial class MainViewModel : INotifyPropertyChanged
             Log(
                 $"[{DateTime.Now:HH:mm:ss}] OpenSubtitles: using title/IMDb search (file too small for hash)");
 
-        var (results, err) = await _openSubsService.SearchAsync(
-            apiKey:    key,
-            imdbId:    meta?.ImdbId,
-            title:     meta?.Title ?? System.IO.Path.GetFileNameWithoutExtension(file.FileName),
-            year:      meta?.Year,
-            languages: langs,
-            isEpisode: meta?.IsEpisode ?? false,
-            season:    meta?.IsEpisode == true ? meta.Season : null,
-            episode:   meta?.IsEpisode == true ? meta.Episode : null,
-            fileHash:  fileHash,
-            fileSize:  fileSize
-        );
+        // For TV episodes the useful text query is the SHOW title (+ season/episode),
+        // not the episode's own title ("Episode 2"). Build 166 fix.
+        var isEpisode  = meta?.IsEpisode ?? false;
+        var queryTitle = isEpisode && !string.IsNullOrWhiteSpace(meta?.ShowTitle)
+            ? meta!.ShowTitle
+            : !string.IsNullOrWhiteSpace(meta?.Title)
+                ? meta!.Title
+                : System.IO.Path.GetFileNameWithoutExtension(file.FileName);
+
+        Task<(List<Services.OpenSubtitlesService.SubtitleSearchResult> results, string? error)>
+            Search(string? hash, long size) => _openSubsService.SearchAsync(
+                apiKey:    key,
+                imdbId:    meta?.ImdbId,
+                title:     queryTitle,
+                year:      isEpisode ? null : meta?.Year,
+                languages: langs,
+                isEpisode: isEpisode,
+                season:    isEpisode ? meta!.Season : null,
+                episode:   isEpisode ? meta!.Episode : null,
+                fileHash:  hash,
+                fileSize:  size);
+
+        var (results, err) = await Search(fileHash, fileSize);
+
+        // A hash only matches subtitles uploaded for this exact release. If it finds
+        // nothing, fall back to IMDb ID / title (+ season/episode) before giving up.
+        if (err == null && results.Count == 0 && !string.IsNullOrWhiteSpace(fileHash))
+        {
+            Log($"[{DateTime.Now:HH:mm:ss}] OpenSubtitles: no exact-file match — retrying by " +
+                (string.IsNullOrWhiteSpace(meta?.ImdbId) ? $"title '{queryTitle}'" : $"IMDb ID {meta!.ImdbId}") +
+                (isEpisode ? $" S{meta!.Season:00}E{meta.Episode:00}" : string.Empty));
+            (results, err) = await Search(null, 0);
+        }
 
         IsSearchingSubtitles = false;
 
-        if (err != null) { StatusText = $"OpenSubtitles error: {err}"; return; }
-        if (results.Count == 0) { StatusText = "No subtitles found. Try different languages or check the IMDb ID."; return; }
+        // Build 166: errors and empty results now go to the Processing Log as well as the
+        // status bar, so they can be read after the status bar has moved on.
+        if (err != null)
+        {
+            StatusText = $"OpenSubtitles error: {err}";
+            Log($"[{DateTime.Now:HH:mm:ss}] ✗ OpenSubtitles search failed: {err}");
+            return;
+        }
+        if (results.Count == 0)
+        {
+            StatusText = "No subtitles found. Try different languages or check the IMDb ID.";
+            Log($"[{DateTime.Now:HH:mm:ss}] OpenSubtitles: no subtitles found for '{queryTitle}' ({langs}).");
+            return;
+        }
 
         // Surface the best match first: most-downloaded, then highest-rated.
         foreach (var r in results
@@ -2868,6 +2920,7 @@ public partial class MainViewModel : INotifyPropertyChanged
         {
             SubtitleDownloadStatus = $"✗ {err}";
             StatusText = $"Subtitle download failed: {err}";
+            Log($"[{DateTime.Now:HH:mm:ss}] ✗ Subtitle download failed: {err}");
             return;
         }
 
