@@ -48,12 +48,11 @@ public class MediaHealthViewModel : ViewModelBase
         });
         FixAllFaststartCommand = new AsyncRelayCommand(FixAllFaststartAsync,
             _ => !IsScanning && FfmpegAvailable && FaststartFixableCount > 0);
+        // Build 169: enabled only when there's something it can actually fix. It used to
+        // light up for issues it never handles (e.g. unknown container), and clicking it
+        // then did nothing visible.
         FixAllIssuesCommand = new AsyncRelayCommand(FixAllIssuesAsync,
-            _ => !IsScanning && Results.Any(r =>
-                r.Issue != MediaHealthService.IssueType.None &&
-                r.Issue != MediaHealthService.IssueType.ZeroBytes &&
-                r.Issue != MediaHealthService.IssueType.UnreadableHeader &&
-                r.Issue != MediaHealthService.IssueType.SemicolonInComment));
+            _ => !IsScanning && AutoFixableCount > 0);
         DetectFfmpegCommand = new AsyncRelayCommand(RefreshFfmpegAsync);
         ReembedSemicolonCommand = new RelayCommand(_ => ReembedSemicolonFiles(),
             _ => !IsScanning && SemicolonFlaggedCount > 0);
@@ -78,13 +77,23 @@ public class MediaHealthViewModel : ViewModelBase
 
     // ── FFmpeg availability ─────────────────────────────────────────────────
     private bool _ffmpegAvailable;
-    public  bool FfmpegAvailable { get => _ffmpegAvailable; private set { _ffmpegAvailable = value; RaiseProperty(); } }
+    public  bool FfmpegAvailable { get => _ffmpegAvailable; private set { _ffmpegAvailable = value; RaiseProperty(); RaiseProperty(nameof(AutoFixableCount)); } }
 
     private string _ffmpegStatus = "Checking for ffmpeg…";
     public  string FfmpegStatus { get => _ffmpegStatus; private set { _ffmpegStatus = value; RaiseProperty(); } }
 
     public int FaststartFixableCount => Results.Count(r =>
         r.Issue == MediaHealthService.IssueType.NoFaststart);
+
+    public int ExtensionMismatchCount => Results.Count(r =>
+        r.Issue == MediaHealthService.IssueType.ExtensionMismatch);
+
+    /// <summary>
+    /// What Fix All Issues can act on right now: extension mismatches always, faststart
+    /// only when ffmpeg is available. Shown on the button.
+    /// </summary>
+    public int AutoFixableCount =>
+        ExtensionMismatchCount + (FfmpegAvailable ? FaststartFixableCount : 0);
 
     public int SemicolonFlaggedCount => Results.Count(r =>
         r.Issue == MediaHealthService.IssueType.SemicolonInComment);
@@ -298,6 +307,8 @@ public class MediaHealthViewModel : ViewModelBase
         RaiseProperty(nameof(SummaryLine));
         RaiseProperty(nameof(FaststartFixableCount));
         RaiseProperty(nameof(SemicolonFlaggedCount));
+        RaiseProperty(nameof(ExtensionMismatchCount));
+        RaiseProperty(nameof(AutoFixableCount));
     }
 
     /// <summary>
@@ -316,7 +327,7 @@ public class MediaHealthViewModel : ViewModelBase
 
     /// <summary>
     /// Stage 2: losslessly adds faststart to every MP4 flagged with NoFaststart.
-    /// Uses ffmpeg stream-copy — no re-encode, original timestamps preserved.
+    /// Uses ffmpeg stream-copy — no re-encode, every stream kept, timestamps preserved.
     /// </summary>
     private async Task FixAllFaststartAsync()
     {
@@ -327,58 +338,119 @@ public class MediaHealthViewModel : ViewModelBase
 
         var confirm = _dialogs.Show(
             $"Add faststart to {targets.Count} MP4 file(s)?\n\n" +
-            "This is a lossless remux (no quality loss, no re-encode). " +
-            "Each file is rewritten in place with its 'moov' atom moved to the front.\n\n" +
+            "This is a lossless remux (no quality loss, no re-encode) that keeps every stream — " +
+            "video, all audio and subtitle tracks, and cover art. Each file is rewritten in place " +
+            "with its 'moov' atom moved to the front.\n\n" +
             "Original timestamps are preserved. Continue?",
             "Fix Faststart",
             Services.DialogButtons.YesNo,
             Services.DialogIcon.Question);
         if (confirm != Services.DialogResult.Yes) return;
 
+        BeginFixing();
+        var outcome = new FixOutcome();
+        try
+        {
+            await RunFaststartBatchAsync(targets, outcome, _cts!.Token);
+        }
+        finally
+        {
+            EndFixing();
+        }
+
+        Status = outcome.Cancelled
+            ? $"Cancelled — {outcome.Faststart} file(s) fixed before stopping."
+            : outcome.Failed == 0
+                ? $"✓ Added faststart to {outcome.Faststart} file(s)."
+                : $"Fixed {outcome.Faststart}, failed {outcome.Failed}. See details below.";
+
+        ShowCompletion("Faststart", targets.Count, outcome);
+    }
+
+    // ── Shared fix plumbing (build 169) ───────────────────────────────────────
+
+    private sealed class FixOutcome
+    {
+        public int Renamed;
+        public int Faststart;
+        public int Failed;
+        public int Skipped;
+        public bool Cancelled;
+        public readonly System.Collections.Concurrent.ConcurrentQueue<string> Errors = new();
+    }
+
+    /// <summary>Shows the red "don't close" banner and disables the other buttons.</summary>
+    private void BeginFixing()
+    {
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
         IsScanning = true;
         IsFixing   = true;
-        _cts = new CancellationTokenSource();
-        var ct = _cts.Token;
+        Progress   = 0;
+        CommandManager.InvalidateRequerySuggested();
+    }
 
-        int fixedCount = 0, failed = 0, done = 0;
-        var errors  = new System.Collections.Concurrent.ConcurrentBag<string>();
-        // Map FilePath → fixed result so we can update rows on the UI thread afterwards
-        var succeededPaths = new System.Collections.Concurrent.ConcurrentDictionary<string, bool>(
+    private void EndFixing()
+    {
+        IsScanning = false;
+        IsFixing   = false;
+        RaiseCounts();
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    /// <summary>
+    /// Runs faststart over <paramref name="targets"/> with drive-appropriate parallelism,
+    /// updating progress as it goes and marking each fixed row OK. Cancel stops cleanly
+    /// (ffmpeg is killed; any file mid-fix keeps its original).
+    /// </summary>
+    private async Task RunFaststartBatchAsync(
+        List<MediaHealthService.HealthResult> targets, FixOutcome outcome, CancellationToken ct,
+        int progressOffset = 0, int progressTotal = 0)
+    {
+        if (targets.Count == 0) return;
+        if (progressTotal <= 0) progressTotal = targets.Count;
+
+        var succeeded = new System.Collections.Concurrent.ConcurrentDictionary<string, bool>(
             StringComparer.OrdinalIgnoreCase);
 
-        // Worker count based on drive type — faststart is I/O-bound (stream copy),
-        // not CPU-bound. Parallelising on HDD causes head-seek thrashing and is
-        // slower than sequential. DriveCapabilityService detects NVMe/SSD/HDD/Network
-        // and returns an appropriate concurrency level for each.
+        // faststart is I/O-bound (stream copy): parallel on SSD/NVMe, sequential-ish on HDD.
         var driveProfile = Services.DriveCapabilityService.GetProfile(targets[0].FilePath);
         int workers = driveProfile.RecommendedScanWorkers;
+        int done = 0;
 
-        await Parallel.ForEachAsync(targets,
-            new ParallelOptions { MaxDegreeOfParallelism = workers, CancellationToken = ct },
-            async (r, innerCt) =>
-            {
-                var res = await FfmpegService.AddFaststartAsync(r.FilePath, innerCt);
-                if (res.Success)
+        try
+        {
+            await Parallel.ForEachAsync(targets,
+                new ParallelOptions { MaxDegreeOfParallelism = workers, CancellationToken = ct },
+                async (r, innerCt) =>
                 {
-                    Interlocked.Increment(ref fixedCount);
-                    succeededPaths[r.FilePath] = true;
-                }
-                else
-                {
-                    Interlocked.Increment(ref failed);
-                    errors.Add($"{r.FileName}: {res.Message}");
-                }
+                    var res = await FfmpegService.AddFaststartAsync(r.FilePath, innerCt);
+                    if (res.Success)
+                    {
+                        Interlocked.Increment(ref outcome.Faststart);
+                        succeeded[r.FilePath] = true;
+                    }
+                    else if (!innerCt.IsCancellationRequested)
+                    {
+                        Interlocked.Increment(ref outcome.Failed);
+                        outcome.Errors.Enqueue($"{r.FileName}: {res.Message}");
+                    }
 
-                var d = Interlocked.Increment(ref done);
-                Progress = (int)(d * 100.0 / targets.Count);
-                Status   = $"Fixing faststart {d}/{targets.Count} ({workers} workers)…";
-            });
+                    var d = Interlocked.Increment(ref done);
+                    Progress = (int)((progressOffset + d) * 100.0 / progressTotal);
+                    Status   = $"Fixing faststart {d}/{targets.Count} ({workers} worker(s))… don't close VME.";
+                });
+        }
+        catch (OperationCanceledException)
+        {
+            outcome.Cancelled = true;
+        }
 
         // Update rows on the UI thread (ObservableCollection isn't thread-safe)
         for (int i = 0; i < Results.Count; i++)
         {
             var r = Results[i];
-            if (succeededPaths.ContainsKey(r.FilePath)
+            if (succeeded.ContainsKey(r.FilePath)
                 && r.Issue == MediaHealthService.IssueType.NoFaststart)
             {
                 Results[i] = r with
@@ -390,30 +462,29 @@ public class MediaHealthViewModel : ViewModelBase
                 };
             }
         }
+    }
 
-        var errorList = errors.ToList();
+    private void ShowCompletion(string what, int total, FixOutcome o)
+    {
+        var lines = new List<string>();
+        if (o.Renamed   > 0) lines.Add($"✓ {o.Renamed} extension(s) corrected");
+        if (o.Faststart > 0) lines.Add($"✓ {o.Faststart} file(s) given faststart (lossless, all streams kept)");
+        if (o.Skipped   > 0) lines.Add($"– {o.Skipped} skipped");
+        if (o.Failed    > 0) lines.Add($"✕ {o.Failed} failed");
+        if (lines.Count == 0) lines.Add("Nothing was changed.");
 
-        IsScanning = false;
-        IsFixing   = false;
-        Status = failed == 0
-            ? $"✓ Added faststart to {fixedCount} file(s)."
-            : $"Fixed {fixedCount}, failed {failed}. See details below.";
-        RaiseCounts();
-
-        // Completion notification — matches Move/Copy/Batch style
-        var msg = failed == 0
-            ? $"Faststart applied successfully.\n\n" +
-              $"✓ {fixedCount} of {targets.Count} file(s) processed.\n" +
-              "All fixes were lossless stream-copies (no quality loss)."
-            : $"Faststart fix complete with some failures.\n\n" +
-              $"✓ {fixedCount} succeeded\n✕ {failed} failed (of {targets.Count})\n\n" +
-              "First failures:\n" + string.Join("\n", errorList.Take(10));
+        var errors = o.Errors.ToList();
+        var msg = (o.Cancelled ? $"{what} cancelled.\n\n" : $"{what} complete.\n\n") +
+                  string.Join("\n", lines) +
+                  (errors.Count > 0
+                      ? "\n\nFirst problems:\n" + string.Join("\n", errors.Take(10)) +
+                        (errors.Count > 10 ? $"\n…and {errors.Count - 10} more" : string.Empty)
+                      : string.Empty);
 
         _dialogs.Show(msg,
-            failed == 0 ? "Health Check — Fix Complete" : "Health Check — Partial Success",
+            o.Failed == 0 && !o.Cancelled ? $"Health Check — {what} Complete" : $"Health Check — {what}",
             Services.DialogButtons.Ok,
-            failed == 0 ? Services.DialogIcon.Information
-                        : Services.DialogIcon.Warning);
+            o.Failed == 0 && !o.Cancelled ? Services.DialogIcon.Information : Services.DialogIcon.Warning);
     }
 
     // ── Remux to fix tagger-hostile / mismatched containers ───────────────────
@@ -501,70 +572,109 @@ public class MediaHealthViewModel : ViewModelBase
     /// <summary>
     /// Sequences auto-fixable issues in order of safety:
     ///   1. Extension mismatches  — rename only, lossless, instant
-    ///   2. No-faststart MP4s    — lossless container rewrite
-    /// ZeroBytes and UnreadableHeader are skipped — not auto-fixable.
+    ///   2. No-faststart MP4s    — lossless container rewrite (needs ffmpeg)
+    /// ZeroBytes, unreadable, unknown-container and semicolon files are left alone.
+    ///
+    /// Build 169: now confirms first (saying exactly what it will do), shows the red
+    /// "don't close" banner and live progress, refreshes the rows it fixed, can be
+    /// cancelled, and ends with the same summary dialog as Fix All Faststart. Before,
+    /// it ran silently and only changed the status line.
     /// </summary>
     private async Task FixAllIssuesAsync()
     {
-        var fixable = Results
-            .Where(r => r.Issue == MediaHealthService.IssueType.ExtensionMismatch ||
-                        r.Issue == MediaHealthService.IssueType.NoFaststart)
+        var mismatches = Results
+            .Where(r => r.Issue == MediaHealthService.IssueType.ExtensionMismatch)
+            .ToList();
+        var noFaststart = Results
+            .Where(r => r.Issue == MediaHealthService.IssueType.NoFaststart)
             .ToList();
 
-        if (fixable.Count == 0)
+        var canFaststart = FfmpegAvailable;
+        var plan = new List<string>();
+        if (mismatches.Count > 0)
+            plan.Add($"• Rename {mismatches.Count} file(s) whose extension doesn't match their real format (instant, no rewrite)");
+        if (noFaststart.Count > 0)
+            plan.Add(canFaststart
+                ? $"• Add faststart to {noFaststart.Count} MP4(s) (lossless remux, all streams kept — takes a while)"
+                : $"• Skip {noFaststart.Count} MP4(s) needing faststart — ffmpeg isn't installed (Settings → External Tools)");
+
+        int skippedOther = Results.Count(r =>
+            r.Issue is MediaHealthService.IssueType.ZeroBytes
+                    or MediaHealthService.IssueType.UnreadableHeader
+                    or MediaHealthService.IssueType.UnknownContainer
+                    or MediaHealthService.IssueType.SemicolonInComment);
+        if (skippedOther > 0)
+            plan.Add($"• Leave {skippedOther} file(s) with issues that need manual attention");
+
+        if (mismatches.Count == 0 && (noFaststart.Count == 0 || !canFaststart))
         {
-            Status = "No auto-fixable issues found.";
+            _dialogs.Show(
+                "There's nothing Fix All Issues can fix automatically.\n\n" + string.Join("\n", plan),
+                "Fix All Issues", Services.DialogButtons.Ok, Services.DialogIcon.Information);
             return;
         }
 
-        int fixed1 = 0, fixed2 = 0, failed = 0;
-        IsScanning = true;
+        var confirm = _dialogs.Show(
+            "Fix All Issues will:\n\n" + string.Join("\n", plan) + "\n\nContinue?",
+            "Fix All Issues", Services.DialogButtons.YesNo, Services.DialogIcon.Question);
+        if (confirm != Services.DialogResult.Yes) return;
 
-        // ── Phase 1: rename extension mismatches ───────────────────────────────
-        var mismatches = fixable
-            .Where(r => r.Issue == MediaHealthService.IssueType.ExtensionMismatch)
-            .ToList();
-        foreach (var r in mismatches)
+        BeginFixing();
+        var outcome = new FixOutcome { Skipped = canFaststart ? 0 : noFaststart.Count };
+        var ct = _cts!.Token;
+        int total = mismatches.Count + (canFaststart ? noFaststart.Count : 0);
+
+        try
         {
-            var correctExt = MediaHealthService.GetCorrectExtension(r);
-            if (correctExt == null) { failed++; continue; }
-            var newPath = System.IO.Path.ChangeExtension(r.FilePath, correctExt);
-            try
+            // ── Phase 1: rename extension mismatches ───────────────────────────
+            int i = 0;
+            foreach (var r in mismatches)
             {
-                System.IO.File.Move(r.FilePath, newPath);
-                ReplaceResult(r, newPath);
-                fixed1++;
+                if (ct.IsCancellationRequested) { outcome.Cancelled = true; break; }
+                i++;
+                Status = $"Correcting extension {i}/{mismatches.Count}: {r.FileName}";
+                var correctExt = MediaHealthService.GetCorrectExtension(r);
+                if (correctExt == null)
+                {
+                    outcome.Failed++;
+                    outcome.Errors.Enqueue($"{r.FileName}: couldn't tell which extension it should have.");
+                    continue;
+                }
+                var newPath = Path.ChangeExtension(r.FilePath, correctExt);
+                if (File.Exists(newPath))
+                {
+                    outcome.Failed++;
+                    outcome.Errors.Enqueue($"{r.FileName}: {Path.GetFileName(newPath)} already exists — not overwritten.");
+                    continue;
+                }
+                try
+                {
+                    File.Move(r.FilePath, newPath);
+                    ReplaceResult(r, newPath);
+                    outcome.Renamed++;
+                }
+                catch (Exception ex)
+                {
+                    outcome.Failed++;
+                    outcome.Errors.Enqueue($"{r.FileName}: {ex.Message}");
+                }
+                Progress = (int)(i * 100.0 / Math.Max(1, total));
             }
-            catch { failed++; }
-        }
 
-        // ── Phase 2: fix faststart ─────────────────────────────────────────────
-        var noFaststart = fixable
-            .Where(r => r.Issue == MediaHealthService.IssueType.NoFaststart)
-            .ToList();
-        if (noFaststart.Count > 0 && FfmpegAvailable)
+            // ── Phase 2: faststart ─────────────────────────────────────────────
+            if (!outcome.Cancelled && canFaststart && noFaststart.Count > 0)
+                await RunFaststartBatchAsync(noFaststart, outcome, ct,
+                    progressOffset: mismatches.Count, progressTotal: total);
+        }
+        finally
         {
-            using var cts = new System.Threading.CancellationTokenSource();
-            var profile = Services.DriveCapabilityService.GetProfile(noFaststart[0].FilePath);
-            await System.Threading.Tasks.Parallel.ForEachAsync(noFaststart,
-                new System.Threading.Tasks.ParallelOptions
-                {
-                    MaxDegreeOfParallelism = profile.RecommendedScanWorkers,
-                    CancellationToken = cts.Token
-                },
-                async (r, ct) =>
-                {
-                    var res = await FfmpegService.AddFaststartAsync(r.FilePath, ct);
-                    if (res.Success) System.Threading.Interlocked.Increment(ref fixed2);
-                    else            System.Threading.Interlocked.Increment(ref failed);
-                });
+            EndFixing();
         }
 
-        IsScanning = false;
-        Status = $"Fix All: {fixed1} extension(s) renamed, {fixed2} faststart(s) fixed" +
-                 (failed > 0 ? $", {failed} failed." : ".");
-        RaiseProperty(nameof(FixAllFaststartCommand));
-        RaiseProperty(nameof(FixAllIssuesCommand));
+        Status = (outcome.Cancelled ? "Cancelled — " : "Fix All: ") +
+                 $"{outcome.Renamed} extension(s) corrected, {outcome.Faststart} faststart(s) added" +
+                 (outcome.Failed > 0 ? $", {outcome.Failed} failed." : ".");
+        ShowCompletion("Fix All Issues", total, outcome);
         RaiseProperty(nameof(ReembedSemicolonCommand));
     }
 }

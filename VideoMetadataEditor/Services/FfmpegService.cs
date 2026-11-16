@@ -263,9 +263,10 @@ public static class FfmpegService
     private static async Task<(bool ok, string err)> RunAsync(
         string exe, string args, CancellationToken ct)
     {
+        Process? proc = null;
         try
         {
-            using var proc = new Process
+            proc = new Process
             {
                 StartInfo = new ProcessStartInfo(exe, args)
                 {
@@ -282,8 +283,23 @@ public static class FfmpegService
             return (proc.ExitCode == 0,
                 proc.ExitCode == 0 ? string.Empty : LastLine(stderr));
         }
-        catch (OperationCanceledException) { return (false, "Cancelled."); }
-        catch (Exception ex)               { return (false, ex.Message); }
+        catch (OperationCanceledException)
+        {
+            // Build 169: actually stop ffmpeg. Before, Cancel only stopped WAITING — ffmpeg
+            // kept running and kept the temp file open, so it couldn't be cleaned up.
+            try
+            {
+                if (proc is { HasExited: false })
+                {
+                    proc.Kill(entireProcessTree: true);
+                    proc.WaitForExit(5000);
+                }
+            }
+            catch { /* already gone */ }
+            return (false, "Cancelled.");
+        }
+        catch (Exception ex) { return (false, ex.Message); }
+        finally { proc?.Dispose(); }
     }
 
     private static string LastLine(string s)

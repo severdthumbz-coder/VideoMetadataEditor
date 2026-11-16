@@ -5093,11 +5093,14 @@
                                 </Button>
 
                                 <!-- Fix all auto-fixable issues in sequence -->
-                                <Button Content="🔧 Fix All Issues"
-                                        Style="{StaticResource PrimaryButton}"
+                                <Button Style="{StaticResource PrimaryButton}"
                                         Padding="12,6"
                                         Command="{Binding MediaHealthVM.FixAllIssuesCommand}"
-                                        ToolTip="Auto-fix all fixable issues in sequence: rename extension mismatches, then fix faststart. ZeroBytes and unreadable files are skipped — they require manual intervention."/>
+                                        ToolTip="Auto-fix everything that can be fixed automatically: correct extension mismatches (instant rename), then add faststart to MP4s (needs ffmpeg). Asks first and shows what it will do. Empty, unreadable and unknown-container files are left for you to handle.">
+                                    <TextBlock>
+                                        <Run Text="🔧 Fix All Issues ("/><Run Text="{Binding MediaHealthVM.AutoFixableCount, Mode=OneWay}"/><Run Text=")"/>
+                                    </TextBlock>
+                                </Button>
                                 <Button Padding="12,6"
                                         Command="{Binding MediaHealthVM.ReembedSemicolonCommand}"
                                         ToolTip="Loads files flagged for a semicolon in their stored comment into the FILES panel so you can re-fetch metadata and Embed cleanly on this build. Semicolon files are not touched by Fix All Issues because the remedy is re-embedding, not remuxing.">
@@ -5640,6 +5643,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 169 — Fix All Issues now shows what it's doing
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Health Check's Fix All Issues used to run silently. It had no confirmation, no red "don't close" banner, no progress, didn't update the list and didn't show a summary. It could also be enabled when nothing it handles was found, so clicking it appeared to do nothing. It now shows its count on the button, is enabled only when it can fix something, says exactly what it will do before starting, shows the banner and live progress, updates the rows it fixes, and ends with a summary. It uses the same code as Fix All Faststart. Cancel now stops ffmpeg and returns the screen to normal. Before, ffmpeg kept running and the banner could stay up.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 168 — Fix Faststart no longer loses streams or files
                                     </TextBlock>

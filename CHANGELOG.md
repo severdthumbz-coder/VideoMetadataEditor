@@ -2,6 +2,26 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 169 — Fix All Issues now shows what it's doing
+
+Health Check's 🔧 Fix All Issues button often looked like it did nothing. Two reasons:
+
+- **It could be enabled with nothing to fix.** It turned on for any issue, including ones it never handles (unknown container, for example). Clicking it then only changed the status line to "No auto-fixable issues found." It's now enabled only when there's something it can fix, and the button shows the count, e.g. **🔧 Fix All Issues (12)**.
+- **When it did work, it was silent.** No confirmation, no red "don't close" banner, no progress, no summary, and the fixed rows weren't updated, so the list looked unchanged.
+
+Now it:
+- asks first and lists exactly what it will do (extension renames, faststart fixes, what it will skip and why, including "ffmpeg isn't installed");
+- shows the red banner and live progress, as Fix All Faststart does;
+- updates each row it fixes;
+- ends with a summary dialog listing anything that failed;
+- won't overwrite an existing file when correcting an extension.
+
+Both buttons now share one faststart routine.
+
+**Cancel fixed.** Cancelling a faststart run used to leave FFmpeg running in the background with its temp file open, and could leave the red banner up. Cancel now stops FFmpeg, keeps each original intact, and returns the screen to normal.
+
+---
+
 ## v1.4.0 Build 168 — Fix Faststart no longer loses streams or files
 
 **Important fix.** Found while checking why two TV shows had no posters.
