@@ -117,7 +117,18 @@ public static class FfmpegService
 
     /// <summary>
     /// Adds faststart to an MP4 in place (moov atom moved to front) via lossless remux.
-    /// Writes to a temp file, then atomically replaces the original on success.
+    ///
+    /// Build 168 rewrite — the old version could lose data:
+    ///  • It ran "-c copy" WITHOUT "-map 0", so ffmpeg kept only one video, one audio and
+    ///    one subtitle stream. Embedded cover art (an attached-picture stream), extra audio
+    ///    languages and extra subtitle tracks were silently dropped.
+    ///  • It deleted the original BEFORE moving the temp into place, and if that move failed
+    ///    it deleted the temp too — the only remaining copy.
+    ///
+    /// Now: every stream is kept (-map 0, data streams excluded), the output is checked
+    /// (size and moov-first) before it's trusted, and the original is replaced in a single
+    /// overwrite-move, so at every moment at least one complete copy exists. The temp is
+    /// only deleted when the original is confirmed still present.
     /// </summary>
     public static async Task<FixResult> AddFaststartAsync(
         string filePath, CancellationToken ct = default)
@@ -137,30 +148,68 @@ public static class FfmpegService
             tempOut = Path.Combine(dir,
                 $"{Path.GetFileNameWithoutExtension(filePath)}{FaststartTempMarker} ({tn++}){Path.GetExtension(filePath)}");
 
-        // -c copy = stream copy (lossless), +faststart relocates moov to front
-        var args = $"-y -i \"{filePath}\" -c copy -movflags +faststart \"{tempOut}\"";
+        var originalSize = new FileInfo(filePath).Length;
+
+        // -map 0      keep EVERY stream: all video incl. cover art, all audio, all subtitles
+        // -dn         except data streams (timecode etc.), which the MP4 muxer often rejects
+        // -c copy     stream copy — lossless, no re-encode
+        // -map_metadata 0 / -map_chapters 0   keep tags and chapters
+        // +faststart  move the moov atom to the front
+        var args = $"-y -i \"{filePath}\" -map 0 -dn -c copy -map_metadata 0 -map_chapters 0 " +
+                   $"-movflags +faststart \"{tempOut}\"";
 
         var (ok, err) = await RunAsync(exe, args, ct);
         if (!ok || !File.Exists(tempOut))
         {
-            TryDelete(tempOut);
+            TryDelete(tempOut);   // original untouched — safe to discard the temp
             return new FixResult(false, $"ffmpeg failed: {err}", null);
         }
 
-        try
-        {
-            // Preserve original timestamps
-            var origWrite = File.GetLastWriteTimeUtc(filePath);
-            File.Delete(filePath);
-            File.Move(tempOut, filePath);
-            File.SetLastWriteTimeUtc(filePath, origWrite);
-            return new FixResult(true, "Faststart added (lossless remux).", filePath);
-        }
-        catch (Exception ex)
+        // ── Verify before trusting the new file ──────────────────────────────
+        var newSize = new FileInfo(tempOut).Length;
+        if (newSize < originalSize * 0.95)
         {
             TryDelete(tempOut);
-            return new FixResult(false, $"Couldn't replace original: {ex.Message}", null);
+            return new FixResult(false,
+                $"Output was {newSize:N0} bytes vs {originalSize:N0} original — more than 5% smaller, " +
+                "so streams may have been lost. Original left unchanged.", null);
         }
+        if (MediaHealthService.CheckMp4Faststart(tempOut) != true)
+        {
+            TryDelete(tempOut);
+            return new FixResult(false, "Output didn't come out as faststart. Original left unchanged.", null);
+        }
+
+        // ── Replace: one overwrite-move. Either it succeeds, or the original stays. ──
+        var origWrite = File.GetLastWriteTimeUtc(filePath);
+        Exception? last = null;
+        for (int attempt = 1; attempt <= 5; attempt++)
+        {
+            try
+            {
+                File.Move(tempOut, filePath, overwrite: true);
+                try { File.SetLastWriteTimeUtc(filePath, origWrite); } catch { /* cosmetic */ }
+                return new FixResult(true, "Faststart added (lossless remux, all streams kept).", filePath);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Usually a brief lock (Plex, antivirus, Explorer preview). Wait and retry.
+                last = ex;
+                if (attempt < 5) await Task.Delay(1000 * attempt, CancellationToken.None);
+            }
+        }
+
+        // Couldn't replace. Only discard the temp if the original is definitely still there;
+        // otherwise the temp IS the file and must be kept (startup recovery will offer to restore it).
+        if (File.Exists(filePath) && new FileInfo(filePath).Length > 0)
+        {
+            TryDelete(tempOut);
+            return new FixResult(false,
+                $"Couldn't replace the original (in use?): {last?.Message} Original left unchanged.", null);
+        }
+        return new FixResult(false,
+            $"Couldn't replace the original: {last?.Message} The fixed copy was kept as " +
+            $"\"{Path.GetFileName(tempOut)}\" — rename it to \"{Path.GetFileName(filePath)}\".", tempOut);
     }
 
     /// <summary>
@@ -192,7 +241,13 @@ public static class FfmpegService
         // For MP4 output, also apply faststart while we're remuxing
         var extra = targetExt.Equals(".mp4", StringComparison.OrdinalIgnoreCase)
             ? "-movflags +faststart " : string.Empty;
-        var args = $"-y -i \"{filePath}\" -c copy {extra}\"{outPath}\"";
+        // Build 168: MKV can hold any stream, so keep them all (every audio/subtitle track,
+        // attachments). MP4 output keeps ffmpeg's default selection, because image-based
+        // subtitles from MKV can't go into MP4 — the result is a candidate the user reviews
+        // before it replaces anything.
+        var mapAll = targetExt.Equals(".mkv", StringComparison.OrdinalIgnoreCase)
+            ? "-map 0 -dn -map_metadata 0 -map_chapters 0 " : string.Empty;
+        var args = $"-y -i \"{filePath}\" {mapAll}-c copy {extra}\"{outPath}\"";
 
         var (ok, err) = await RunAsync(exe, args, ct);
         if (!ok || !File.Exists(outPath))

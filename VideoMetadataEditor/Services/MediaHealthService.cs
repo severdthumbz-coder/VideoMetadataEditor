@@ -209,7 +209,7 @@ public static class MediaHealthService
     /// Returns true if MP4 has faststart (moov before mdat), false if not,
     /// null if it couldn't be determined. Scans top-level atoms only.
     /// </summary>
-    private static bool? CheckMp4Faststart(string filePath)
+    internal static bool? CheckMp4Faststart(string filePath)
     {
         try
         {

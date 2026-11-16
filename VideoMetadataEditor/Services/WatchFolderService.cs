@@ -233,8 +233,10 @@ public sealed class WatchFolderService : IDisposable
         _ = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => _inFlight.TryRemove(path, out byte _));
     }
 
+    // Build 168: skip ALL of VME's own working files (faststart temps, remux candidates,
+    // .vme_ temps), not just .vme_ ones — the watcher used to adopt faststart temps.
     private static bool IsVideoFile(string path) =>
-        !Path.GetFileName(path).StartsWith(".vme_", StringComparison.OrdinalIgnoreCase)
+        !WorkingFileFilter.IsWorkingFile(path)
         && VideoExtensions.Contains(Path.GetExtension(path));
 
     public void Dispose() => Stop();

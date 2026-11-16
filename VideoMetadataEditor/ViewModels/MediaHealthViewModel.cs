@@ -213,6 +213,8 @@ public class MediaHealthViewModel : ViewModelBase
             var files = Directory.EnumerateFiles(Folder, "*",
                     IncludeSubfolders ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly)
                 .Where(f => ext.Contains(Path.GetExtension(f)))
+                // Build 168: never health-check (or "fix") VME's own temp files.
+                .Where(f => !Services.WorkingFileFilter.IsWorkingFile(f))
                 .ToList();
 
             if (files.Count == 0)

@@ -235,14 +235,34 @@ public partial class MainViewModel
         };
         if (dlg.ShowDialog() != true) return;
         var folder = dlg.FolderName;
-        if (ExtraLibraryFolders.Contains(folder)) return;
-        if (string.Equals(folder, Settings.LibraryFolderPath, StringComparison.OrdinalIgnoreCase)) return;
+        // Build 168: compare normalised paths against the SAVED list too, not just the chips
+        // on screen — a folder on a drive that was offline at startup has no chip, and
+        // re-adding it used to save a duplicate.
+        var key = NormalizeFolder(folder);
+        if (key == NormalizeFolder(Settings.LibraryFolderPath))
+        {
+            StatusText = "That folder is already the main library folder.";
+            return;
+        }
+        if (Settings.ExtraLibraryFolders.Any(f => NormalizeFolder(f) == key))
+        {
+            if (!ExtraLibraryFolders.Any(f => NormalizeFolder(f) == key) && Directory.Exists(folder))
+            {
+                // Saved but not shown (drive was offline at startup) — just show it again.
+                ExtraLibraryFolders.Add(Settings.ExtraLibraryFolders.First(f => NormalizeFolder(f) == key));
+                RaiseProperty(nameof(HasExtraFolders));
+            }
+            StatusText = $"{folder} is already in the library.";
+            return;
+        }
         ExtraLibraryFolders.Add(folder);
         Settings.ExtraLibraryFolders.Add(folder);
         RaiseProperty(nameof(HasExtraFolders));
         _ = App.ConfigService.SaveAsync();
         StatusText = $"Extra folder added: {folder}";
     }
+
+    private static string NormalizeFolder(string? path) => Services.LibraryFolderList.Normalize(path);
 
     private void ClearLibraryCache()
     {
@@ -936,6 +956,26 @@ public partial class MainViewModel
 
             if (orphans.Count == 0) return;
 
+            // Build 168: a faststart temp VIDEO whose original no longer exists is not a
+            // leftover — it's the only copy of that video (an older faststart fix deleted
+            // the original and then failed to rename the temp into place). Never offer to
+            // delete those; offer to restore them instead.
+            var videoExts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                { ".mp4", ".m4v", ".mov", ".mkv" };
+            var stranded = orphans
+                .Where(p => videoExts.Contains(System.IO.Path.GetExtension(p)))
+                .Select(p => (temp: p, original: Services.WorkingFileFilter.FaststartOriginalFor(p)))
+                .Where(x => x.original != null && !System.IO.File.Exists(x.original))
+                .Select(x => (x.temp, original: x.original!))
+                .ToList();
+            if (stranded.Count > 0)
+            {
+                var strandedSet = new HashSet<string>(stranded.Select(x => x.temp), StringComparer.OrdinalIgnoreCase);
+                orphans = orphans.Where(p => !strandedSet.Contains(p)).ToList();
+                await OfferRestoreStrandedAsync(stranded);
+            }
+            if (orphans.Count == 0) return;
+
             // Separate the two kinds for clearer messaging
             var faststartTemps = orphans
                 .Where(p => System.IO.Path.GetFileNameWithoutExtension(p)
@@ -959,9 +999,10 @@ public partial class MainViewModel
                 // Build a description tailored to what was found
                 var parts = new List<string>();
                 if (faststartTemps.Count > 0)
-                    parts.Add($"{faststartTemps.Count} incomplete faststart temp file(s) " +
-                              "(*.faststart.tmp.*) — leftovers from a Fix All Faststart that was " +
-                              "interrupted. These are incomplete and safe to delete; your originals are intact");
+                    parts.Add($"{faststartTemps.Count} faststart temp file(s) (*.faststart.tmp.*) — " +
+                              "leftovers from an interrupted Fix Faststart, or .nfo files written for them. " +
+                              "Each one's original video is still present, so these are safe to delete " +
+                              "(they go to the Recycle Bin)");
                 if (remuxCandidates.Count > 0)
                     parts.Add($"{remuxCandidates.Count} un-committed remux copy(ies) (*.remux.*) — " +
                               "clean copies never committed via Replace/Restore. Originals are intact");
@@ -994,6 +1035,55 @@ public partial class MainViewModel
             });
         }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[RemuxSweep] {ex.Message}"); }
+    }
+
+    /// <summary>
+    /// Build 168: offers to rename stranded faststart temps back to their original names.
+    /// Only renames when the original name is still free; never deletes anything.
+    /// </summary>
+    private async Task OfferRestoreStrandedAsync(List<(string temp, string original)> stranded)
+    {
+        Log($"[{DateTime.Now:HH:mm:ss}] ⚠ Startup: {stranded.Count} video(s) exist only as a faststart temp file " +
+            "(original missing): " + string.Join(", ", stranded.Select(x => System.IO.Path.GetFileName(x.temp))));
+
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher == null) return;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var preview = string.Join("\n", stranded.Take(8).Select(x =>
+                $"  • {System.IO.Path.GetFileName(x.temp)}\n      → {System.IO.Path.GetFileName(x.original)}"));
+            if (stranded.Count > 8) preview += $"\n  …and {stranded.Count - 8} more";
+
+            var res = System.Windows.MessageBox.Show(
+                $"{stranded.Count} video(s) exist only as a faststart temp file — the original is missing.\n\n" +
+                preview + "\n\n" +
+                "An earlier Fix Faststart removed the original and then couldn't rename the fixed copy " +
+                "into place. The temp file is the complete, fixed video.\n\n" +
+                "Rename them back to their original names now?\n" +
+                "(Choose No to leave them as they are. VME will ask again next launch.)",
+                "Restore Videos From Interrupted Faststart Fix",
+                System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+
+            if (res != System.Windows.MessageBoxResult.Yes) return;
+
+            int restored = 0;
+            foreach (var (temp, original) in stranded)
+            {
+                try
+                {
+                    if (System.IO.File.Exists(original)) continue;   // never overwrite
+                    System.IO.File.Move(temp, original);
+                    restored++;
+                    Log($"[{DateTime.Now:HH:mm:ss}] ✓ Restored {System.IO.Path.GetFileName(original)}");
+                }
+                catch (Exception ex)
+                {
+                    Log($"[{DateTime.Now:HH:mm:ss}] ✗ Couldn't restore {System.IO.Path.GetFileName(original)}: {ex.Message}");
+                }
+            }
+            StatusText = $"Restored {restored} of {stranded.Count} video(s) from faststart temp files.";
+        });
     }
 
     /// <summary>

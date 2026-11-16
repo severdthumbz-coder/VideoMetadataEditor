@@ -56,6 +56,8 @@
     <Compile Include="../VideoMetadataEditor/Services/UpdateCheckService.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/OpenSubtitlesService.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/SingleInstanceService.cs"/>
+    <Compile Include="../VideoMetadataEditor/Services/WorkingFileFilter.cs"/>
+    <Compile Include="../VideoMetadataEditor/Services/LibraryFolderList.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/Models.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/LibraryModels.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/SubtitleModels.cs"/>

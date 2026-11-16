@@ -5641,6 +5641,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 168 — Fix Faststart no longer loses streams or files
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Important fix. Health Check's Fix Faststart kept only one video, one audio and one subtitle stream, so it removed embedded cover art (posters) and any extra audio or subtitle tracks. It could also leave an episode existing only as a ".faststart.tmp" file. It now keeps every stream, checks the result before using it, and replaces the original in a single step, so a complete copy always exists. On startup, VME offers to rename stranded temp files back to their original names instead of offering to delete them. The folder watcher, Library scan and Health Check now ignore VME's own temp files, which had been picked up as new episodes and given .nfo files. Remux to MKV keeps every track. Also: duplicate extra library folders are cleaned up and can't be added again, and TV show posters use the first episode whose artwork actually loads, falling back to poster.jpg or folder.jpg in the show folder.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 167 — Clearer advice when a connection is intercepted
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

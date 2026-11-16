@@ -65,8 +65,7 @@ public class LibraryScanService
             foreach (var f in Directory.EnumerateFiles(folder, "*.*", opt))
             {
                 if (!VideoExtensions.Contains(SysPath.GetExtension(f))) continue;
-                if (SysPath.GetFileName(f).StartsWith(".vme_tmp_", StringComparison.OrdinalIgnoreCase)) continue;
-                if (SysPath.GetFileName(f).StartsWith(".vme_bak_", StringComparison.OrdinalIgnoreCase)) continue;
+                if (WorkingFileFilter.IsWorkingFile(f)) continue;   // build 168: temps never become episodes
                 try
                 {
                     var fi = new FileInfo(f);
@@ -273,7 +272,7 @@ public class LibraryScanService
     public async Task<LibraryEntry?> BuildSingleEntryAsync(string path)
     {
         if (!VideoExtensions.Contains(SysPath.GetExtension(path))) return null;
-        if (SysPath.GetFileName(path).StartsWith(".vme_", StringComparison.OrdinalIgnoreCase)) return null;
+        if (WorkingFileFilter.IsWorkingFile(path)) return null;
 
         return await Task.Run(() =>
         {

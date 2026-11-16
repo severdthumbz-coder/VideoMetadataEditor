@@ -1330,7 +1330,7 @@ public partial class MainViewModel
                 return new VideoMetadataEditor.Models.TvShowNode
                 {
                     ShowTitle = sg.Key,
-                    CoverArt  = sg.FirstOrDefault(e => e.CoverArt != null)?.CoverArt,
+                    CoverArt  = PickShowCover(sg),
                     Seasons   = seasons
                 };
             }).ToList();
@@ -2673,4 +2673,52 @@ public partial class MainViewModel
     }
 
 
+
+    // ── Show poster for the TV tree (build 168) ─────────────────────────────────
+    // Previously: the first episode whose CoverArt was non-null — even an empty or
+    // undecodable one — and nothing at all when no episode had embedded art.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte[]?> _showPosterFileCache =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    private static byte[]? PickShowCover(IEnumerable<Models.LibraryEntry> episodes)
+    {
+        var list = episodes.ToList();
+
+        // 1) First episode whose embedded art actually decodes.
+        var good = list.FirstOrDefault(e => e.CoverArt is { Length: > 0 } && e.CoverSource != null);
+        if (good != null) return good.CoverArt;
+
+        // 2) A poster image in the show folder (Plex/Jellyfin/Kodi convention).
+        var any = list.FirstOrDefault(e => !string.IsNullOrEmpty(e.FilePath));
+        if (any != null)
+        {
+            var epDir = System.IO.Path.GetDirectoryName(any.FilePath);
+            var showDir = epDir;
+            var seasonName = System.IO.Path.GetFileName(epDir ?? string.Empty);
+            if (seasonName.StartsWith("Season", StringComparison.OrdinalIgnoreCase)
+                || seasonName.StartsWith("Specials", StringComparison.OrdinalIgnoreCase))
+                showDir = System.IO.Path.GetDirectoryName(epDir);
+
+            if (!string.IsNullOrEmpty(showDir))
+            {
+                var art = _showPosterFileCache.GetOrAdd(showDir, dir =>
+                {
+                    foreach (var name in new[] { "poster.jpg", "poster.png", "folder.jpg", "folder.png", "show.jpg", "cover.jpg" })
+                    {
+                        try
+                        {
+                            var f = System.IO.Path.Combine(dir, name);
+                            if (System.IO.File.Exists(f)) return System.IO.File.ReadAllBytes(f);
+                        }
+                        catch { /* unreadable — try the next name */ }
+                    }
+                    return null;
+                });
+                if (art is { Length: > 0 }) return art;
+            }
+        }
+
+        // 3) Any embedded art at all (may still fail to decode, but it's all we have).
+        return list.FirstOrDefault(e => e.CoverArt is { Length: > 0 })?.CoverArt;
+    }
 }

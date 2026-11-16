@@ -1949,7 +1949,16 @@ public partial class MainViewModel : INotifyPropertyChanged
             }
         }, p => p is string);
 
-        // Restore extra folders from settings
+        // Restore extra folders from settings.
+        // Build 168: first remove duplicates already saved (same folder listed twice, or
+        // differing only by case / trailing slash, or equal to the primary folder), then
+        // persist the cleaned list. Duplicates showed up as two identical chips.
+        var cleaned = Services.LibraryFolderList.Dedupe(Settings.ExtraLibraryFolders, Settings.LibraryFolderPath);
+        if (cleaned.Count != Settings.ExtraLibraryFolders.Count)
+        {
+            Settings.ExtraLibraryFolders = cleaned;
+            _ = App.ConfigService.SaveAsync();
+        }
         foreach (var f in Settings.ExtraLibraryFolders
             .Where(f => !string.IsNullOrWhiteSpace(f) && Directory.Exists(f)))
             ExtraLibraryFolders.Add(f);

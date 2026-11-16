@@ -2,6 +2,21 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 168 — Fix Faststart no longer loses streams or files
+
+**Important fix.** Found while checking why two TV shows had no posters.
+
+- **Fix Faststart kept only some streams.** Health Check's Fix Faststart ran FFmpeg without `-map 0`, so FFmpeg kept one video, one audio and one subtitle stream and dropped the rest. Embedded cover art (stored as a picture stream), extra audio languages and extra subtitle tracks were removed from every file it fixed. That's why shows whose episodes had all been fixed lost their poster in the Library. It now keeps every stream (`-map 0`, data streams excluded) along with tags and chapters. **Files fixed by earlier builds don't get those streams back.** Re-embed artwork with TV Batch or Apply + Embed.
+- **Fix Faststart could leave a video existing only as a temp file.** It deleted the original first and then moved the fixed copy into place. If the move failed, it also tried to delete the fixed copy. It now checks the output (size within 5% of the original, moov atom first), replaces the original in a single overwrite-move with retries, and only deletes the temp when the original is confirmed present. At every step, a complete copy exists.
+- **Startup recovery restores instead of deleting.** A `*.faststart.tmp.mp4` whose original is missing is now recognised as the only copy of that video. VME offers to rename it back, never overwrites an existing file, and leaves it out of the delete prompt. The delete prompt's wording no longer claims originals are always intact.
+- **VME's own temp files are ignored.** The folder watcher, Library scan and Health Check now skip `*.faststart.tmp.*`, `*.remux.*` and `.vme_*` files. Before, the watcher treated a faststart temp as a new episode, wrote a `.faststart.tmp.nfo` for it, and the Library counted it.
+- **Remux to MKV keeps every track** (all audio, subtitles, attachments, chapters). Remux to MP4 is unchanged; it's a candidate you review before it replaces anything.
+- **Duplicate extra library folders.** The same folder could be saved twice, for example by re-adding a folder on a drive that was offline at startup, and it showed as two identical chips. Duplicates (including case and trailing-slash differences, or the main folder) are removed on load and can't be added again.
+- **TV show posters** now come from the first episode whose artwork actually loads, then from `poster.jpg` or `folder.jpg` in the show folder.
+- Tests added for temp-file detection, mapping a stranded temp back to its original name, and folder de-duplication.
+
+---
+
 ## v1.4.0 Build 167 — Clearer advice when a connection is intercepted
 
 Testing build 166 showed the real cause of the OpenSubtitles failure: "The remote certificate is invalid because of errors in the certificate chain: UntrustedRoot." The advice shown with it ("usually temporary, try again") was wrong for that case.
