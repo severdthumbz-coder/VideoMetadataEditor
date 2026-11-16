@@ -5641,6 +5641,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 167 — Clearer advice when a connection is intercepted
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        When OpenSubtitles fails because the PC doesn't trust the site's certificate (for example "UntrustedRoot"), the message no longer says "usually temporary, try again". It now explains that something on the PC or network is intercepting the connection, that retrying won't help, and lists the usual causes: antivirus web/HTTPS protection, a DNS or ad blocker, or a hosts-file entry. It also suggests opening api.opensubtitles.com in a browser to see who issued the certificate.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 166 — Fixes from the build 165 test pass
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

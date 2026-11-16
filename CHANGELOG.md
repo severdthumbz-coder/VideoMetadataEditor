@@ -2,6 +2,18 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 167 — Clearer advice when a connection is intercepted
+
+Testing build 166 showed the real cause of the OpenSubtitles failure: "The remote certificate is invalid because of errors in the certificate chain: UntrustedRoot." The advice shown with it ("usually temporary, try again") was wrong for that case.
+
+- **Certificate errors get their own message.** When the PC doesn't trust the certificate presented for api.opensubtitles.com, VME now says that something on the PC or network is intercepting the connection and that retrying won't help. It lists the usual causes: web/HTTPS protection in antivirus software, a DNS or ad blocker (AdGuard, Pi-hole, NextDNS, router filter), or an entry in the Windows hosts file.
+- It also suggests opening https://api.opensubtitles.com in a browser, where the certificate warning shows who issued the certificate and so which program is responsible.
+- Other secure-connection failures keep the "usually temporary" advice.
+- Certificate failures are no longer retried automatically. The same certificate comes back every time, so the retry only added a 1.5-second wait.
+- Test added using the exact error from the real PC.
+
+---
+
 ## v1.4.0 Build 166 — Fixes from the build 165 test pass
 
 Fixes for the problems found when build 165 was tested on a real library.

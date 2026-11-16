@@ -230,7 +230,10 @@ public class OpenSubtitlesService
         {
             return await _http.SendAsync(makeRequest(), ct);
         }
-        catch (HttpRequestException) when (!ct.IsCancellationRequested)
+        // Not retried: certificate failures (AuthenticationException) — the same
+        // certificate comes back every time, so a retry only adds a delay (build 167).
+        catch (HttpRequestException ex) when (!ct.IsCancellationRequested
+            && ex.InnerException is not System.Security.Authentication.AuthenticationException)
         {
             await Task.Delay(1500, ct);
             return await _http.SendAsync(makeRequest(), ct);
@@ -257,10 +260,28 @@ public class OpenSubtitlesService
         }
         var text = string.Join(" → ", parts);
 
-        if (ex is HttpRequestException && text.Contains("SSL", StringComparison.OrdinalIgnoreCase))
-            text += "  (Couldn't open a secure connection to api.opensubtitles.com. Usually temporary — " +
-                    "try again in a minute. If it keeps happening, antivirus HTTPS/web scanning, a VPN " +
-                    "or a firewall may be blocking that site.)";
+        if (ex is HttpRequestException)
+        {
+            // Build 167: a certificate the PC doesn't trust (UntrustedRoot, name mismatch,
+            // revoked…) is NOT a temporary glitch — something between VME and the site is
+            // presenting its own certificate. Say so, instead of "try again".
+            var certProblem = text.Contains("certificate", StringComparison.OrdinalIgnoreCase)
+                           || text.Contains("UntrustedRoot", StringComparison.OrdinalIgnoreCase)
+                           || text.Contains("RemoteCertificate", StringComparison.OrdinalIgnoreCase);
+
+            if (certProblem)
+                text += "  (Something on this PC or network is intercepting the connection to " +
+                        "api.opensubtitles.com and presenting a certificate Windows doesn't trust. " +
+                        "Retrying won't help. Common causes: web/HTTPS protection in antivirus " +
+                        "software, a DNS or ad blocker (AdGuard, Pi-hole, NextDNS, router filter) " +
+                        "that blocks OpenSubtitles, or an opensubtitles entry in the Windows hosts " +
+                        "file. Open https://api.opensubtitles.com in your browser — its certificate " +
+                        "warning shows who issued the certificate, which names the program responsible.)";
+            else if (text.Contains("SSL", StringComparison.OrdinalIgnoreCase))
+                text += "  (Couldn't open a secure connection to api.opensubtitles.com. Usually temporary — " +
+                        "try again in a minute. If it keeps happening, antivirus HTTPS/web scanning, a VPN " +
+                        "or a firewall may be blocking that site.)";
+        }
         return text;
     }
 

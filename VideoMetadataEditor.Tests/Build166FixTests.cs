@@ -29,6 +29,23 @@ public class Build166FixTests
     }
 
     [Fact]
+    public void Describe_UntrustedCertificate_SaysInterceptedNotTemporary()
+    {
+        // The exact chain seen on a real PC in build 166 testing.
+        var ex = new HttpRequestException(
+            "The SSL connection could not be established, see inner exception.",
+            new System.Security.Authentication.AuthenticationException(
+                "The remote certificate is invalid because of errors in the certificate chain: UntrustedRoot"));
+
+        var text = OpenSubtitlesService.Describe(ex);
+
+        Assert.Contains("UntrustedRoot", text);
+        Assert.Contains("intercepting", text);
+        Assert.Contains("Retrying won't help", text);
+        Assert.DoesNotContain("Usually temporary", text);
+    }
+
+    [Fact]
     public void Describe_PlainException_IsJustItsMessage()
     {
         Assert.Equal("boom", OpenSubtitlesService.Describe(new InvalidOperationException("boom")));
