@@ -24,6 +24,12 @@
     <None Include="Assets\tiny.mp4">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- Build 173: real multi-stream sample (1 video, eng+jpn audio, eng subtitle, cover
+         art, moov at end) plus captured ffprobe / ffmpeg output for the stream checker. -->
+    <None Include="Assets\multistream.mp4"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></None>
+    <None Include="Assets\probe_multistream.json"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></None>
+    <None Include="Assets\probe_old_faststart_bug.json"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></None>
+    <None Include="Assets\ffmpeg_info_multistream.txt"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></None>
   </ItemGroup>
   <!-- Reference the compiled assemblies we need via file copies — avoid WPF dependency -->
   <ItemGroup>
@@ -60,6 +66,7 @@
     <Compile Include="../VideoMetadataEditor/Services/LibraryFolderList.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/NaturalStringComparer.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/ThumbCacheKeys.cs"/>
+    <Compile Include="../VideoMetadataEditor/Services/MediaProbeService.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/Models.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/LibraryModels.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/SubtitleModels.cs"/>

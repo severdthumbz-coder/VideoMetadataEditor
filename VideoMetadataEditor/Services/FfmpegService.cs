@@ -150,6 +150,11 @@ public static class FfmpegService
 
         var originalSize = new FileInfo(filePath).Length;
 
+        // Build 173: record exactly what the original contains, to compare afterwards.
+        MediaProbeService.ProbeResult? before;
+        try { before = await MediaProbeService.ProbeAsync(filePath, ct); }
+        catch (OperationCanceledException) { return new FixResult(false, "Cancelled.", null); }
+
         // -map 0      keep EVERY stream: all video incl. cover art, all audio, all subtitles
         // -dn         except data streams (timecode etc.), which the MP4 muxer often rejects
         // -c copy     stream copy — lossless, no re-encode
@@ -180,6 +185,36 @@ public static class FfmpegService
             return new FixResult(false, "Output didn't come out as faststart. Original left unchanged.", null);
         }
 
+        // Build 173: stream check — same video/audio/subtitle tracks, languages, cover
+        // art and duration as the original, or the fixed copy is discarded.
+        string verifiedNote;
+        if (before != null)
+        {
+            MediaProbeService.ProbeResult? after;
+            try { after = await MediaProbeService.ProbeAsync(tempOut, ct); }
+            catch (OperationCanceledException)
+            {
+                TryDelete(tempOut);   // original untouched
+                return new FixResult(false, "Cancelled.", null);
+            }
+            if (after == null)
+            {
+                TryDelete(tempOut);
+                return new FixResult(false, "Couldn't read the fixed copy to verify it. Original left unchanged.", null);
+            }
+            var problem = MediaProbeService.Compare(before, after);
+            if (problem != null)
+            {
+                TryDelete(tempOut);
+                return new FixResult(false, $"Verification failed — {problem}. Original left unchanged.", null);
+            }
+            verifiedNote = $"verified: {after.Describe()}";
+        }
+        else
+        {
+            verifiedNote = "stream check unavailable";
+        }
+
         // ── Replace: one overwrite-move. Either it succeeds, or the original stays. ──
         var origWrite = File.GetLastWriteTimeUtc(filePath);
         Exception? last = null;
@@ -189,7 +224,7 @@ public static class FfmpegService
             {
                 File.Move(tempOut, filePath, overwrite: true);
                 try { File.SetLastWriteTimeUtc(filePath, origWrite); } catch { /* cosmetic */ }
-                return new FixResult(true, "Faststart added (lossless remux, all streams kept).", filePath);
+                return new FixResult(true, $"Faststart added (lossless, {verifiedNote}).", filePath);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -238,16 +273,37 @@ public static class FfmpegService
             outPath = Path.Combine(dir,
                 $"{stem}{RemuxCommitService.Marker} ({n++}){targetExt}");
 
-        // For MP4 output, also apply faststart while we're remuxing
-        var extra = targetExt.Equals(".mp4", StringComparison.OrdinalIgnoreCase)
-            ? "-movflags +faststart " : string.Empty;
-        // Build 168: MKV can hold any stream, so keep them all (every audio/subtitle track,
-        // attachments). MP4 output keeps ffmpeg's default selection, because image-based
-        // subtitles from MKV can't go into MP4 — the result is a candidate the user reviews
-        // before it replaces anything.
-        var mapAll = targetExt.Equals(".mkv", StringComparison.OrdinalIgnoreCase)
-            ? "-map 0 -dn -map_metadata 0 -map_chapters 0 " : string.Empty;
-        var args = $"-y -i \"{filePath}\" {mapAll}-c copy {extra}\"{outPath}\"";
+        // Build 173: probe first — decides the stream mapping and is the baseline for
+        // the after-check.
+        MediaProbeService.ProbeResult? before;
+        try { before = await MediaProbeService.ProbeAsync(filePath, ct); }
+        catch (OperationCanceledException) { return new FixResult(false, "Cancelled.", null); }
+        bool toMkv = targetExt.Equals(".mkv", StringComparison.OrdinalIgnoreCase);
+        bool toMp4 = targetExt.Equals(".mp4", StringComparison.OrdinalIgnoreCase);
+
+        string args;
+        if (toMkv)
+        {
+            // MKV holds every real track. "0:V" (capital V) = video tracks that aren't cover
+            // pictures — copying an MP4 cover into MKV turns it into a bogus second video
+            // track, so it's left out (re-embed artwork afterwards; MKV covers go in via
+            // MKVToolNix). MP4 text subtitles (mov_text) can't be stored in MKV, so they're
+            // converted to SRT. Build 168's plain "-map 0" made these remuxes fail outright.
+            bool hasMovText = before?.Streams.Any(s =>
+                                  s.Kind == MediaProbeService.StreamKind.Subtitle &&
+                                  s.Codec.Equals("mov_text", StringComparison.OrdinalIgnoreCase))
+                              ?? Path.GetExtension(filePath).ToLowerInvariant() is ".mp4" or ".m4v" or ".mov";
+            args = $"-y -i \"{filePath}\" -map 0:V -map 0:a? -map 0:s? -map 0:t? -dn -c copy " +
+                   (hasMovText ? "-c:s srt " : string.Empty) +
+                   $"-map_metadata 0 -map_chapters 0 \"{outPath}\"";
+        }
+        else
+        {
+            // MP4 output keeps ffmpeg's default selection, because image-based subtitles from
+            // MKV can't go into MP4. The after-check below reports anything not carried over.
+            var extra = toMp4 ? "-movflags +faststart " : string.Empty;
+            args = $"-y -i \"{filePath}\" -c copy {extra}\"{outPath}\"";
+        }
 
         var (ok, err) = await RunAsync(exe, args, ct);
         if (!ok || !File.Exists(outPath))
@@ -255,7 +311,33 @@ public static class FfmpegService
             TryDelete(outPath);
             return new FixResult(false, $"ffmpeg failed: {err}", null);
         }
-        return new FixResult(true, $"Remuxed to {Path.GetFileName(outPath)} (lossless).", outPath);
+
+        // ── After-check ─────────────────────────────────────────────────────
+        var note = "stream check unavailable";
+        if (before != null)
+        {
+            MediaProbeService.ProbeResult? after;
+            try { after = await MediaProbeService.ProbeAsync(outPath, ct); }
+            catch (OperationCanceledException)
+            {
+                TryDelete(outPath);
+                return new FixResult(false, "Cancelled.", null);
+            }
+            var problem = after == null ? "couldn't read the new file"
+                                        : MediaProbeService.Compare(before, after, ignoreCover: toMkv);
+            if (problem != null && toMkv)
+            {
+                // MKV is meant to keep everything — a shortfall means something went wrong.
+                TryDelete(outPath);
+                return new FixResult(false, $"Verification failed — {problem}. Nothing was changed.", null);
+            }
+            note = problem == null
+                ? $"verified: {after!.Describe()}"
+                : $"⚠ not everything carried over: {problem}. Review before replacing the original";
+            if (toMkv && before.Count(MediaProbeService.StreamKind.Cover) > 0)
+                note += ". Cover art isn't copied into MKV by remux — re-embed artwork afterwards";
+        }
+        return new FixResult(true, $"Remuxed to {Path.GetFileName(outPath)} (lossless; {note}).", outPath);
     }
 
     // ── Internal ──────────────────────────────────────────────────────────────

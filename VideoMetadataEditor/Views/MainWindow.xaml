@@ -5677,6 +5677,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 173 — Every rewrite is verified before it's kept
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Fix Faststart and Remux now compare the original and the new file before using it: same video, audio and subtitle tracks, same languages, same cover art and the same duration. If anything is missing, the new file is discarded and the original is left unchanged, with the reason given. This uses ffprobe, which the FFmpeg download now includes, or ffmpeg itself on older installs. Remux to MKV of an MP4 with subtitles failed in builds 168–172; it now works, converting text subtitles to SRT and leaving out the MP4 cover, which would otherwise become a second video track. Cancelling mid-check never leaves temp files behind. Tests now run Fix Faststart and Remux on a real multi-stream sample file.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 172 — Find titles missing a poster or metadata
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

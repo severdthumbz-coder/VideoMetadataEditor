@@ -1,0 +1,69 @@
+{
+ "streams": [
+  {
+   "index": 0,
+   "codec_name": "h264",
+   "codec_type": "video",
+   "disposition": {
+    "default": 1,
+    "attached_pic": 0
+   },
+   "tags": {
+    "language": "und",
+    "handler_name": "VideoHandler"
+   }
+  },
+  {
+   "index": 1,
+   "codec_name": "aac",
+   "codec_type": "audio",
+   "disposition": {
+    "default": 1,
+    "attached_pic": 0
+   },
+   "tags": {
+    "language": "eng",
+    "handler_name": "SoundHandler"
+   }
+  },
+  {
+   "index": 2,
+   "codec_name": "aac",
+   "codec_type": "audio",
+   "disposition": {
+    "default": 0,
+    "attached_pic": 0
+   },
+   "tags": {
+    "language": "jpn",
+    "handler_name": "SoundHandler"
+   }
+  },
+  {
+   "index": 3,
+   "codec_name": "mov_text",
+   "codec_type": "subtitle",
+   "disposition": {
+    "default": 1,
+    "attached_pic": 0
+   },
+   "tags": {
+    "language": "eng",
+    "handler_name": "SubtitleHandler"
+   }
+  },
+  {
+   "index": 4,
+   "codec_name": "png",
+   "codec_type": "video",
+   "disposition": {
+    "default": 0,
+    "attached_pic": 1
+   },
+   "tags": {}
+  }
+ ],
+ "format": {
+  "duration": "1.000000"
+ }
+}

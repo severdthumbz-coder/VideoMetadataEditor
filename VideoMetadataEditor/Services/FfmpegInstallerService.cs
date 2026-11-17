@@ -270,6 +270,31 @@ public static class FfmpegInstallerService
             // Strip Mark-of-the-Web so SmartScreen/AppLocker doesn't block execution.
             try { File.Delete(destPath + ":Zone.Identifier"); } catch { }
 
+            // Build 173: also take ffprobe.exe (same bin\ folder in both BtbN and gyan zips).
+            // VME uses it to verify every rewrite kept all tracks. Optional — if it's not in
+            // the zip, verification falls back to reading "ffmpeg -i" output.
+            var probeEntry = zip.Entries.FirstOrDefault(e =>
+                e.Name.Equals("ffprobe.exe", StringComparison.OrdinalIgnoreCase));
+            if (probeEntry != null)
+            {
+                progress?.Report((88, "Extracting ffprobe.exe…"));
+                var probeDest = Path.Combine(NativeLibraryExtractor.NativeDir, "ffprobe.exe");
+                var probeTemp = probeDest + ".tmp";
+                try
+                {
+                    using (var ps = probeEntry.Open())
+                    await using (var pd = new FileStream(probeTemp, FileMode.Create,
+                        FileAccess.Write, FileShare.None, 65536, FileOptions.Asynchronous))
+                    {
+                        await ps.CopyToAsync(pd, ct);
+                    }
+                    File.Move(probeTemp, probeDest, overwrite: true);
+                    try { File.Delete(probeDest + ":Zone.Identifier"); } catch { }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch { try { File.Delete(probeTemp); } catch { } }   // optional — never fail the install
+            }
+
             // Let Defender's real-time scan settle before we run the file.
             await Task.Delay(500, ct);
 

@@ -2,6 +2,20 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 173 — Every rewrite is verified before it's kept
+
+First of the safety builds (173–176). The Fix Faststart bug went unnoticed because nothing checked the rewritten files, and nothing in CI touched real video.
+
+- **Stream verification.** Fix Faststart (and Fix All Issues) and Remux now probe the original and the new file and compare them: same video, audio and subtitle tracks, same languages (an `eng` + `jpn` file must still have both), same cover art, and duration within 1 second. If anything is missing, the new file is discarded, the original is left untouched, and the reason is shown, e.g. "Verification failed — audio tracks: 2 before, 1 after; cover art was lost". Successful fixes report what was verified, e.g. "verified: 1 video, 2 audio (eng, jpn), 1 subtitle (eng), cover art".
+- **ffprobe.** The FFmpeg download in Settings → External Tools now also installs `ffprobe.exe`, the most reliable way to read a file's tracks. Click Download/Update once to get it. Without it, VME reads the same information from `ffmpeg -i`, so existing installs are protected too.
+- **Fix: Remux to MKV failed for MP4s with subtitles** (since build 168). MP4 text subtitles (`mov_text`) can't be stored in MKV; they're now converted to SRT. Only real video tracks are copied: an MP4's cover art would otherwise become a bogus second video track in the MKV, so it's left out (re-embed artwork afterwards; MKV covers go in via MKVToolNix). An MKV remux that comes out short is discarded. An MP4 remux, already a candidate you review, now says if anything wasn't carried over.
+- **Cancel during a check** never leaves temp files behind.
+- **Tests on a real file.** A 12 KB sample (`Assets/multistream.mp4`: video, English + Japanese audio, English subtitle, cover art, moov at the end) is now run through Fix Faststart and Remux in tests, which assert every track survives. Tests also prove the checker catches the exact damage the old Fix Faststart did, using captured ffprobe output.
+
+**CI note:** the real-file tests need FFmpeg on the build machine. Add an FFmpeg install step and `VME_REQUIRE_FFMPEG=1` to the workflow (see the build notes). Without them, those two tests skip themselves instead of failing.
+
+---
+
 ## v1.4.0 Build 172 — Find titles missing a poster or metadata
 
 A faster way to find the blank entries in a large library, instead of scrolling for them.
