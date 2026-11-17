@@ -1,6 +1,4 @@
 using System.IO;
-using System.Security.Cryptography;
-using System.Text;
 using System.Windows.Media.Imaging;
 
 namespace VideoMetadataEditor.Services;
@@ -28,11 +26,7 @@ public static class ArtworkThumbCache
     private static readonly string Folder = Path.Combine(AppContext.BaseDirectory, "thumbs");
 
     private static string KeyFor(string path, long size, DateTime lastWriteUtc)
-    {
-        var raw = $"{path.ToUpperInvariant()}|{size}|{lastWriteUtc.Ticks}";
-        var hash = SHA1.HashData(Encoding.UTF8.GetBytes(raw));
-        return Convert.ToHexString(hash);
-    }
+        => ThumbCacheKeys.KeyFor(path, size, lastWriteUtc);
 
     /// <summary>
     /// Looks up a thumbnail for this exact file version.
@@ -103,6 +97,32 @@ public static class ArtworkThumbCache
             return output.ToArray();
         }
         catch { return null; }   // undecodable art — caller keeps the original bytes
+    }
+
+    /// <summary>
+    /// Build 171: deletes thumbnails that no current library file uses — left behind when
+    /// a file is re-embedded (new size/modified time = new key), renamed, moved or deleted.
+    /// Returns (files removed, bytes freed).
+    /// </summary>
+    public static (int removed, long bytes) Prune(ISet<string> liveKeys)
+    {
+        int removed = 0; long bytes = 0;
+        try
+        {
+            if (!Directory.Exists(Folder)) return (0, 0);
+            foreach (var f in ThumbCacheKeys.StaleFiles(Directory.EnumerateFiles(Folder), liveKeys))
+            {
+                try
+                {
+                    var len = new FileInfo(f).Length;
+                    File.Delete(f);
+                    removed++; bytes += len;
+                }
+                catch { /* locked — try again next scan */ }
+            }
+        }
+        catch { /* cache housekeeping is best-effort */ }
+        return (removed, bytes);
     }
 
     /// <summary>Deletes all cached thumbnails (they rebuild on the next scan).</summary>

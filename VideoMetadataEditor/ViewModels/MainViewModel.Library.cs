@@ -276,7 +276,7 @@ public partial class MainViewModel
     /// </summary>
     private async Task LoadLibraryArtworkAsync(
         List<Models.LibraryEntry> entries, HashSet<string> freshPaths,
-        string? activeTabPath, CancellationToken ct)
+        string? activeTabPath, bool pruneStaleThumbs, CancellationToken ct)
     {
         try
         {
@@ -362,6 +362,27 @@ public partial class MainViewModel
                     if (pending.Count >= 10) await Flush();
                 }
                 await Flush();
+
+                // Pass 3 (build 171) — remove thumbnails no current file uses: left behind
+                // by re-embeds (new modified time = new key), renames, moves and deletions.
+                if (pruneStaleThumbs && !ct.IsCancellationRequested)
+                {
+                    var liveKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var e in entries)
+                    {
+                        if (ct.IsCancellationRequested) return;
+                        var k = Services.ThumbCacheKeys.KeyForFile(e.FilePath);
+                        if (k != null) liveKeys.Add(k);
+                    }
+                    // Safety: an empty key set would mean "delete everything" — never do that.
+                    if (liveKeys.Count == 0) return;
+
+                    var (removed, bytes) = Services.ArtworkThumbCache.Prune(liveKeys);
+                    if (removed > 0)
+                        await dispatcher.InvokeAsync(() =>
+                            Log($"[{DateTime.Now:HH:mm:ss}] 🧹 Removed {removed} outdated poster thumbnail(s) " +
+                                $"({bytes / 1024.0:N0} KB) — from re-embedded, renamed or deleted files."));
+                }
             }, ct);
         }
         catch (OperationCanceledException) { }
@@ -634,7 +655,13 @@ public partial class MainViewModel
                 .ToList();
             var freshPaths = new HashSet<string>(
                 scanned.Where(se => se.IsFreshRead).Select(se => se.FilePath), StringComparer.OrdinalIgnoreCase);
-            _ = LoadLibraryArtworkAsync(artTargets, freshPaths, activeTabPath, ct);
+            // Build 171: tidy the thumbnail cache afterwards, but only when the scan covered
+            // the whole library. If a library drive is offline, its files are missing from
+            // this scan and their thumbnails must not be treated as stale.
+            bool wholeLibraryScanned =
+                Directory.Exists(Settings.LibraryFolderPath) &&
+                Settings.ExtraLibraryFolders.All(f => string.IsNullOrWhiteSpace(f) || Directory.Exists(f));
+            _ = LoadLibraryArtworkAsync(artTargets, freshPaths, activeTabPath, wholeLibraryScanned, ct);
 
             // Build status line — include cache stats so user knows how many were fast reads
             var hits   = _libraryScanService.LastScanCacheHits;

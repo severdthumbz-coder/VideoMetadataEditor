@@ -2,6 +2,20 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 171 — Automatic poster-thumbnail cleanup
+
+Build 170's poster thumbnails are keyed by each file's path, size and modified time. Re-embedding, renaming, moving or deleting a file therefore left its old thumbnail behind, and the `thumbs\` folder only ever grew.
+
+- **Automatic cleanup after each library scan.** Once posters have loaded, VME removes thumbnails (and "no artwork" markers) that no current library file uses. The Log reports how many were removed and how much space was freed.
+- **Safe by design.**
+  - It only runs when every library folder, main and extra, was reachable. If a drive is unplugged, its files are missing from that scan and their thumbnails are kept.
+  - It skips cancelled scans, and never runs with an empty file list.
+  - It only deletes `.jpg` and `.none` files it created in `thumbs\`.
+  - Anything removed by mistake is simply rebuilt the next time it's needed.
+- Tests added for thumbnail keys and stale-file selection.
+
+---
+
 ## v1.4.0 Build 170 — Faster posters, tidier Files panel
 
 **TV show posters took a long time to appear.** There were three causes:

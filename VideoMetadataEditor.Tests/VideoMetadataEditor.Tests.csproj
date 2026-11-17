@@ -59,6 +59,7 @@
     <Compile Include="../VideoMetadataEditor/Services/WorkingFileFilter.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/LibraryFolderList.cs"/>
     <Compile Include="../VideoMetadataEditor/Services/NaturalStringComparer.cs"/>
+    <Compile Include="../VideoMetadataEditor/Services/ThumbCacheKeys.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/Models.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/LibraryModels.cs"/>
     <Compile Include="../VideoMetadataEditor/Models/SubtitleModels.cs"/>
