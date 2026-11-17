@@ -113,6 +113,7 @@ public partial class MainViewModel : INotifyPropertyChanged
             Set(ref _libraryFilterText, value);
             LibraryView.Refresh();
             RaiseProperty(nameof(LibraryFilterCount));
+            RaiseProperty(nameof(LibraryShownCount));
         }
     }
 
@@ -120,14 +121,111 @@ public partial class MainViewModel : INotifyPropertyChanged
     {
         get
         {
-            if (string.IsNullOrWhiteSpace(_libraryFilterText)) return string.Empty;
+            if (string.IsNullOrWhiteSpace(_libraryFilterText) && _libraryAttentionFilter == "All") return string.Empty;
             var visible = LibraryEntries.Count(e => MatchesLibraryFilter(e));
             return $"{visible} / {LibraryEntries.Count}";
         }
     }
 
+    // ── "Show" filter (build 172) ──────────────────────────────────────────────
+    // All · Missing poster · Untagged · Needs attention (either). Works alongside the
+    // tab and the text filter, so "Untagged" + "2019" narrows further.
+    private string _libraryAttentionFilter = "All";
+    public string LibraryAttentionFilter
+    {
+        get => _libraryAttentionFilter;
+        set
+        {
+            if (_libraryAttentionFilter == value) return;
+            Set(ref _libraryAttentionFilter, value ?? "All");
+            LibraryView.Refresh();
+            RaiseProperty(nameof(TvShowTree));          // TV tab tree honours it too
+            RaiseProperty(nameof(IsAttentionFilterActive));
+            RaiseLibraryAttentionCounts();
+        }
+    }
+
+    public int MissingArtworkCount => LibraryEntries.Count(e => e.IsMissingArtwork);
+    public int UntaggedCount       => LibraryEntries.Count(e => e.IsUntagged);
+    public int ArtworkPendingCount => LibraryEntries.Count(e => !e.ArtworkChecked && e.CoverArt is not { Length: > 0 });
+
+    /// <summary>Line shown next to the Show filter, e.g. "37 missing a poster · 12 untagged".</summary>
+    public string LibraryAttentionSummary
+    {
+        get
+        {
+            if (LibraryEntries.Count == 0) return string.Empty;
+            var text = $"{MissingArtworkCount} missing a poster  ·  {UntaggedCount} untagged";
+            var pending = ArtworkPendingCount;
+            if (pending > 0) text += $"  ·  checking posters… {pending} left";
+            return text;
+        }
+    }
+
+    private void RaiseLibraryAttentionCounts()
+    {
+        RaiseProperty(nameof(MissingArtworkCount));
+        RaiseProperty(nameof(UntaggedCount));
+        RaiseProperty(nameof(ArtworkPendingCount));
+        RaiseProperty(nameof(LibraryAttentionSummary));
+        RaiseProperty(nameof(LibraryFilterCount));
+        RaiseProperty(nameof(LibraryShownCount));
+    }
+
+    /// <summary>Re-applies the Show filter after data changes (UI thread).</summary>
+    private void RefreshLibraryAttention()
+    {
+        if (_libraryAttentionFilter != "All")
+        {
+            LibraryView.Refresh();
+            RaiseProperty(nameof(TvShowTree));
+        }
+        RaiseLibraryAttentionCounts();
+    }
+
+    public bool IsAttentionFilterActive => _libraryAttentionFilter != "All";
+
+    /// <summary>How many titles the Library is showing right now (all filters applied).</summary>
+    public int LibraryShownCount => LibraryEntries.Count(e => MatchesLibraryFilter(e));
+
+    private ICommand? _loadShownIntoFilesCommand;
+    /// <summary>
+    /// Loads every title the Library is currently showing (Show filter + tab + text filter)
+    /// into the Files panel, in name order, ready to fetch metadata and re-embed.
+    /// </summary>
+    public ICommand LoadShownIntoFilesCommand => _loadShownIntoFilesCommand ??= new RelayCommand(_ =>
+    {
+        var shown = LibraryView.Cast<Models.LibraryEntry>()
+            .Where(e => File.Exists(e.FilePath))
+            .OrderBy(e => Path.GetFileName(e.FilePath), Services.NaturalStringComparer.Instance)
+            .ToList();
+        if (shown.Count == 0) { StatusText = "Nothing to load — the list is empty."; return; }
+
+        if (shown.Count > 50)
+        {
+            var ok = System.Windows.MessageBox.Show(
+                $"Load {shown.Count} files into the Files panel?\n\n" +
+                "Each file's tags are read as it's added, so a large batch can take a while. " +
+                "Tip: narrow the list first with the tab or the text filter (e.g. one show).",
+                "Load Into Files", System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Question);
+            if (ok != System.Windows.MessageBoxResult.Yes) return;
+        }
+        LoadLibrarySelection(shown);
+    }, _ => IsAttentionFilterActive && !IsBusy);
+
+    private bool MatchesAttentionFilter(Models.LibraryEntry e) => _libraryAttentionFilter switch
+    {
+        "MissingArtwork" => e.IsMissingArtwork,
+        "Untagged"       => e.IsUntagged,
+        "Attention"      => e.IsMissingArtwork || e.IsUntagged,
+        _                => true
+    };
+
     private bool MatchesLibraryFilter(Models.LibraryEntry e)
     {
+        if (!MatchesAttentionFilter(e)) return false;
+
         // Tab filter — only apply when tabbed mode is on and a tab is selected
         if (Settings.LibraryTabbedMode && _selectedLibraryTab != null)
         {
@@ -202,6 +300,7 @@ public partial class MainViewModel : INotifyPropertyChanged
             }
             LibraryView?.Refresh();
             RaiseProperty(nameof(LibraryFilterCount));
+            RaiseProperty(nameof(LibraryShownCount));
             // Re-apply column visibility based on tab type
             ApplyTabColumns();
         }
@@ -2014,6 +2113,7 @@ public partial class MainViewModel : INotifyPropertyChanged
                         if (!LibraryEntries.Any(e => e.FilePath.Equals(path, StringComparison.OrdinalIgnoreCase)))
                         {
                             LibraryEntries.Add(entry);
+                            RefreshLibraryAttention();   // build 172
                             Log( $"[{DateTime.Now:HH:mm:ss}] 📚 Library watch: {entry.FileName} added.");
                             StatusText = $"Library: {entry.FileName} detected.";
                         }

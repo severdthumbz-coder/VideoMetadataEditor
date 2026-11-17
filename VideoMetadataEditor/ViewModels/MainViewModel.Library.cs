@@ -306,7 +306,7 @@ public partial class MainViewModel
 
             await Task.Run(async () =>
             {
-                var pending = new List<(Models.LibraryEntry entry, byte[] art)>();
+                var pending = new List<(Models.LibraryEntry entry, byte[]? art)>();
 
                 async Task Flush()
                 {
@@ -317,9 +317,11 @@ public partial class MainViewModel
                     {
                         foreach (var (entry, art) in batch)
                         {
-                            entry.CoverArt = art;
+                            if (art is { Length: > 0 }) entry.CoverArt = art;
+                            entry.ArtworkChecked = true;   // build 172: answer known (art or none)
                             OnEpisodeArtLoaded(entry);
                         }
+                        RaiseLibraryAttentionCounts();
                     }, System.Windows.Threading.DispatcherPriority.Background, ct);
                 }
 
@@ -333,15 +335,20 @@ public partial class MainViewModel
                     {
                         // Already showing art. Only a fresh read carries full-size art that
                         // still needs shrinking and caching; anything else is done.
-                        if (!freshPaths.Contains(e.FilePath)) continue;
+                        if (!freshPaths.Contains(e.FilePath))
+                        {
+                            if (!e.ArtworkChecked) pending.Add((e, null));   // has art — mark checked
+                            if (pending.Count >= 50) await Flush();
+                            continue;
+                        }
                         thumb = Services.ArtworkThumbCache.Store(e.FilePath, full);
                     }
                     else if (Services.ArtworkThumbCache.TryGet(e.FilePath, out var cached))
                         thumb = cached;
                     else { needRead.Add(e); continue; }
 
-                    if (thumb is { Length: > 0 } && !ReferenceEquals(thumb, e.CoverArt))
-                        pending.Add((e, thumb));
+                    // Add even when there's no artwork, so the row is marked as checked.
+                    pending.Add((e, thumb is { Length: > 0 } && !ReferenceEquals(thumb, e.CoverArt) ? thumb : null));
                     if (pending.Count >= 50) await Flush();
                 }
                 await Flush();
@@ -354,7 +361,7 @@ public partial class MainViewModel
                     {
                         var art = _metadataService.ReadArtworkOnly(e.FilePath);
                         var thumb = Services.ArtworkThumbCache.Store(e.FilePath, art);
-                        if (thumb is { Length: > 0 }) pending.Add((e, thumb));
+                        pending.Add((e, thumb));   // null = checked, no artwork
                     }
                     catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Artwork] {ex.GetType().Name}: {ex.Message}"); }
 
@@ -362,6 +369,9 @@ public partial class MainViewModel
                     if (pending.Count >= 10) await Flush();
                 }
                 await Flush();
+
+                // Build 172: posters are all known now — re-apply the Show filter once.
+                await dispatcher.InvokeAsync(RefreshLibraryAttention);
 
                 // Pass 3 (build 171) — remove thumbnails no current file uses: left behind
                 // by re-embeds (new modified time = new key), renames, moves and deletions.
@@ -1414,6 +1424,17 @@ public partial class MainViewModel
         if (entry != null)
         {
             ApplyDiskTo(entry, preserveWatched: true);
+            entry.ArtworkChecked = true;   // build 172: just read from disk
+
+            // Re-check the Show filter so a fixed title drops off "Missing poster" /
+            // "Untagged" straight away, and cache the new poster thumbnail.
+            if (disk.ArtworkBytes is { Length: > 0 })
+                _ = Task.Run(() => Services.ArtworkThumbCache.Store(currentPath, disk.ArtworkBytes));
+            var attentionDispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (attentionDispatcher != null && !attentionDispatcher.CheckAccess())
+                attentionDispatcher.InvokeAsync(RefreshLibraryAttention);
+            else
+                RefreshLibraryAttention();
 
             // A file's on-disk metadata just changed, so the physical-episode scan
             // for its folder may be stale — drop the cache so the tree re-reads.

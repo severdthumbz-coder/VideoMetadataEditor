@@ -1285,7 +1285,8 @@ public partial class MainViewModel
                     e.FilePath.StartsWith(tabPath, StringComparison.OrdinalIgnoreCase));
             }
 
-            var episodes = source.Where(e => e.IsEpisode).ToList();
+            // Build 172: the Library "Show" filter (missing poster / untagged) applies here too.
+            var episodes = source.Where(e => e.IsEpisode && MatchesAttentionFilter(e)).ToList();
 
             // Build nodes
             var grouped = episodes

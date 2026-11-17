@@ -3973,6 +3973,8 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBox Grid.Column="0"
                                          Text="{Binding LibraryFilterText, UpdateSourceTrigger=PropertyChanged}"
@@ -3984,7 +3986,38 @@
                                            FontSize="11"
                                            Foreground="{DynamicResource ForegroundMutedBrush}"
                                            Text="{Binding LibraryFilterCount}"
-                                           Visibility="{Binding LibraryFilterText, Converter={StaticResource NullVis}}"/>
+                                           Visibility="{Binding LibraryFilterCount, Converter={StaticResource NullVis}}"/>
+
+                                <!-- Build 172: Show filter — find titles that need attention -->
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="Show:" VerticalAlignment="Center" Margin="0,0,6,0"
+                                               Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                                    <ComboBox MinWidth="170"
+                                              SelectedValue="{Binding LibraryAttentionFilter}"
+                                              SelectedValuePath="Tag"
+                                              ToolTip="{Binding LibraryAttentionSummary}">
+                                        <ComboBoxItem Tag="All"            Content="All titles"/>
+                                        <ComboBoxItem Tag="MissingArtwork" Content="🖼 Missing poster"/>
+                                        <ComboBoxItem Tag="Untagged"       Content="🏷 Untagged (no metadata)"/>
+                                        <ComboBoxItem Tag="Attention"      Content="⚠ Needs attention (either)"/>
+                                    </ComboBox>
+                                    <TextBlock Style="{StaticResource HintMarker}" Margin="6,0,0,0">
+                                        <TextBlock.ToolTip>
+                                            <ToolTip MaxWidth="320">
+                                                <TextBlock TextWrapping="Wrap" Text="Find titles to fix. Missing poster = no artwork embedded in the file. Untagged = metadata was never fetched (no IMDb/TMDB ID, genre or synopsis). Combine with the tab and text filter, then use Load into Files to re-embed them. Fixed titles drop off the list as you embed."/>
+                                            </ToolTip>
+                                        </TextBlock.ToolTip>
+                                    </TextBlock>
+                                </StackPanel>
+                                <Button Grid.Column="3" Margin="8,0,0,0" Padding="10,4"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Command="{Binding LoadShownIntoFilesCommand}"
+                                        Visibility="{Binding IsAttentionFilterActive, Converter={StaticResource BoolVis}}"
+                                        ToolTip="Load every title in this list into the Files panel (in name order) to fetch metadata and re-embed.">
+                                    <TextBlock>
+                                        <Run Text="⤵ Load into Files ("/><Run Text="{Binding LibraryShownCount, Mode=OneWay}"/><Run Text=")"/>
+                                    </TextBlock>
+                                </Button>
                             </Grid>
 
                             <!-- Progress row -->
@@ -5643,6 +5676,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 172 — Find titles missing a poster or metadata
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        The Library has a new Show filter: All titles, Missing poster, Untagged (no metadata), or Needs attention (either). It works with the tab and text filter, and in the TV tree too. A "Load into Files" button loads everything in the filtered list, in name order, ready to re-embed. Fixed titles drop off the list as you embed them. Missing poster only counts a title once VME has actually checked it, and the tooltip shows the totals.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 171 — Automatic poster-thumbnail cleanup
                                     </TextBlock>

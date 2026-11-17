@@ -2,6 +2,23 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 172 — Find titles missing a poster or metadata
+
+A faster way to find the blank entries in a large library, instead of scrolling for them.
+
+- **New "Show" filter on the Library tab**, next to the text filter:
+  - **All titles**
+  - **🖼 Missing poster**: no artwork embedded in the file
+  - **🏷 Untagged (no metadata)**: no IMDb, TMDB or series ID and no genre or synopsis, meaning metadata was never fetched. The title alone doesn't count, since VME falls back to the filename.
+  - **⚠ Needs attention**: either of the above
+- **Works with everything else.** It combines with the tab and the text filter (e.g. Untagged + "2019"), and applies to the TV tree, which then shows only shows with flagged episodes.
+- **⤵ Load into Files (n)** appears when a filter is active. It loads every title in the filtered list into the Files panel, in name order, ready to fetch and re-embed. It asks first above 50 files.
+- **Fixed titles drop off the list** as soon as you embed them, and their new poster is cached right away.
+- **No false alarms while posters load.** A title only counts as missing a poster once VME has actually checked it. The filter's tooltip shows the totals ("37 missing a poster · 12 untagged"), plus how many posters are still being checked.
+- Tests added for the untagged and missing-poster rules.
+
+---
+
 ## v1.4.0 Build 171 — Automatic poster-thumbnail cleanup
 
 Build 170's poster thumbnails are keyed by each file's path, size and modified time. Re-embedding, renaming, moving or deleting a file therefore left its old thumbnail behind, and the `thumbs\` folder only ever grew.

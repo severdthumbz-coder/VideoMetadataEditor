@@ -87,6 +87,28 @@ public class LibraryEntry : INotifyPropertyChanged
     public bool IsFreshRead { get; set; }
 
     /// <summary>
+    /// Build 172: true once VME knows whether this file has artwork (the background
+    /// poster pass has looked, or artwork was read directly). Until then a missing
+    /// poster may just be "not loaded yet", so the Missing poster filter ignores it.
+    /// </summary>
+    [Newtonsoft.Json.JsonIgnore]
+    public bool ArtworkChecked { get; set; }
+
+    /// <summary>Build 172: checked, and there is no artwork in the file.</summary>
+    [Newtonsoft.Json.JsonIgnore]
+    public bool IsMissingArtwork => ArtworkChecked && CoverArt is not { Length: > 0 };
+
+    /// <summary>
+    /// Build 172: metadata was never fetched — no IMDb/TMDB/series ID and no genre or
+    /// synopsis. (The title alone doesn't count: VME falls back to the filename.)
+    /// </summary>
+    [Newtonsoft.Json.JsonIgnore]
+    public bool IsUntagged =>
+        string.IsNullOrWhiteSpace(ImdbId) && string.IsNullOrWhiteSpace(TmdbId) &&
+        string.IsNullOrWhiteSpace(TmdbSeriesId) &&
+        string.IsNullOrWhiteSpace(Genre) && string.IsNullOrWhiteSpace(Description);
+
+    /// <summary>
     /// Converts this library entry to a <see cref="Models.MovieMetadata"/> for NFO export
     /// or other metadata write operations.
     /// </summary>

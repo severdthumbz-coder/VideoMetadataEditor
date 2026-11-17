@@ -220,6 +220,7 @@ public class LibraryScanService
             AiredDate     = meta.AiredDate,
             TmdbSeriesId  = meta.TmdbSeriesId,
             CoverArt      = meta.ArtworkBytes,
+            ArtworkChecked = true,   // build 172: full read — artwork presence is known
             Duration      = duration,
             VideoCodec    = videoCodec,
             AudioCodec    = audioCodec,
