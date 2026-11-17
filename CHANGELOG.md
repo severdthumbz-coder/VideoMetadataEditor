@@ -2,6 +2,22 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 170 — Faster posters, tidier Files panel
+
+**TV show posters took a long time to appear.** There were three causes:
+
+- **Artwork wasn't cached.** The library cache stores every field except artwork, so every launch re-opened every video (4,000+ files on a USB drive, in this library) just to read its cover, movies included, before reaching the TV shows. Posters are now stored as small (~160 px tall) JPEG thumbnails in a `thumbs\` folder next to the EXE, with a tiny marker for files that have no artwork. After the first run, posters load from these few-KB files on the local disk. The cache key includes each file's size and modified time, so re-embedding new artwork produces a new thumbnail. Thumbnails are display-only; NFO export, embedding and the Files panel still read full artwork from the video. Clear Library Cache clears them too.
+- **The TV tree wasn't told when a poster arrived.** It copied each show's artwork when it was built and only rebuilt when something else changed (tab, filter, sort). Posters now appear as soon as they load, without rebuilding the tree, so expanded shows stay open.
+- **Load order.** Artwork now loads in priority order: the tab you're viewing first, and one episode per TV show early, so every show gets a poster quickly.
+
+Also fixed: on a rescan, artwork was assigned to the scan's copy of a row instead of the row on screen, so some covers never appeared until restart. Library memory use also drops, because rows hold a thumbnail instead of full-size artwork.
+
+**Files panel order.** Files are read in parallel and were added as each read finished, so the order was effectively random (E08, E02, E01…). Files are now placed in natural name order as they load, so Episode 2 comes before Episode 10, matching Windows Explorer. Separate groups (separator lines) keep their own order.
+
+Tests added for natural ordering.
+
+---
+
 ## v1.4.0 Build 169 — Fix All Issues now shows what it's doing
 
 Health Check's 🔧 Fix All Issues button often looked like it did nothing. Two reasons:

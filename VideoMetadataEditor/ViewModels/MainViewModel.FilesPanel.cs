@@ -154,7 +154,7 @@ public partial class MainViewModel
                     await dispatcher.InvokeAsync(() =>
                     {
                         if (ct.IsCancellationRequested) return;
-                        Files.Add(vf);
+                        InsertFileSorted(vf);
                         processed++;
                         ProgressValue = (int)((double)processed / total * 100);
                         StatusText    = $"Refreshing {processed} / {total} files…";
@@ -938,4 +938,32 @@ public partial class MainViewModel
         Log($"[{DateTime.Now:HH:mm:ss}] ↩ Batch undo: {reverted} reverted, {failed} failed.");
     }
 
+
+    /// <summary>
+    /// Adds a file to the Files panel in natural filename order (build 170).
+    ///
+    /// Files are read in parallel and used to be appended the moment each read finished,
+    /// so the panel order was effectively random (E08, E02, E01…). Now each file is placed
+    /// by name within the current group — the items after the last separator line — so
+    /// files loaded earlier, and groups added from other sources, stay where they are.
+    /// </summary>
+    private void InsertFileSorted(VideoFile vf)
+    {
+        int groupStart = 0;
+        for (int k = Files.Count - 1; k >= 0; k--)
+            if (Files[k].IsSeparator) { groupStart = k + 1; break; }
+
+        var name = System.IO.Path.GetFileName(vf.FilePath);
+        int pos = Files.Count;
+        for (int k = groupStart; k < Files.Count; k++)
+        {
+            if (Services.NaturalStringComparer.Instance.Compare(
+                    name, System.IO.Path.GetFileName(Files[k].FilePath)) < 0)
+            {
+                pos = k;
+                break;
+            }
+        }
+        Files.Insert(pos, vf);
+    }
 }

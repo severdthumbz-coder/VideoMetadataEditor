@@ -42,8 +42,20 @@ public class TvSeasonNode
 }
 
 /// <summary>Show node in the TV Library tree view.</summary>
-public class TvShowNode
+public class TvShowNode : System.ComponentModel.INotifyPropertyChanged
 {
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>
+    /// Build 170: lets a poster that finishes loading after the tree was built appear
+    /// immediately, without rebuilding the tree (which would collapse expanded shows).
+    /// </summary>
+    public void UpdateCover(byte[]? art)
+    {
+        CoverArt = art;
+        PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(CoverSource)));
+    }
+
     public string ShowTitle     { get; set; } = string.Empty;
     public List<TvSeasonNode> Seasons { get; set; } = new();
 

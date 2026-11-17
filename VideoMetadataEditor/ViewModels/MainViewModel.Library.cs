@@ -264,6 +264,110 @@ public partial class MainViewModel
 
     private static string NormalizeFolder(string? path) => Services.LibraryFolderList.Normalize(path);
 
+    /// <summary>
+    /// Fills in Library artwork (grid covers and TV show posters) in priority order:
+    ///   1. one episode per show / every movie in the active tab
+    ///   2. the rest of the active tab
+    ///   3. one episode per show elsewhere
+    ///   4. everything else
+    /// Each entry is served from the thumbnail cache when possible; only cache misses open
+    /// the video. Entries that already carry full artwork (fresh reads) are shrunk to a
+    /// thumbnail too, which also cuts memory use. UI updates are applied in batches.
+    /// </summary>
+    private async Task LoadLibraryArtworkAsync(
+        List<Models.LibraryEntry> entries, HashSet<string> freshPaths,
+        string? activeTabPath, CancellationToken ct)
+    {
+        try
+        {
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher == null || entries.Count == 0) return;
+
+            static string ShowKey(Models.LibraryEntry e) =>
+                string.IsNullOrWhiteSpace(e.ShowTitle) ? e.Title : e.ShowTitle;
+
+            var firstEpisodes = new HashSet<Models.LibraryEntry>(
+                entries.Where(e => e.IsEpisode)
+                       .GroupBy(ShowKey)
+                       .Select(g => g.OrderBy(e => e.Season ?? 0).ThenBy(e => e.Episode ?? 0).First()));
+
+            bool InActiveTab(Models.LibraryEntry e) =>
+                !string.IsNullOrEmpty(activeTabPath) &&
+                e.FilePath.StartsWith(activeTabPath, StringComparison.OrdinalIgnoreCase);
+
+            int Priority(Models.LibraryEntry e)
+            {
+                bool lead = !e.IsEpisode || firstEpisodes.Contains(e);
+                if (InActiveTab(e)) return lead ? 0 : 1;
+                return firstEpisodes.Contains(e) ? 2 : 3;
+            }
+
+            var ordered = entries.OrderBy(Priority).ToList();
+
+            await Task.Run(async () =>
+            {
+                var pending = new List<(Models.LibraryEntry entry, byte[] art)>();
+
+                async Task Flush()
+                {
+                    if (pending.Count == 0) return;
+                    var batch = pending.ToList();
+                    pending.Clear();
+                    await dispatcher.InvokeAsync(() =>
+                    {
+                        foreach (var (entry, art) in batch)
+                        {
+                            entry.CoverArt = art;
+                            OnEpisodeArtLoaded(entry);
+                        }
+                    }, System.Windows.Threading.DispatcherPriority.Background, ct);
+                }
+
+                // Pass 1 — no video opened: cached thumbs, or shrink art we already hold.
+                var needRead = new List<Models.LibraryEntry>();
+                foreach (var e in ordered)
+                {
+                    if (ct.IsCancellationRequested) return;
+                    byte[]? thumb;
+                    if (e.CoverArt is { Length: > 0 } full)
+                    {
+                        // Already showing art. Only a fresh read carries full-size art that
+                        // still needs shrinking and caching; anything else is done.
+                        if (!freshPaths.Contains(e.FilePath)) continue;
+                        thumb = Services.ArtworkThumbCache.Store(e.FilePath, full);
+                    }
+                    else if (Services.ArtworkThumbCache.TryGet(e.FilePath, out var cached))
+                        thumb = cached;
+                    else { needRead.Add(e); continue; }
+
+                    if (thumb is { Length: > 0 } && !ReferenceEquals(thumb, e.CoverArt))
+                        pending.Add((e, thumb));
+                    if (pending.Count >= 50) await Flush();
+                }
+                await Flush();
+
+                // Pass 2 — cache misses: open the video once, then cache the thumbnail.
+                foreach (var e in needRead)
+                {
+                    if (ct.IsCancellationRequested) return;
+                    try
+                    {
+                        var art = _metadataService.ReadArtworkOnly(e.FilePath);
+                        var thumb = Services.ArtworkThumbCache.Store(e.FilePath, art);
+                        if (thumb is { Length: > 0 }) pending.Add((e, thumb));
+                    }
+                    catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Artwork] {ex.GetType().Name}: {ex.Message}"); }
+
+                    // Small batches here so posters pop in steadily while the disk works.
+                    if (pending.Count >= 10) await Flush();
+                }
+                await Flush();
+            }, ct);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { Services.BackgroundTask.OnError?.Invoke("Bulk artwork load", ex); }
+    }
+
     private void ClearLibraryCache()
     {
         if (!string.IsNullOrWhiteSpace(Settings.LibraryFolderPath))
@@ -271,8 +375,9 @@ public partial class MainViewModel
         else
             Services.LibraryCacheService.ClearAll();
 
+        var thumbs = Services.ArtworkThumbCache.Clear();   // build 170: posters rebuild too
         RaiseProperty(nameof(LibraryCacheInfo));
-        StatusText = "Library cache cleared — next scan will rebuild it from disk.";
+        StatusText = $"Library cache cleared ({thumbs} cached poster thumbnail(s) too) — next scan will rebuild it from disk.";
         Log( $"[{DateTime.Now:HH:mm:ss}] 🗑 Library cache cleared.");
     }
 
@@ -514,45 +619,22 @@ public partial class MainViewModel
             // 3. Add new entries.
             foreach (var e in toAdd) LibraryEntries.Add(e);
 
-            // ── Load cover art for entries missing it — background, UI-safe ────────
-            // Only fires for cache-miss entries (from-disk reads). Cache hits already
-            // have artwork. Processes in small batches with a yield between each so
-            // the dispatcher thread is never flooded with InvokeAsync calls.
-            var missingArt = scanned.Where(e => e.CoverArt is not { Length: > 0 }).ToList();
-            if (missingArt.Count > 0)
-            {
-                _ = Task.Run(async () =>
-                {
-                  try
-                  {
-                    var dispatcher = System.Windows.Application.Current?.Dispatcher;
-                    const int batchSize = 20;
-                    for (int i = 0; i < missingArt.Count; i += batchSize)
-                    {
-                        if (ct.IsCancellationRequested) break;
-                        var batch = missingArt.Skip(i).Take(batchSize).ToList();
-                        foreach (var entry in batch)
-                        {
-                            if (ct.IsCancellationRequested) break;
-                            try
-                            {
-                                var art = _metadataService.ReadArtworkOnly(entry.FilePath);
-                                if (art is { Length: > 0 } && dispatcher != null)
-                                    await dispatcher.InvokeAsync(
-                                        () => entry.CoverArt = art,
-                                        System.Windows.Threading.DispatcherPriority.Background, ct);
-                            }
-                            catch (OperationCanceledException) { break; }
-                            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[{System.IO.Path.GetFileNameWithoutExtension(System.Reflection.MethodBase.GetCurrentMethod()?.DeclaringType?.Name ?? "VM")}] {ex.GetType().Name}: {ex.Message}"); }
-                        }
-                        // Yield between batches — keeps dispatcher queue small
-                        await Task.Delay(50, ct).ContinueWith(_ => { });
-                    }
-                  }
-                  catch (OperationCanceledException) { }
-                  catch (Exception ex) { Services.BackgroundTask.OnError?.Invoke("Bulk artwork load", ex); }
-                }, ct);
-            }
+            // ── Cover art — background, UI-safe (build 170) ─────────────────────────
+            // Thumbnails now come from a persistent cache (thumbs\ next to the EXE), so
+            // a cached library no longer re-opens every video for its cover. Order: the
+            // tab you're looking at first, and one episode per TV show early so show
+            // posters appear quickly. See LoadLibraryArtworkAsync.
+            // Target the objects actually in LibraryEntries — on a rescan, existing rows are
+            // updated from the scan results rather than replaced, so artwork set on a scan
+            // result never reached the row on screen.
+            var activeTabPath = Settings.LibraryTabbedMode ? _selectedLibraryTab?.FolderPath : null;
+            var live = LibraryEntries.ToDictionary(e => e.FilePath, e => e, StringComparer.OrdinalIgnoreCase);
+            var artTargets = scanned
+                .Select(se => live.TryGetValue(se.FilePath, out var cur) ? cur : se)
+                .ToList();
+            var freshPaths = new HashSet<string>(
+                scanned.Where(se => se.IsFreshRead).Select(se => se.FilePath), StringComparer.OrdinalIgnoreCase);
+            _ = LoadLibraryArtworkAsync(artTargets, freshPaths, activeTabPath, ct);
 
             // Build status line — include cache stats so user knows how many were fast reads
             var hits   = _libraryScanService.LastScanCacheHits;

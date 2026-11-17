@@ -2303,7 +2303,7 @@ public partial class MainViewModel : INotifyPropertyChanged
                 await dispatcher.InvokeAsync(() =>
                 {
                     if (ct.IsCancellationRequested) return;
-                    Files.Add(vf);
+                    InsertFileSorted(vf);   // build 170: natural name order, not finish order
                     processed++;
                     ProgressValue = (int)((double)processed / total * 100);
                     StatusText    = $"Loading {processed} / {total} files…";

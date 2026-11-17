@@ -1346,6 +1346,7 @@ public partial class MainViewModel
                 _ => nodes.OrderBy(n => n.ShowTitle).ToList()
             };
 
+            _lastTvTree = nodes;   // build 170: so late-arriving posters can update in place
             return new(nodes);
         }
     }
@@ -2010,7 +2011,7 @@ public partial class MainViewModel
                     // Re-check after async gap — another task may have added it
                     if (FilesContainsSamePath(path))
                         return;
-                    Files.Add(vf);
+                    InsertFileSorted(vf);
                     _watchFolderService.AddKnownPath(path);
                     StatusText = $"{Files.Count(f => !f.IsSeparator)} file(s) loaded.";
 
@@ -2673,6 +2674,22 @@ public partial class MainViewModel
     }
 
 
+
+    // ── Late poster updates for the TV tree (build 170) ──────────────────────────
+    private List<Models.TvShowNode> _lastTvTree = new();
+
+    /// <summary>
+    /// Called (on the UI thread) when an episode's artwork finishes loading. If its show
+    /// is in the tree and still has no poster, give it this one now.
+    /// </summary>
+    private void OnEpisodeArtLoaded(Models.LibraryEntry entry)
+    {
+        if (!entry.IsEpisode || entry.CoverSource == null) return;
+        var key = string.IsNullOrWhiteSpace(entry.ShowTitle) ? entry.Title : entry.ShowTitle;
+        var node = _lastTvTree.FirstOrDefault(n => n.ShowTitle == key);
+        if (node != null && node.CoverSource == null)
+            node.UpdateCover(entry.CoverArt);
+    }
 
     // ── Show poster for the TV tree (build 168) ─────────────────────────────────
     // Previously: the first episode whose CoverArt was non-null — even an empty or

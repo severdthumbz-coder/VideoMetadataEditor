@@ -5644,6 +5644,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 170 — Faster posters, tidier Files panel
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Library posters are now cached as small thumbnails in a thumbs folder next to the EXE. After the first run, the grid and TV tree no longer open every video to find its cover. Posters load the tab you're viewing first, and one episode per TV show early. They now appear in the TV tree as soon as they load, without rebuilding the tree, so expanded shows stay open. Before, a poster only appeared after something else refreshed the tree. Rows in a rescanned library now receive their artwork. Before, it went to a copy that wasn't displayed. Clear Library Cache also clears the thumbnails. The Files panel now lists files in natural name order (Episode 2 before Episode 10) instead of whichever file finished loading first.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 169 — Fix All Issues now shows what it's doing
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
