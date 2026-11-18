@@ -58,10 +58,12 @@ public static class OperationJournal
         public static bool IsReversibleKind(string kind) =>
             kind is "Rename" or "Move" or "ExtensionFix";
 
+        // Ordinal, not ignore-case: a case-only rename ("the matrix.mp4" → "The Matrix.mp4")
+        // is a real change on Windows and must be undoable too.
         [JsonIgnore]
         public IEnumerable<Item> ReversibleItems =>
             Items.Where(i => IsReversibleKind(i.Kind) &&
-                             !string.Equals(i.From, i.To, StringComparison.OrdinalIgnoreCase));
+                             !string.Equals(i.From, i.To, StringComparison.Ordinal));
 
         [JsonIgnore]
         public bool CanUndo => !Undone && UndoOf == null && ReversibleItems.Any();
@@ -203,6 +205,24 @@ public static class OperationJournal
         {
             var name = Path.GetFileName(item.To);
             if (!File.Exists(item.To)) { skipped.Add($"{name}: no longer at {item.To}"); continue; }
+
+            // Case-only rename: same file to Windows, so "From exists" is expected. Rename it
+            // back through a temporary name (a direct case-only move is a no-op on NTFS).
+            if (string.Equals(item.From, item.To, StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var temp = Path.Combine(Path.GetDirectoryName(item.To) ?? string.Empty,
+                        $".vme_undo_{Guid.NewGuid():N}{Path.GetExtension(item.To)}");
+                    File.Move(item.To, temp);
+                    File.Move(temp, item.From);
+                    restored++;
+                    undoItems.Add(new Item { Kind = item.Kind, From = item.To, To = item.From });
+                }
+                catch (Exception ex) { skipped.Add($"{name}: {ex.Message}"); }
+                continue;
+            }
+
             if (File.Exists(item.From)) { skipped.Add($"{name}: {item.From} already exists"); continue; }
 
             try

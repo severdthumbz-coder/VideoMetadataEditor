@@ -25,11 +25,12 @@ Second of the safety builds.
   - folders are recreated if needed;
   - **nothing is ever overwritten**: a file that has moved since, or whose old name is now taken, is skipped and listed;
   - a partial undo can be retried;
+  - case-only renames ("the matrix.mp4" → "The Matrix.mp4", one file to Windows) undo correctly too;
   - the Files panel and Library are updated to the restored paths.
 - Copies and in-place rewrites (faststart, embed) are recorded but not undoable from History. Undo Batch and Undo Last Embed still cover embeds in the current session.
 - The history keeps the last 500 operations. A damaged line is skipped, not fatal. `history.jsonl` is in `.gitignore`.
 
-Tests added for history recording (including parallel workers), undo with sidecars, never-overwrite, missing files, folder recreation and damaged history lines.
+Tests added for history recording (including parallel workers), undo with sidecars, never-overwrite, missing files, case-only renames, folder recreation and damaged history lines.
 
 ---
 

@@ -117,13 +117,14 @@ public class OperationJournalTests : IDisposable
     [Fact]
     public void Undo_NeverOverwrites_AndSkipsMissingFiles()
     {
-        var a = Touch("a.mp4", "original-a");
-        var aNew = Path.Combine(_dir, "A.mp4");
+        // Distinct names on purpose: on Windows "a.mp4" and "A.mp4" are the SAME file.
+        var a = Touch("alpha.mp4", "original-a");
+        var aNew = Path.Combine(_dir, "Alpha (2020).mp4");
         File.Move(a, aNew);
         File.WriteAllText(a, "someone else's new file");   // old name now taken
 
-        var b = Path.Combine(_dir, "b.mp4");
-        var bNew = Path.Combine(_dir, "B.mp4");               // never existed / moved away since
+        var b = Path.Combine(_dir, "beta.mp4");
+        var bNew = Path.Combine(_dir, "Beta (2021).mp4");     // never existed / moved away since
 
         using (OperationJournal.Begin("Rename", "two")) { OperationJournal.Note("Rename", a, aNew); OperationJournal.Note("Rename", b, bNew); }
         var outcome = OperationJournal.Undo(OperationJournal.Load().Single());
@@ -132,6 +133,26 @@ public class OperationJournalTests : IDisposable
         Assert.Equal(2, outcome.Skipped.Count);
         Assert.Equal("someone else's new file", File.ReadAllText(a));   // untouched
         Assert.True(File.Exists(aNew));
+    }
+
+    [Fact]
+    public void Undo_CaseOnlyRename_IsReversed()
+    {
+        // "the matrix.mp4" → "The Matrix.mp4" is one file to Windows, but a real rename.
+        var from = Touch("the matrix.mp4", "movie");
+        var to   = Path.Combine(_dir, "The Matrix.mp4");
+        var temp = Path.Combine(_dir, "case-step.tmp");
+        File.Move(from, temp); File.Move(temp, to);        // do the case-only rename
+
+        using (OperationJournal.Begin("Rename", "case")) OperationJournal.Note("Rename", from, to);
+        var rec = OperationJournal.Load().Single();
+        Assert.True(rec.CanUndo);
+
+        var outcome = OperationJournal.Undo(rec);
+
+        Assert.Equal(1, outcome.Restored);
+        Assert.Empty(outcome.Skipped);
+        Assert.Contains("the matrix.mp4", Directory.GetFiles(_dir).Select(Path.GetFileName));   // exact case back
     }
 
     [Fact]
