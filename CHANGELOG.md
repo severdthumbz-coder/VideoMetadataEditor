@@ -2,6 +2,34 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 177 — A trailing space no longer fails an embed
+
+Fixes found in the build 176 activity log.
+
+**Whitespace in metadata**
+- "One Last Shot" failed to embed three times in a row. The lookup returned the title as `"One Last Shot "` with a trailing space. MP4 stores it trimmed, so the post-write check read back "One Last Shot", decided the write hadn't worked, and VME:
+  - retried without artwork;
+  - fell back to an in-place write and retried it twice;
+  - reported "TagLib# cannot write tags to this … container variant";
+  - offered a remux that the file never needed.
+- Every text field is now cleaned before writing:
+  - stray spaces, tabs, line breaks and non-breaking spaces become single spaces, and the ends are trimmed;
+  - invisible characters such as zero-width spaces are removed;
+  - the synopsis keeps its paragraphs.
+- What's written is exactly what's checked, and the rename uses the cleaned title too. The log notes which fields were cleaned (detail level).
+- The post-write title check also ignores differences that are only whitespace or letter case.
+
+**Remux MP4 → MP4 keeps the cover**
+- The write-fix remux (MP4 → MP4) used ffmpeg's default stream selection, which dropped the cover art. Your log shows "cover art" before and gone after. It now keeps every stream, as Fix Faststart does: cover art, all audio and all subtitle tracks. Remux from MKV/AVI to MP4 is unchanged.
+
+**Log**
+- "Tag write failed — falling back to in-place write" is now a **warning**, because VME is still trying. Only the final "all write methods failed" is an error.
+- "Retry 2/3" and "In-place write" lines are categorised as Embed.
+
+Tests added for whitespace cleaning (titles, synopsis paragraphs, invisible characters, which fields changed), a real MP4 write of a title with a trailing space (succeeds first time, stored clean), the fallback/final-failure log levels, and an MP4 → MP4 remux of the multi-stream sample keeping cover art and every track.
+
+---
+
 ## v1.4.0 Build 176 — Watched files are read only once they've arrived; the library cache keeps every folder
 
 Fixes found in the first build 175 activity log.

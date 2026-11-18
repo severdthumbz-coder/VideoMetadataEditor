@@ -301,10 +301,19 @@ public static class FfmpegService
                    (hasMovText ? "-c:s srt " : string.Empty) +
                    $"-map_metadata 0 -map_chapters 0 \"{outPath}\"";
         }
+        else if (toMp4 && Path.GetExtension(filePath).ToLowerInvariant() is ".mp4" or ".m4v" or ".mov")
+        {
+            // Build 177: MP4 → MP4 (the write-fix remux) keeps EVERY stream like Fix
+            // Faststart does — the default selection dropped the cover art and any extra
+            // audio/subtitle tracks. Data streams (timecode) are left out; the MP4 muxer
+            // often rejects them.
+            args = $"-y -i \"{filePath}\" -map 0 -dn -c copy -map_metadata 0 -map_chapters 0 " +
+                   $"-movflags +faststart \"{outPath}\"";
+        }
         else
         {
-            // MP4 output keeps ffmpeg's default selection, because image-based subtitles from
-            // MKV can't go into MP4. The after-check below reports anything not carried over.
+            // MKV/AVI/… → MP4 keeps ffmpeg's default selection, because image-based subtitles
+            // from MKV can't go into MP4. The after-check below reports anything not carried over.
             var extra = toMp4 ? "-movflags +faststart " : string.Empty;
             args = $"-y -i \"{filePath}\" -c copy {extra}\"{outPath}\"";
         }

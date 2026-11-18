@@ -179,6 +179,15 @@ public class MetadataService
     {
         var attemptErrors = new List<string>();
 
+        // ── Build 177: clean stray whitespace first ────────────────────────────
+        // A lookup returned "One Last Shot " (trailing space); MP4 stores it trimmed, so
+        // the post-write check failed and VME retried, wrote in place and remuxed a file
+        // that was fine. Whatever is written is now exactly what gets verified.
+        var cleaned = MetadataText.Normalize(metadata);
+        if (cleaned.Count > 0)
+            LogService.Debug("Embed", $"Cleaned whitespace in {string.Join(", ", cleaned)}: {Path.GetFileName(filePath)}",
+                null, filePath);
+
         // ── Artwork: ensure we have the embedded artwork before writing ────────
         // Batch processing uses lazy artwork loading. If the file was never
         // selected, ArtworkBytes will be null even though the file has embedded
@@ -565,7 +574,9 @@ public class MetadataService
                 {
                     var writtenTitle  = verify.Tag.Title ?? string.Empty;
                     var expectedTitle = metadata.Title;
-                    if (!writtenTitle.Equals(expectedTitle, StringComparison.OrdinalIgnoreCase))
+                    // Build 177: whitespace-only differences aren't a failed write — some
+                    // containers trim what they store.
+                    if (!MetadataText.SameText(writtenTitle, expectedTitle))
                         return (false,
                             $"Post-write verification failed — Title was not committed " +
                             $"(expected '{expectedTitle}', read back '{writtenTitle}'). " +

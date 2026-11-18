@@ -360,6 +360,8 @@ public static class LogService
     private static readonly Regex FailedWord  = new(@"\bfail(ed|ure)?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     private static readonly Regex WarnWords   = new(@"\b(cancel+ed|cancel requested|skipped:|not available|missing|stale|offline)\b",
                                                     RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex FallbackWords = new(@"\b(falling back|retrying|will retry|trying again)\b",
+                                                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     private static readonly Regex OkWords     = new(@"\b(succeeded|completed?|verified|restored|committed|refreshed)\b",
                                                     RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
@@ -368,7 +370,7 @@ public static class LogService
     {
         // Embed pipeline lines (build 176: "Copying to temp" is the embed's safe copy, not Move/Copy).
         ("writing tags", "Embed"),       ("copying to temp", "Embed"),     ("embedding tags", "Embed"),
-        ("applying:", "Embed"),          ("done:", "Embed"),
+        ("applying:", "Embed"),          ("done:", "Embed"),               ("in-place write", "Embed"),
         ("size verified", "Copy/Move"),  ("workers)", "Files"),
         ("settings saved", "Settings"),  ("watch folder", "Watch"),        ("library watch", "Library"),
         ("trakt", "Trakt"),              ("opensubtitles", "Subtitles"),   ("subtitle", "Subtitles"),
@@ -388,6 +390,7 @@ public static class LogService
         ("nfo", "NFO"),
         ("csv", "Export"),               ("xlsx", "Export"),               ("export", "Export"),
         ("write", "Embed"),              ("embed", "Embed"),               ("apply", "Embed"),
+        ("retry ", "Embed"),
         ("read-only", "Embed"),          ("blocked", "Embed"),             ("player", "Embed"),
         ("locking process", "Embed"),
         ("settings", "Settings"),
@@ -421,7 +424,12 @@ public static class LogService
             // "3 succeeded, 0 failed" is a success; "2 succeeded, 1 failed" is a warning.
             var withoutCounts = CountFailed.Replace(msg, string.Empty);
 
-            if (anyCountedFailure)                       level = LogLevel.Warning;
+            // Build 177: "X failed — falling back to Y" is a step that recovered (or is still
+            // trying), not the final error — that comes on its own line if it happens.
+            bool recovering = FallbackWords.IsMatch(msg);
+
+            if (anyCountedFailure || (recovering && (ErrorWords.IsMatch(withoutCounts) || FailedWord.IsMatch(withoutCounts))))
+                                                         level = LogLevel.Warning;
             else if (ErrorWords.IsMatch(withoutCounts) ||
                      FailedWord.IsMatch(withoutCounts))  level = LogLevel.Error;
             else if (WarnWords.IsMatch(msg))             level = LogLevel.Warning;

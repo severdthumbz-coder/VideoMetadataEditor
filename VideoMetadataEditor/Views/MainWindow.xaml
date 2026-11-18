@@ -5722,6 +5722,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 177 — A trailing space no longer fails an embed
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        A lookup that returned a title with a trailing space ("One Last Shot ") made a successful write look like a failure: MP4 stores the title trimmed, so the check after writing didn't match, and VME retried, wrote in place and offered a remux. Metadata text is now cleaned before writing (stray and invisible whitespace removed, synopsis paragraphs kept), and the check ignores whitespace-only differences. The MP4 → MP4 remux now keeps the cover art and every audio and subtitle track. In the Log, a write that falls back to another method is a warning; only the final failure is an error.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 176 — Watched files are read once they've arrived; the cache keeps every library folder
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
