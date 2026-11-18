@@ -331,6 +331,10 @@ public partial class MainViewModel
         var targets = Files.Where(f => f.IsSelected && !f.IsSeparator).ToList();
         if (targets.Count == 0) return;
 
+        // Build 174: show exactly what will change before touching anything.
+        if (!await ConfirmRenamePreviewAsync(targets)) return;
+
+        using var history = Services.OperationJournal.Begin("Rename", $"Batch rename of {targets.Count} file(s)");
         var ct = BeginOperation();
         IsBusy     = true;
         StatusText = $"Renaming {targets.Count} file(s)…";
@@ -384,6 +388,7 @@ public partial class MainViewModel
             ? $"✓ Renamed {succeeded} file(s)."
             : $"Renamed {succeeded} file(s) — {failed} failed.";
         Log( $"[{DateTime.Now:HH:mm:ss}] Batch rename: {succeeded} succeeded, {failed} failed.");
+        history.Summary = $"Batch rename — {succeeded} renamed" + (failed > 0 ? $", {failed} failed" : "");
         RaiseProperty(nameof(UndoLastEmbedCommand));
         EndOperation(resetProgress: false);
     }
@@ -411,24 +416,55 @@ public partial class MainViewModel
         CancellationToken ct,
         bool isFromBatch = false)
     {
+        // Build 174: every rename VME performs goes through here, so this is the one place
+        // it's recorded in the persistent history (joins the open batch, if any).
+        var oldPath = vf.FilePath;
+        var result = await SafeRenameCoreAsync(vf, meta, ct, isFromBatch);
+        if (result.renamed && !string.Equals(oldPath, result.newPath, StringComparison.Ordinal))
+            Services.OperationJournal.Note("Rename", oldPath, result.newPath);
+        return result;
+    }
+
+    private async Task<(bool renamed, string newPath, string? err)> SafeRenameCoreAsync(
+        VideoFile vf,
+        MovieMetadata meta,
+        CancellationToken ct,
+        bool isFromBatch)
+    {
+        var plan = await PlanRenameAsync(vf, meta, ct, isFromBatch, log: true);
+        if (plan.Blocked)
+            return (false, vf.FilePath, plan.Reason);
+        return await _renameService.RenameFileAsync(
+            vf.FilePath, plan.Pattern, plan.Meta, string.Empty, vf.Extension ?? string.Empty,
+            plan.EpisodeEnd, plan.AbsoluteEpisode, ct);
+    }
+
+    /// <summary>
+    /// Build 174: the decision half of a rename — which pattern and metadata will be used,
+    /// or why the rename is blocked — with no file touched. The real rename and the
+    /// Batch Rename preview both use this, so the preview always matches what happens.
+    /// </summary>
+    private sealed record RenamePlan(
+        bool Blocked, string? Reason, string Pattern, MovieMetadata Meta,
+        int? EpisodeEnd, int? AbsoluteEpisode);
+
+    private async Task<RenamePlan> PlanRenameAsync(
+        VideoFile vf, MovieMetadata meta, CancellationToken ct, bool isFromBatch, bool log)
+    {
         // AutoRenameEnabled only blocks AUTOMATIC renames (batch/watch folder)
         // Never blocks explicit button clicks (isFromBatch=false)
         if (!Settings.AutoRenameEnabled && isFromBatch)
-            return (false, vf.FilePath, "Auto-rename is disabled in Settings.");
+            return new RenamePlan(true, "Auto-rename is disabled in Settings.", string.Empty, meta, null, null);
 
-        var pattern   = meta.IsEpisode ? Settings.TvRenamePattern : Settings.RenamePattern;
-        var res       = string.Empty;
-        var fmt       = vf.Extension ?? string.Empty;
+        var pattern = meta.IsEpisode ? Settings.TvRenamePattern : Settings.RenamePattern;
 
         // ── Type mismatch check ────────────────────────────────────────────────
         if (Settings.ConfirmTypeMismatchRename && isFromBatch)
         {
             // 1. TMDB says episode but filename has no S##E## → likely a movie
-            bool metaSaysEpisode  = meta.IsEpisode;
-            bool fileHasEpCode    = FilenameParser.ParseEpisode(
+            bool metaSaysEpisode = meta.IsEpisode;
+            bool fileHasEpCode   = FilenameParser.ParseEpisode(
                 Path.GetFileNameWithoutExtension(vf.FileName)).HasValue;
-            bool fileHasMovieYear = !string.IsNullOrWhiteSpace(
-                FilenameParser.Parse(Path.GetFileNameWithoutExtension(vf.FileName)).year);
 
             if (metaSaysEpisode && !fileHasEpCode)
             {
@@ -436,12 +472,12 @@ public partial class MainViewModel
                 // Override IsEpisode to false — use the movie pattern instead
                 var corrected = meta.Clone();
                 corrected.IsEpisode = false;
-                Log(
-                    $"[{DateTime.Now:HH:mm:ss}] ⚠ Type mismatch: '{vf.FileName}' has no episode code " +
-                    $"but TMDB returned a series result ('{meta.ShowTitle ?? meta.Title}'). " +
-                    $"Using movie pattern instead. Check the metadata manually.");
-                return await _renameService.RenameFileAsync(
-                    vf.FilePath, Settings.RenamePattern, corrected, res, fmt, null, null, ct);
+                if (log)
+                    Log(
+                        $"[{DateTime.Now:HH:mm:ss}] ⚠ Type mismatch: '{vf.FileName}' has no episode code " +
+                        $"but TMDB returned a series result ('{meta.ShowTitle ?? meta.Title}'). " +
+                        $"Using movie pattern instead. Check the metadata manually.");
+                return new RenamePlan(false, null, Settings.RenamePattern, corrected, null, null);
             }
 
             if (!metaSaysEpisode && fileHasEpCode)
@@ -449,14 +485,15 @@ public partial class MainViewModel
                 // TMDB returned a movie for what looks like a TV episode file.
                 // BLOCK the rename entirely — do not apply movie pattern to episode files.
                 // The file keeps its original name; the user should use 📺 TV Batch instead.
-                Log(
-                    $"[{DateTime.Now:HH:mm:ss}] ⛔ Rename blocked: '{vf.FileName}' has an episode " +
-                    $"code (S##E##) but TMDB returned a movie result ('{meta.Title}'). " +
-                    $"Metadata embedded but file NOT renamed. Use 📺 TV Batch for episode files.");
-                // Return success=false to block rename (metadata was already embedded above)
-                return (false, vf.FilePath,
-                    $"Rename blocked: episode file cannot use movie rename pattern. " +
-                    $"Use 📺 TV Batch for correct episode naming.");
+                if (log)
+                    Log(
+                        $"[{DateTime.Now:HH:mm:ss}] ⛔ Rename blocked: '{vf.FileName}' has an episode " +
+                        $"code (S##E##) but TMDB returned a movie result ('{meta.Title}'). " +
+                        $"Metadata embedded but file NOT renamed. Use 📺 TV Batch for episode files.");
+                return new RenamePlan(true,
+                    "Rename blocked: episode file cannot use movie rename pattern. " +
+                    "Use 📺 TV Batch for correct episode naming.",
+                    string.Empty, meta, null, null);
             }
         }
 
@@ -464,7 +501,75 @@ public partial class MainViewModel
             ? FilenameParser.ParseEpisodeRange(Path.GetFileNameWithoutExtension(vf.FileName))
             : null;
         int? absoluteEpisode = await ResolveAbsoluteEpisodeAsync(vf.FilePath, meta, ct);
-        return await _renameService.RenameFileAsync(vf.FilePath, pattern, meta, res, fmt, episodeEnd, absoluteEpisode, ct);
+        return new RenamePlan(false, null, pattern, meta, episodeEnd, absoluteEpisode);
+    }
+
+    /// <summary>
+    /// Build 174: Batch Rename preview. Shows every file's current → new name, flags names
+    /// that are taken (they'd get " (1)"), names two files in the batch would share, and
+    /// renames that are blocked — then asks before anything changes.
+    /// </summary>
+    private async Task<bool> ConfirmRenamePreviewAsync(List<VideoFile> targets)
+    {
+        if (!Settings.ShowChangePreview) return true;
+
+        // Pass 1: plan every file (no file touched).
+        var plans = new List<(VideoFile file, string? newPath, string? blocked)>();
+        var planned = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in targets)
+        {
+            var meta = file.EmbeddedMetadata;
+            if (string.IsNullOrWhiteSpace(meta.Title))
+            {
+                var (parsedTitle, parsedYear) = FilenameParser.Parse(file.FileNameNoExt);
+                meta = meta.Clone();
+                if (string.IsNullOrWhiteSpace(meta.Title)) meta.Title = parsedTitle;
+                if (string.IsNullOrWhiteSpace(meta.Year))  meta.Year  = parsedYear;
+            }
+
+            var plan = await PlanRenameAsync(file, meta, CancellationToken.None, isFromBatch: true, log: false);
+            if (plan.Blocked) { plans.Add((file, null, plan.Reason ?? "Blocked")); continue; }
+
+            var dir = Path.GetDirectoryName(file.FilePath) ?? string.Empty;
+            var newName = _renameService.BuildFileName(plan.Pattern, plan.Meta, Path.GetExtension(file.FilePath),
+                string.Empty, file.Extension ?? string.Empty, plan.EpisodeEnd, plan.AbsoluteEpisode);
+            var newPath = Path.Combine(dir, newName);
+            plans.Add((file, newPath, null));
+            planned[newPath] = planned.TryGetValue(newPath, out var c) ? c + 1 : 1;
+        }
+
+        // Pass 2: one row per file, in order, with any warning.
+        var rows = new List<Views.ChangePreviewWindow.Row>();
+        int changes = 0, problems = 0;
+        foreach (var (file, newPath, blocked) in plans)
+        {
+            if (newPath == null)
+            {
+                rows.Add(new(file.FileName, "—", "⛔ " + blocked));
+                problems++;
+                continue;
+            }
+            var newName = Path.GetFileName(newPath);
+            string note = string.Empty;
+            if (string.Equals(newPath, file.FilePath, StringComparison.Ordinal))
+                note = "Unchanged";
+            else
+            {
+                changes++;
+                if (planned[newPath] > 1)
+                { note = "⚠ Same new name as another file in this batch — one will get “ (1)”"; problems++; }
+                else if (File.Exists(newPath) && !string.Equals(newPath, file.FilePath, StringComparison.OrdinalIgnoreCase))
+                { note = "⚠ A file with this name already exists — will become “ (1)”"; problems++; }
+            }
+            rows.Add(new(file.FileName, newName, note));
+        }
+
+        return Views.ChangePreviewWindow.Confirm(
+            "Preview — Batch Rename",
+            $"{changes} of {targets.Count} file(s) will be renamed" +
+            (problems > 0 ? $"  ·  ⚠ {problems} need attention" : string.Empty) +
+            ". Nothing has changed yet.",
+            "Current name", "New name", rows, "Rename");
     }
 
     /// <summary>
@@ -625,6 +730,8 @@ public partial class MainViewModel
     {
         var selected = Files.Where(f => f.IsSelected && !f.IsSeparator).ToList();
         if (selected.Count == 0) return;
+        // Build 174: renames made by this batch are grouped in History (undoable together).
+        using var history = Services.OperationJournal.Begin("Batch Process", $"Batch Process of {selected.Count} file(s)");
         var ct = BeginOperation();
         IsBusy = true;
         int done = 0, successCount = 0, failCount = 0, renamedCount = 0;
@@ -853,6 +960,8 @@ public partial class MainViewModel
             StatusText = cancelled
                 ? $"Batch cancelled — {successCount} succeeded, {failCount} failed, {renamedCount} renamed."
                 : $"Batch complete — {successCount} succeeded, {failCount} failed, {renamedCount} renamed.";
+            history.Summary = $"Batch Process — {successCount} embedded, {renamedCount} renamed" +
+                              (failCount > 0 ? $", {failCount} failed" : "");
             EndOperation();
         }
 
@@ -2135,6 +2244,7 @@ public partial class MainViewModel
         ProgressValue = 0;
         StatusText    = $"📺 TV Batch — parsing {selected.Count} file(s)…";
 
+        using var history = Services.OperationJournal.Begin("TV Batch", $"TV Batch of {selected.Count} file(s)");
         var ct = BeginOperation();
 
         try
@@ -2297,6 +2407,7 @@ public partial class MainViewModel
                           (skipped.Count > 0 ? $", {skipped.Count} skipped (no episode code)" : "");
             StatusText = summary;
             Log( $"[{DateTime.Now:HH:mm:ss}] {summary}");
+            history.Summary = summary.Replace("📺 ", string.Empty);
 
             BatchCompleted?.Invoke(this, new BatchEventArgs(embedded, failed, 0));
         }

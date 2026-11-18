@@ -100,6 +100,43 @@ public partial class MainViewModel
             }
         }
 
+        // ── Build 174: preview ────────────────────────────────────────────────
+        if (Settings.ShowChangePreview)
+        {
+            var rows = new List<Views.ChangePreviewWindow.Row>();
+            int clashes = 0;
+            foreach (var f in selected)
+            {
+                var destDir  = destMap != null && destMap.TryGetValue(f.FilePath, out var d) ? d : CopyDestination!;
+                var destPath = System.IO.Path.Combine(destDir, f.FileName);
+                string note = string.Empty;
+                if (System.IO.File.Exists(destPath))
+                {
+                    clashes++;
+                    note = ConflictMode switch
+                    {
+                        "Skip"             => "⚠ Already exists there — will be skipped",
+                        "OverwriteIfNewer" => "⚠ Already exists there — replaced only if this one is newer",
+                        "Rename"           => "⚠ Already exists there — this one will get “ (1)”",
+                        _                  => "⚠ Already exists there — will be OVERWRITTEN"
+                    };
+                }
+                rows.Add(new(f.FileName, destPath, note));
+            }
+            var verbWord = mode == Services.CopyMode.Copy ? "copied" : "moved";
+            if (!Views.ChangePreviewWindow.Confirm(
+                    $"Preview — {(mode == Services.CopyMode.Copy ? "Copy" : "Move")}",
+                    $"{selected.Count} file(s) will be {verbWord}" +
+                    (skippedUntagged.Count > 0 ? $"  ·  {skippedUntagged.Count} untagged skipped" : string.Empty) +
+                    (clashes > 0 ? $"  ·  ⚠ {clashes} already exist at the destination" : string.Empty) +
+                    ". Nothing has changed yet.",
+                    "File", "Destination", rows, mode == Services.CopyMode.Copy ? "Copy" : "Move"))
+            {
+                StatusText = $"{verb} cancelled — nothing changed.";
+                return;
+            }
+        }
+
         // ── Disk space analysis ────────────────────────────────────────────────
         var analysis = Services.FileCopyService.AnalyseDiskSpace(sources, CopyDestination);
         if (!analysis.HasSufficientSpace)
@@ -152,6 +189,21 @@ public partial class MainViewModel
 
                 ProgressValue = extResult.Success ? 100 : 0;
                 bool ok = extResult.Success;
+
+                // Build 174: history. External engines report totals, not per-file paths,
+                // so record where each file was sent; Undo checks it's really there first.
+                if (ok)
+                {
+                    using var history = Services.OperationJournal.Begin(
+                        mode == Services.CopyMode.Move ? "Move" : "Copy",
+                        $"{(mode == Services.CopyMode.Move ? "Moved" : "Copied")} {extResult.FilesCopied} file(s) to {CopyDestination} via {engine}");
+                    foreach (var src in sources)
+                    {
+                        var destDir = destMap != null && destMap.TryGetValue(src, out var d) ? d : CopyDestination;
+                        Services.OperationJournal.Note(mode == Services.CopyMode.Move ? "Move" : "Copy",
+                            src, System.IO.Path.Combine(destDir!, System.IO.Path.GetFileName(src)));
+                    }
+                }
 
                 // Build clear engine-specific result message
                 string engineName = "FastCopy";
@@ -284,6 +336,16 @@ public partial class MainViewModel
                 }
 
                 // ── Process results ────────────────────────────────────────────
+                // Build 174: history — exact per-file destinations from the built-in engine.
+                using (var history = Services.OperationJournal.Begin(
+                    mode == Services.CopyMode.Move ? "Move" : "Copy",
+                    $"{(mode == Services.CopyMode.Move ? "Moved" : "Copied")} {results.Count(x => x.Success)} file(s) to {CopyDestination}"))
+                {
+                    foreach (var moved in results.Where(x => x.Success && !string.IsNullOrEmpty(x.DestPath)))
+                        Services.OperationJournal.Note(mode == Services.CopyMode.Move ? "Move" : "Copy",
+                            moved.SourcePath, moved.DestPath);
+                }
+
                 int succeeded = results.Count(r => r.Success);
                 int failed    = results.Count(r => !r.Success);
                 int verified  = results.Count(r => r.Verified);

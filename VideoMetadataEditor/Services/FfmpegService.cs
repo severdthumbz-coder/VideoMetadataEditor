@@ -224,6 +224,7 @@ public static class FfmpegService
             {
                 File.Move(tempOut, filePath, overwrite: true);
                 try { File.SetLastWriteTimeUtc(filePath, origWrite); } catch { /* cosmetic */ }
+                OperationJournal.Note("Faststart", filePath, filePath);   // build 174: history (record only)
                 return new FixResult(true, $"Faststart added (lossless, {verifiedNote}).", filePath);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -337,6 +338,7 @@ public static class FfmpegService
             if (toMkv && before.Count(MediaProbeService.StreamKind.Cover) > 0)
                 note += ". Cover art isn't copied into MKV by remux — re-embed artwork afterwards";
         }
+        OperationJournal.Note("Remux", filePath, outPath);   // build 174: history (record only)
         return new FixResult(true, $"Remuxed to {Path.GetFileName(outPath)} (lossless; {note}).", outPath);
     }
 

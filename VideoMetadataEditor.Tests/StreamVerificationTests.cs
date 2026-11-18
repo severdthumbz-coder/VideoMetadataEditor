@@ -15,6 +15,7 @@ namespace VideoMetadataEditor.Tests;
 /// cover art, moov atom at the END (so it needs faststart). It's exactly the kind of file
 /// the pre-168 Fix Faststart damaged.
 /// </summary>
+[Collection("OperationJournal")]   // also writes history; don't run alongside the journal tests
 public class StreamVerificationTests
 {
     private static string Asset(string name) => Path.Combine(AppContext.BaseDirectory, "Assets", name);

@@ -185,6 +185,35 @@ public partial class MainViewModel : INotifyPropertyChanged
 
     public bool IsAttentionFilterActive => _libraryAttentionFilter != "All";
 
+    // ── History (build 174) ──────────────────────────────────────────────────
+    private ICommand? _openHistoryCommand;
+    /// <summary>Log → 🕘 History: past operations, with Undo for renames and moves.</summary>
+    public ICommand OpenHistoryCommand => _openHistoryCommand ??= new RelayCommand(
+        _ => Views.HistoryWindow.Open(OnHistoryUndone), _ => !IsBusy);
+
+    /// <summary>
+    /// After History puts files back, point the Files panel and Library at their
+    /// restored paths so nothing shows a location that no longer exists.
+    /// </summary>
+    private void OnHistoryUndone(List<Services.OperationJournal.Item> items)
+    {
+        int updated = 0;
+        foreach (var it in items)
+        {
+            if (!File.Exists(it.From) || File.Exists(it.To)) continue;   // that one wasn't put back
+            foreach (var vf in Files.Where(f => !f.IsSeparator &&
+                         f.FilePath.Equals(it.To, StringComparison.OrdinalIgnoreCase)))
+            { vf.FilePath = it.From; updated++; }
+            foreach (var le in LibraryEntries.Where(e =>
+                         e.FilePath.Equals(it.To, StringComparison.OrdinalIgnoreCase)))
+            { le.FilePath = it.From; updated++; }
+        }
+        InvalidatePhysicalEpisodeCache();
+        LibraryView.Refresh();
+        RaiseProperty(nameof(TvShowTree));
+        Log($"[{DateTime.Now:HH:mm:ss}] ↩ History undo — {items.Count} file(s) put back where possible; {updated} list entr(ies) updated.");
+    }
+
     /// <summary>How many titles the Library is showing right now (all filters applied).</summary>
     public int LibraryShownCount => LibraryEntries.Count(e => MatchesLibraryFilter(e));
 

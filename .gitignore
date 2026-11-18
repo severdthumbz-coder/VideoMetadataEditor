@@ -11,6 +11,7 @@ config.json
 subt_settings.json
 error.log
 thumbs/
+history.jsonl
 *.diag.txt
 
 # ── Visual Studio / Rider / VS Code user files ────────────────────────────────

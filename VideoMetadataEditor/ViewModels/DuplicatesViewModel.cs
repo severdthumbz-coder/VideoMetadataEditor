@@ -700,6 +700,10 @@ public class DuplicatesViewModel : ViewModelBase
 
         if (confirm != Services.DialogResult.Yes) return;
 
+        // Build 174: moved duplicates are grouped in History and can be put back later.
+        using var history = Services.OperationJournal.Begin("Move",
+            $"Duplicates — moved {selectedFiles.Count} file(s) to {_destinationFolder}");
+
         int succeeded = 0, failed = 0;
         var errors    = new List<string>();
         var processed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -734,6 +738,7 @@ public class DuplicatesViewModel : ViewModelBase
                             $"{stem} ({n++}){ext}");
                     }
                     System.IO.File.Move(path, destPath);
+                    Services.OperationJournal.Note("Move", path, destPath);   // build 174: undoable
                 }
                 else
                 {

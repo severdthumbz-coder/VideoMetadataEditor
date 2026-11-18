@@ -2795,6 +2795,10 @@
                                                   IsChecked="{Binding Settings.MoveSubtitleSidecars}"
                                                   Margin="0,0,0,6"
                                                   ToolTip="During a Custom Fast move/copy, also transfer subtitle files (.srt, .ass, .ssa, .vtt, .sub/.idx, .sbv) that share a video's base name, and rename them to match the video's final name so Plex/Jellyfin keep pairing them. Applies to the Custom Fast engine (the one Smart Organisation uses). Default on."/>
+                                        <CheckBox Content="Preview changes before Batch Rename, Move and Copy"
+                                                  IsChecked="{Binding Settings.ShowChangePreview}"
+                                                  Margin="0,0,0,6"
+                                                  ToolTip="Before renaming or moving several files, show every file's current and new name (or destination) and warn about names that are taken or would clash — nothing changes until you confirm. Default on."/>
                                         <CheckBox Content="Show onboarding helpers (legend, hints, first-run tour)"
                                                   IsChecked="{Binding Settings.ShowOnboardingHelpers}"
                                                   Margin="0,0,0,6"
@@ -5677,6 +5681,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 174 — Preview before changes, and a History you can undo from
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Batch Rename, Move and Copy now show every file's current and new name, or its destination, before anything changes. Names that are already taken, two files that would get the same name, blocked renames and files that would be overwritten are flagged. You can turn this off under Settings → Behaviour. Every rename, move, copy, extension fix, faststart and remux is now recorded in history.jsonl next to the EXE and kept between sessions. Log → 🕘 History lists it all. Renames, moves (including Duplicates moves) and extension fixes can be undone from there at any time: files go back with their subtitles, .nfo and artwork, and nothing is ever overwritten.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 173 — Every rewrite is verified before it's kept
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
@@ -8188,6 +8198,11 @@ ative\ on first run. Registers
                                            Style="{StaticResource SectionHeader}"
                                            VerticalAlignment="Center"/>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Content="🕘 History"
+                                            Style="{StaticResource PrimaryButton}"
+                                            Command="{Binding OpenHistoryCommand}"
+                                            ToolTip="Every rename, move, copy and fix VME has made, kept between sessions — undo renames and moves from here."
+                                            Padding="10,5" FontSize="12" Margin="0,0,6,0"/>
                                     <Button Content="🔍 Find Duplicates"
                                             Style="{StaticResource SecondaryButton}"
                                             Command="{Binding FindDuplicatesCommand}"

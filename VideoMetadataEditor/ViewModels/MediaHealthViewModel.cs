@@ -349,13 +349,18 @@ public class MediaHealthViewModel : ViewModelBase
 
         BeginFixing();
         var outcome = new FixOutcome();
-        try
+        using (var history = OperationJournal.Begin("Fix Faststart", $"Fix Faststart of {targets.Count} file(s)"))
         {
-            await RunFaststartBatchAsync(targets, outcome, _cts!.Token);
-        }
-        finally
-        {
-            EndFixing();
+            try
+            {
+                await RunFaststartBatchAsync(targets, outcome, _cts!.Token);
+            }
+            finally
+            {
+                EndFixing();
+            }
+            history.Summary = $"Fix Faststart — {outcome.Faststart} fixed" +
+                              (outcome.Failed > 0 ? $", {outcome.Failed} failed" : "");
         }
 
         Status = outcome.Cancelled
@@ -620,6 +625,7 @@ public class MediaHealthViewModel : ViewModelBase
         if (confirm != Services.DialogResult.Yes) return;
 
         BeginFixing();
+        using var history = OperationJournal.Begin("Fix All Issues", "Fix All Issues");
         var outcome = new FixOutcome { Skipped = canFaststart ? 0 : noFaststart.Count };
         var ct = _cts!.Token;
         int total = mismatches.Count + (canFaststart ? noFaststart.Count : 0);
@@ -650,6 +656,7 @@ public class MediaHealthViewModel : ViewModelBase
                 try
                 {
                     File.Move(r.FilePath, newPath);
+                    OperationJournal.Note("ExtensionFix", r.FilePath, newPath);   // build 174: undoable
                     ReplaceResult(r, newPath);
                     outcome.Renamed++;
                 }
@@ -671,6 +678,8 @@ public class MediaHealthViewModel : ViewModelBase
             EndFixing();
         }
 
+        history.Summary = $"Fix All Issues — {outcome.Renamed} extension(s) corrected, {outcome.Faststart} faststart(s) added" +
+                          (outcome.Failed > 0 ? $", {outcome.Failed} failed" : "");
         Status = (outcome.Cancelled ? "Cancelled — " : "Fix All: ") +
                  $"{outcome.Renamed} extension(s) corrected, {outcome.Faststart} faststart(s) added" +
                  (outcome.Failed > 0 ? $", {outcome.Failed} failed." : ".");

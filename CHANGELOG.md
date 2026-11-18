@@ -2,6 +2,37 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 174 — Preview before changes, and a History you can undo from
+
+Second of the safety builds.
+
+**Preview before changes**
+- **Batch Rename** shows every file's current name next to its new name before anything is renamed. It flags:
+  - names already taken (the file would get " (1)");
+  - two files in the batch that would get the same name;
+  - renames that are blocked (e.g. a TV episode matched to a movie, or auto-rename turned off).
+  The preview uses the same planning code as the real rename, so what you see is what happens.
+- **Move and Copy** show each file and its destination (including Smart Organisation folders) and flag files that already exist there, saying what the conflict setting will do: overwrite, skip, keep the newer one, or add " (1)".
+- **"Show only files that need attention"** narrows a long preview to the problems.
+- On by default; turn it off under Settings → Behaviour → "Preview changes before Batch Rename, Move and Copy".
+- Batch Process and TV Batch can't be previewed, because they look up metadata as they go. Their renames are fully recorded in History.
+
+**History**
+- Every rename, move, copy, extension fix, faststart and remux is recorded in `history.jsonl` next to the EXE and kept between sessions. That includes Batch Rename, Batch Process, TV Batch, single-file Apply + Embed + Rename, Move/Copy, Duplicates moves, Fix All Issues and Fix Faststart. Each operation is one entry ("Batch Process — 38 embedded, 12 renamed"), with every file listed underneath.
+- **Log → 🕘 History** lists everything, newest first.
+- **Undo any time, even after restarting.** Renames, moves and extension fixes can be undone:
+  - files go back to their original names and folders, with subtitles, `.nfo` and artwork that share the name;
+  - folders are recreated if needed;
+  - **nothing is ever overwritten**: a file that has moved since, or whose old name is now taken, is skipped and listed;
+  - a partial undo can be retried;
+  - the Files panel and Library are updated to the restored paths.
+- Copies and in-place rewrites (faststart, embed) are recorded but not undoable from History. Undo Batch and Undo Last Embed still cover embeds in the current session.
+- The history keeps the last 500 operations. A damaged line is skipped, not fatal. `history.jsonl` is in `.gitignore`.
+
+Tests added for history recording (including parallel workers), undo with sidecars, never-overwrite, missing files, folder recreation and damaged history lines.
+
+---
+
 ## v1.4.0 Build 173 — Every rewrite is verified before it's kept
 
 First of the safety builds (173–176). The Fix Faststart bug went unnoticed because nothing checked the rewritten files, and nothing in CI touched real video.

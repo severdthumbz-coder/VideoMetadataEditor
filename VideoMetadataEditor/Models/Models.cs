@@ -74,6 +74,8 @@ public class AppSettings
     /// hint markers, and the first-run guided tour. On by default so newcomers get help; power
     /// users can turn it off. The Legend stays reachable on demand regardless of this flag.</summary>
     public bool   ShowOnboardingHelpers { get; set; } = true;
+    /// <summary>Build 174: show the change list before Batch Rename / Move / Copy.</summary>
+    public bool   ShowChangePreview { get; set; } = true;
     /// <summary>Set true once the first-run guided tour has been shown (or skipped), so it
     /// doesn't auto-launch again. Re-runnable manually from the Help tab.</summary>
     public bool   HasSeenTour           { get; set; } = false;
