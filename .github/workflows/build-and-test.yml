@@ -35,7 +35,13 @@ jobs:
       - name: Build app (Release)
         run: dotnet build "VideoMetadataEditor/VideoMetadataEditor.csproj" --configuration Release --no-restore
 
-      # Build + run the unit tests (RemuxCommit, MediaHealth, FingerprintCache,
-      # FileCopy routing, orphan sweep, FilenameParser, FileRenameService).
+      # FFmpeg for the real-file stream tests (Fix Faststart / Remux on Assets/multistream.mp4).
+      - name: Install FFmpeg
+        run: choco install ffmpeg -y --no-progress
+
+      # Build + run the unit tests. VME_REQUIRE_FFMPEG=1 makes the real-file tests
+      # fail (instead of skip) if FFmpeg is missing, so they can't silently pass.
       - name: Run tests
+        env:
+          VME_REQUIRE_FFMPEG: '1'
         run: dotnet test "VideoMetadataEditor.Tests/VideoMetadataEditor.Tests.csproj" --configuration Release --verbosity normal --logger "console;verbosity=detailed"
