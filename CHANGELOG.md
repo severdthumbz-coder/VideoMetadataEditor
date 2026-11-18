@@ -2,6 +2,43 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 176 — Watched files are read only once they've arrived; the library cache keeps every folder
+
+Fixes found in the first build 175 activity log.
+
+**Watched files: wait until the copy has finished**
+- Library Watch reported files the moment a Move into the library *started*. VME then read tags and tracks from half-copied files: "Tracks couldn't be read" for all three moved movies, about a minute before the move finished. The Files-panel Watch Folder had the same gap, and with auto-embed on it could embed a file that was still downloading.
+- Both watchers now wait until the file has finished arriving before reading it:
+  - nothing is still writing it (it can be opened while denying writers);
+  - its size has stopped changing.
+- While waiting, the log says "waiting for ⟨file⟩ to finish copying". One waiter runs per file, even though the watcher re-reports it.
+- The Files-panel watcher no longer logs "Watch folder: ⟨file⟩" for files VME itself just renamed in that folder. It only logs files it actually adds.
+
+**Library cache: every library folder is kept**
+- The scan cache held one folder at a time. With two library folders (e.g. Movies + TV Shows), scanning the second replaced the first in memory. As a result:
+  - the scan's "N from cache, N read from disk" only counted the last folder (your log: "4394 file(s) — 1143 from cache, 0 read from disk");
+  - track info read for the first folder couldn't be stored, so it would be read again on every start;
+  - embeds in one folder were written into the other folder's cache file;
+  - every rescan reloaded the folders from disk alternately, dropping unsaved in-memory updates.
+- Each library folder now keeps its own cache for the whole session, and each file is routed to the folder that contains it. Saving only prunes folders whose files are in the list, so a library drive that's offline keeps its cache. Entries that ended up in the wrong folder's file are cleaned out on the next save.
+- The scan status now counts cache hits and disk reads across all folders, and the log has one line per folder.
+- **Clear Cache** clears every library folder's cache, not just the primary one, and track info is read again.
+- A failed cache save is now a warning in the log instead of silent.
+
+**Track pass**
+- Reads as many files at a time as the drive handles well: 2 on a hard drive, up to 8 on an SSD. Build 175 always read 3.
+- Progress is shown next to the Library filters ("🔊 Reading audio/subtitle tracks… 1,240 left"). The log gets a progress line about every 10%, and the cache is saved during long passes so a first pass isn't lost if VME is closed.
+- A single file from Library Watch gets one result line instead of an operation start and finish.
+
+**Log**
+- The embed pipeline's "Writing tags / Copying to temp / Embedding tags / Applying / Done" lines are categorised as Embed. "Copying to temp" was being shown as Copy/Move. "Done:" counts as a success, "size verified" as Copy/Move, and the drive-profile line as Files.
+- A Move/Copy no longer shows a second, 2 ms "Moved 3 file(s)" operation inside the real one.
+- History lines for moves show the destination folder ("The Eyes (2026).mp4 → A:\Movies") instead of the same name twice.
+
+Tests added for file readiness (being written, empty, missing, waiting while a copy grows, giving up) and the multi-folder cache (both folders persist, saving one never empties the other, offline folders keep their cache, files outside the library aren't cached, "Movies" doesn't claim "Movies 4K", Evict and Clear cover every folder).
+
+---
+
 ## v1.4.0 Build 175 — A detailed activity log, and audio/subtitle tracks in the Library
 
 **Activity log (Log tab)**

@@ -144,6 +144,7 @@ public partial class MainViewModel
             await dispatcher.InvokeAsync(() =>
             {
                 RaiseProperty(nameof(TrackToolMissing));
+                RaiseProperty(nameof(LibraryBackgroundStatus));
                 RebuildTrackFilterOptions();
                 RaiseLibraryAttentionCounts();
             });
@@ -156,10 +157,23 @@ public partial class MainViewModel
         }
 
         Interlocked.Add(ref _tracksPending, todo.Count);
-        using var op = LogService.Begin("Library", $"Reading audio/subtitle tracks for {todo.Count} file(s)",
-            ffprobe != null ? $"Using {ffprobe}" : $"Using {ffmpeg} (ffprobe not found — slower)");
+        RaiseTrackProgress();
 
-        int ok = 0, failed = 0, remaining = todo.Count;
+        // Build 176: as many ffprobe processes as the drive handles well (HDD 2, SSD up to
+        // 8) instead of a fixed 3. Each probe only reads the file's header.
+        int workers;
+        try { workers = Math.Clamp(DriveCapabilityService.GetProfile(todo[0].FilePath).RecommendedMetadataWorkers, 2, 8); }
+        catch { workers = 3; }
+
+        // One file (Library Watch) gets a single result line, not an operation.
+        bool single = todo.Count == 1;
+        using var op = single ? null : LogService.Begin("Library", $"Reading audio/subtitle tracks for {todo.Count:N0} file(s)",
+            (ffprobe != null ? $"Using {ffprobe}" : $"Using {ffmpeg} (ffprobe not found — slower)") +
+            $"{Environment.NewLine}{workers} at a time");
+
+        int ok = 0, failed = 0, remaining = todo.Count, done = 0;
+        int total = todo.Count;
+        int step  = Math.Max(250, total / 10);   // progress line every ~10 %
         var failures = new ConcurrentQueue<string>();
         var pending  = new List<(Models.LibraryEntry Entry, string Tracks)>();
         var gate     = new object();
@@ -174,6 +188,7 @@ public partial class MainViewModel
                 foreach (var (entry, tracks) in batch) entry.Tracks = tracks;
                 if (IsTrackFilterActive) LibraryView.Refresh();
                 RaiseLibraryAttentionCounts();
+                RaiseTrackProgress();
             }, System.Windows.Threading.DispatcherPriority.Background);
         }
 
@@ -181,7 +196,7 @@ public partial class MainViewModel
         {
             await Task.Run(async () =>
             {
-                using var sem = new SemaphoreSlim(3);
+                using var sem = new SemaphoreSlim(workers);
                 var tasks = todo.Select(async e =>
                 {
                     await sem.WaitAsync(ct);
@@ -215,28 +230,55 @@ public partial class MainViewModel
                     {
                         sem.Release();
                         Interlocked.Decrement(ref _tracksPending);
+                        Interlocked.Decrement(ref remaining);
+                        var n = Interlocked.Increment(ref done);
                         // Show results in steady batches while the pass runs.
-                        if (Interlocked.Decrement(ref remaining) % 20 == 0) await Flush();
+                        if (n % 20 == 0) await Flush();
+                        if (!single && n % step == 0 && n < total)
+                        {
+                            LogService.Debug("Library", $"Tracks: {n:N0} of {total:N0} read");
+                            // Save as we go, so a long first pass isn't lost if VME is closed.
+                            if (n % (step * 2) == 0) await SaveLibraryCacheAsync();
+                        }
                     }
                 }).ToList();
                 await Task.WhenAll(tasks);
             }, ct);
             await Flush();
 
-            op.Outcome = failed == 0 ? $"{ok} file(s) read"
-                                     : $"{ok} file(s) read, {failed} couldn't be read";
-            if (failed > 0)
+            if (single)
             {
-                op.Warn();
-                LogService.Warn("Library", $"Tracks couldn't be read for {failed} file(s)",
-                    string.Join(Environment.NewLine, failures.Take(50)) +
-                    (failed > 50 ? $"{Environment.NewLine}…and {failed - 50} more" : string.Empty));
+                var e = todo[0];
+                if (failed > 0)
+                    LogService.Warn("Library", $"Tracks couldn't be read: {e.FileName}",
+                        failures.FirstOrDefault(), e.FilePath);
+                else
+                {
+                    var audio = TrackSummary.AudioDisplay(e.Tracks);
+                    var subs  = TrackSummary.SubtitleDisplay(e.Tracks);
+                    LogService.Debug("Library", $"Tracks: {e.FileName} — audio {audio}, subs {subs}", null, e.FilePath);
+                }
+            }
+            else
+            {
+                op!.Outcome = failed == 0 ? $"{ok:N0} file(s) read"
+                                          : $"{ok:N0} file(s) read, {failed} couldn't be read";
+                if (failed > 0)
+                {
+                    op.Warn();
+                    LogService.Warn("Library", $"Tracks couldn't be read for {failed} file(s)",
+                        string.Join(Environment.NewLine, failures.Take(50)) +
+                        (failed > 50 ? $"{Environment.NewLine}…and {failed - 50} more" : string.Empty));
+                }
             }
         }
         catch (OperationCanceledException)
         {
-            op.Cancel();
-            op.Outcome = $"{ok} read before the scan was restarted or cancelled";
+            if (op != null)
+            {
+                op.Cancel();
+                op.Outcome = $"{ok:N0} read before the scan was restarted or cancelled";
+            }
             await Flush();
         }
         finally
@@ -251,9 +293,41 @@ public partial class MainViewModel
             RebuildTrackFilterOptions();
             if (IsTrackFilterActive) { LibraryView.Refresh(); RaiseProperty(nameof(TvShowTree)); }
             RaiseLibraryAttentionCounts();
-            // Persist the new track info so the next start doesn't read these files again.
-            var livePaths = LibraryEntries.Select(x => x.FilePath).ToList();
-            if (livePaths.Count > 0) _ = _libraryCacheService.SaveAsync(livePaths);
+            RaiseTrackProgress();
         });
+        // Persist the new track info so the next start doesn't read these files again.
+        await SaveLibraryCacheAsync();
+    }
+
+    /// <summary>Saves the library cache for every file currently in the Library.</summary>
+    private async Task SaveLibraryCacheAsync()
+    {
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher == null) return;
+        var livePaths = await dispatcher.InvokeAsync(() => LibraryEntries.Select(x => x.FilePath).ToList());
+        if (livePaths.Count > 0) await _libraryCacheService.SaveAsync(livePaths);
+    }
+
+    /// <summary>
+    /// Build 176: visible progress for the background passes, shown under the Library
+    /// filters — e.g. "Reading audio/subtitle tracks… 1,240 of 4,394 left".
+    /// </summary>
+    public string LibraryBackgroundStatus
+    {
+        get
+        {
+            var tracks = TracksPendingCount;
+            if (tracks > 0) return $"🔊 Reading audio/subtitle tracks… {tracks:N0} left";
+            if (TrackToolMissing) return "🔊 Track info needs FFmpeg — Settings → External Tools";
+            return string.Empty;
+        }
+    }
+
+    private void RaiseTrackProgress()
+    {
+        var d = System.Windows.Application.Current?.Dispatcher;
+        if (d == null) return;
+        if (d.CheckAccess()) RaiseProperty(nameof(LibraryBackgroundStatus));
+        else d.InvokeAsync(() => RaiseProperty(nameof(LibraryBackgroundStatus)));
     }
 }

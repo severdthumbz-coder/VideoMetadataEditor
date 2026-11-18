@@ -4021,6 +4021,12 @@
                                               DisplayMemberPath="Label" SelectedValuePath="Key"
                                               SelectedValue="{Binding LibrarySubtitleFilter}"
                                               ToolTip="Subtitles inside the file or as a sidecar file next to it (Movie.en.srt). 'No … subtitles' finds titles to fetch subtitles for."/>
+                                    <!-- Build 176: background track pass progress -->
+                                    <TextBlock Text="{Binding LibraryBackgroundStatus}" Margin="10,0,0,0"
+                                               VerticalAlignment="Center" FontSize="11"
+                                               Foreground="{DynamicResource ForegroundMutedBrush}"
+                                               ToolTip="Audio/subtitle filters only include files whose tracks have been read. Progress is also in the Log tab."
+                                               Visibility="{Binding LibraryBackgroundStatus, Converter={StaticResource NullVis}}"/>
                                     <TextBlock Style="{StaticResource HintMarker}" Margin="6,0,0,0">
                                         <TextBlock.ToolTip>
                                             <ToolTip MaxWidth="320">
@@ -5715,6 +5721,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 176 — Watched files are read once they've arrived; the cache keeps every library folder
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        Library Watch and the Files-panel Watch Folder now wait until a file has finished copying or downloading before reading it. Build 175 read moved files mid-copy, and auto-embed could embed a half-downloaded file. The library scan cache now keeps every library folder: with Movies and TV Shows it used to keep only the last one scanned, so the other folder's track info and embeds weren't saved and the cache counts were wrong. Clear Cache clears every folder. The track pass reads more files at a time on SSDs and shows its progress next to the Library filters. Embed log lines are categorised correctly, and Move no longer logs a redundant inner operation.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 175 — A detailed activity log, and audio/subtitle tracks in the Library
                                     </TextBlock>

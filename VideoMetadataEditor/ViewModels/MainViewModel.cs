@@ -821,6 +821,26 @@ public partial class MainViewModel : INotifyPropertyChanged
     /// </summary>
     private void Log(string message) => Services.LogService.WriteLegacy(message);
 
+    // Build 176: files a watcher has reported that are still arriving (one waiter each).
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _filesAwaitingReady =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _libraryAwaitingReady =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Adds a watch-folder file to the Files panel (UI thread) and logs it.</summary>
+    private void AddWatchedFileNow(string path)
+    {
+        // A file VME just renamed in the watch folder is reported too — it's already
+        // listed, so only log files that were actually added.
+        bool alreadyListed = FilesContainsSamePath(path);
+        TryAddWatchedFile(path);
+        if (alreadyListed) return;
+        var added = Files.FirstOrDefault(f => !f.IsSeparator &&
+            f.FilePath.Equals(path, StringComparison.OrdinalIgnoreCase));
+        if (added != null)
+            Services.LogService.Info("Watch", $"📁 Watch folder: {added.FileName} added", file: added.FilePath);
+    }
+
     // ── Copy / Move Tab ───────────────────────────────────────────────────────
 
     private string _copyDestination = string.Empty;
@@ -1897,11 +1917,30 @@ public partial class MainViewModel : INotifyPropertyChanged
         // Wire WatchFolderService events
         _watchFolderService.FileDetected += path =>
         {
-            TryAddWatchedFile(path);
-            var added = Files.FirstOrDefault(f => !f.IsSeparator &&
-                f.FilePath.Equals(path, StringComparison.OrdinalIgnoreCase));
-            if (added != null)
-                Log( $"[{DateTime.Now:HH:mm:ss}] 📁 Watch folder: {added.FileName}");
+            // VME's own temp files go straight to the recovery check; files already listed
+            // need nothing. Anything else waits until it has finished arriving (build 176) —
+            // otherwise a download or copy in progress is read half-written, and with
+            // auto-embed on it would be embedded half-written.
+            if (IsVmeTempPath(path) || FilesContainsSamePath(path)) { AddWatchedFileNow(path); return; }
+            if (!_filesAwaitingReady.TryAdd(path, 0)) return;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var name = Path.GetFileName(path);
+                    var ready = await Services.FileReadiness.WaitUntilReadyAsync(path, TimeSpan.FromHours(3),
+                        onWaiting: () => Services.LogService.Info("Watch",
+                            $"Watch folder: waiting for {name} to finish copying", file: path));
+                    if (!ready) return;
+                    System.Windows.Application.Current?.Dispatcher.InvokeAsync(() => AddWatchedFileNow(path),
+                        System.Windows.Threading.DispatcherPriority.Background);
+                }
+                catch (Exception ex)
+                {
+                    Services.LogService.Error("Watch", $"Watch folder couldn't add {Path.GetFileName(path)}", ex, path);
+                }
+                finally { _filesAwaitingReady.TryRemove(path, out _); }
+            });
         };
         _watchFolderService.WatcherError += msg =>
             Log( $"[{DateTime.Now:HH:mm:ss}] ⚠ Watch folder: {msg}");
@@ -2131,10 +2170,25 @@ public partial class MainViewModel : INotifyPropertyChanged
         {
             if (LibraryEntries.Any(e => e.FilePath.Equals(path, StringComparison.OrdinalIgnoreCase)))
                 return; // already in library
+            // Build 176: one waiter per file — the watcher re-reports a file while it's arriving.
+            if (!_libraryAwaitingReady.TryAdd(path, 0)) return;
             _ = Task.Run(async () =>
             {
                 try
                 {
+                    // Build 176: a move/copy into the library is reported the moment it starts.
+                    // Wait for the file to finish arriving before reading tags and tracks.
+                    var name = Path.GetFileName(path);
+                    var ready = await Services.FileReadiness.WaitUntilReadyAsync(path, TimeSpan.FromHours(3),
+                        onWaiting: () => Services.LogService.Info("Library",
+                            $"Library watch: waiting for {name} to finish copying", file: path));
+                    if (!ready)
+                    {
+                        Services.LogService.Debug("Library",
+                            $"Library watch: {name} is gone or never finished — not added (a library scan will pick it up)", file: path);
+                        return;
+                    }
+
                     var entry = await _libraryScanService.BuildSingleEntryAsync(path);
                     if (entry == null) return;
                     System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
@@ -2153,8 +2207,9 @@ public partial class MainViewModel : INotifyPropertyChanged
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[LibraryWatch] {ex.GetType().Name}: {ex.Message}");
+                    Services.LogService.Error("Library", $"Library watch couldn't add {Path.GetFileName(path)}", ex, path);
                 }
+                finally { _libraryAwaitingReady.TryRemove(path, out _); }
             });
         };
         _libraryWatchService.WatcherError += msg =>

@@ -366,6 +366,10 @@ public static class LogService
     // First match wins, so the more specific keys come first.
     private static readonly (string Key, string Category)[] CategoryKeys =
     {
+        // Embed pipeline lines (build 176: "Copying to temp" is the embed's safe copy, not Move/Copy).
+        ("writing tags", "Embed"),       ("copying to temp", "Embed"),     ("embedding tags", "Embed"),
+        ("applying:", "Embed"),          ("done:", "Embed"),
+        ("size verified", "Copy/Move"),  ("workers)", "Files"),
         ("settings saved", "Settings"),  ("watch folder", "Watch"),        ("library watch", "Library"),
         ("trakt", "Trakt"),              ("opensubtitles", "Subtitles"),   ("subtitle", "Subtitles"),
         ("update check", "Update"),      ("checking github", "Update"),
@@ -421,7 +425,8 @@ public static class LogService
             else if (ErrorWords.IsMatch(withoutCounts) ||
                      FailedWord.IsMatch(withoutCounts))  level = LogLevel.Error;
             else if (WarnWords.IsMatch(msg))             level = LogLevel.Warning;
-            else if (OkWords.IsMatch(msg) || onlyZeroCounts) level = LogLevel.Success;
+            else if (OkWords.IsMatch(msg) || onlyZeroCounts ||
+                     msg.StartsWith("Done:", StringComparison.Ordinal)) level = LogLevel.Success;
         }
         else
         {

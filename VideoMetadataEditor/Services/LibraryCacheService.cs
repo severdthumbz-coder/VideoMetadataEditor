@@ -34,16 +34,43 @@ public class LibraryCacheService
     // ── Write lock prevents concurrent cache saves ─────────────────────────────
     private readonly SemaphoreSlim _saveLock = new(1, 1);
 
-    // ── In-memory index rebuilt from the cache file on Load ───────────────────
-    // Key: normalised file path (lower-invariant on Windows)
-    // ConcurrentDictionary — scan writes Put() from parallel tasks simultaneously.
-    // A plain Dictionary would be unsafe here even though Load() replaces it before scan
-    // starts, because the Put() calls in the parallel scan phase are concurrent.
-    private System.Collections.Concurrent.ConcurrentDictionary<string, CacheEntry> _index
+    // ── One index per library folder (build 176) ──────────────────────────────
+    // Until build 175 there was a single index, replaced on every Load. With two library
+    // folders (e.g. Movies + TV Shows) a scan loaded A, then B — throwing A away. Entries
+    // for A then couldn't be updated (track info, embeds) and A's in-memory changes were
+    // lost on each alternate reload. Now every folder keeps its own index for the session,
+    // and each file is routed to the folder that contains it.
+    private sealed class FolderCache
+    {
+        public required string Folder    { get; init; }   // normalised, with trailing separator
+        public required string CachePath { get; init; }
+        // ConcurrentDictionary — the scan Put()s from parallel tasks.
+        public System.Collections.Concurrent.ConcurrentDictionary<string, CacheEntry> Index { get; set; }
+            = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, FolderCache> _folders
         = new(StringComparer.OrdinalIgnoreCase);
 
-    // ── Cache file path ───────────────────────────────────────────────────────
-    private string? _currentCachePath;
+    private static string FolderKey(string folder)
+    {
+        var f = folder.Trim();
+        try { f = Path.GetFullPath(f); } catch { }
+        return f.EndsWith(Path.DirectorySeparatorChar) || f.EndsWith(Path.AltDirectorySeparatorChar)
+            ? f : f + Path.DirectorySeparatorChar;
+    }
+
+    /// <summary>The loaded folder that contains <paramref name="path"/> (deepest match), or null.</summary>
+    private FolderCache? FolderFor(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        FolderCache? best = null;
+        foreach (var fc in _folders.Values)
+            if (path.StartsWith(fc.Folder, StringComparison.OrdinalIgnoreCase) &&
+                (best == null || fc.Folder.Length > best.Folder.Length))
+                best = fc;
+        return best;
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Public API
@@ -53,68 +80,46 @@ public class LibraryCacheService
     /// Returns true when a non-empty cache is loaded and ready.
     /// Shown in the Settings tab so the user knows when Clear Cache does something.
     /// </summary>
-    public bool HasCache => _index.Count > 0;
+    public bool HasCache => _folders.Values.Any(f => !f.Index.IsEmpty);
 
-    /// <summary>Number of entries in the current in-memory cache.</summary>
-    public int CachedEntryCount => _index.Count;
+    /// <summary>Number of entries cached across all loaded library folders.</summary>
+    public int CachedEntryCount => _folders.Values.Sum(f => f.Index.Count);
 
     /// <summary>
-    /// Loads the cache file for <paramref name="libraryFolder"/> into memory.
-    /// Call once before a scan. Silently rebuilds from scratch on any error.
-    /// </summary>
-    /// <summary>
-    /// Loads the cache from disk only on the first scan of a folder in this
-    /// session, or when the folder changes. Subsequent calls for the same folder
-    /// are no-ops, preserving any in-memory updates (e.g. from SyncLibraryEntry
-    /// after an embed) that haven't been persisted yet or were saved async.
+    /// Loads the cache for <paramref name="libraryFolder"/> from disk the first time it's
+    /// needed this session. Later calls are no-ops, preserving in-memory updates (e.g.
+    /// from SyncLibraryEntry after an embed) that haven't been saved yet. Other folders'
+    /// caches stay loaded.
     /// </summary>
     public void LoadIfNeeded(string libraryFolder)
     {
-        var expectedPath = CacheFilePath(libraryFolder);
-        // Already loaded for this folder — skip the disk reload
-        if (_currentCachePath != null &&
-            string.Equals(_currentCachePath, expectedPath, StringComparison.OrdinalIgnoreCase))
-            return;
-
-        // Different folder or first call — load from disk
+        if (_folders.ContainsKey(FolderKey(libraryFolder))) return;
         Load(libraryFolder);
     }
 
+    /// <summary>(Re)loads one folder's cache from disk. Silently starts empty on any error.</summary>
     public void Load(string libraryFolder)
     {
-        _currentCachePath = CacheFilePath(libraryFolder);
-        _index.Clear();
+        var key = FolderKey(libraryFolder);
+        var fc = new FolderCache { Folder = key, CachePath = CacheFilePath(libraryFolder) };
+        _folders[key] = fc;
 
-        if (!File.Exists(_currentCachePath)) return;
-
+        if (!File.Exists(fc.CachePath)) return;
         try
         {
-            var json = File.ReadAllText(_currentCachePath, Encoding.UTF8);
+            var json = File.ReadAllText(fc.CachePath, Encoding.UTF8);
             var file = JsonConvert.DeserializeObject<CacheFile>(json);
+            if (file == null || file.Version != CacheVersion) return;   // version mismatch — rebuild
 
-            if (file == null || file.Version != CacheVersion)
-            {
-                // Version mismatch — discard silently; will rebuild
-                _index.Clear();
-                return;
-            }
-
-            _index = new System.Collections.Concurrent.ConcurrentDictionary<string, CacheEntry>(
-                file.Entries.ToDictionary(e => e.FilePath, e => e,
-                    StringComparer.OrdinalIgnoreCase),
+            fc.Index = new System.Collections.Concurrent.ConcurrentDictionary<string, CacheEntry>(
+                file.Entries
+                    .GroupBy(e => e.FilePath, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.Last(), StringComparer.OrdinalIgnoreCase),
                 StringComparer.OrdinalIgnoreCase);
         }
-        catch
-        {
-            // Corrupt file — discard silently; will rebuild from full scan
-            _index.Clear();
-        }
+        catch { /* corrupt file — start empty; rebuilt from the next full scan */ }
     }
 
-    /// <summary>
-    /// Tries to retrieve a cached <see cref="LibraryEntry"/> for <paramref name="path"/>.
-    /// Returns null (cache miss) if the file is new, modified, or not previously cached.
-    /// </summary>
     /// <summary>
     /// Waits until any in-progress SaveAsync has completed.
     /// Call this before Load() to ensure fire-and-forget saves from SyncLibraryEntry
@@ -122,15 +127,18 @@ public class LibraryCacheService
     /// </summary>
     public async Task FlushAsync()
     {
-        // Acquire and immediately release the save lock.
-        // If SaveAsync is in progress, this waits until it finishes.
         await _saveLock.WaitAsync().ConfigureAwait(false);
         _saveLock.Release();
     }
 
+    /// <summary>
+    /// Tries to retrieve a cached <see cref="LibraryEntry"/> for <paramref name="path"/>.
+    /// Returns null (cache miss) if the file is new, modified, or not previously cached.
+    /// </summary>
     public LibraryEntry? TryGet(string path, long fileSizeBytes, DateTime lastWriteUtc)
     {
-        if (!_index.TryGetValue(path, out var cached)) return null;
+        var fc = FolderFor(path);
+        if (fc == null || !fc.Index.TryGetValue(path, out var cached)) return null;
 
         // Validate freshness — size + mtime must match exactly
         if (cached.FileSizeBytes != fileSizeBytes) return null;
@@ -140,23 +148,25 @@ public class LibraryCacheService
     }
 
     /// <summary>
-    /// Removes a path from the in-memory cache index so the next scan performs
-    /// a fresh TagLib# read. Used after remux Replace Original to prevent stale
-    /// metadata for the old path or a tagless new file showing up on rescan.
+    /// Removes a path from the in-memory cache so the next scan performs a fresh TagLib#
+    /// read. Used after remux Replace Original and renames.
     /// </summary>
     public void Evict(string path)
     {
-        if (!string.IsNullOrWhiteSpace(path))
-            _index.TryRemove(path, out _);
+        if (string.IsNullOrWhiteSpace(path)) return;
+        foreach (var fc in _folders.Values) fc.Index.TryRemove(path, out _);
     }
 
     /// <summary>
-    /// Upserts <paramref name="entry"/> into the in-memory index.
-    /// Call after every successful TagLib# read so the next scan can use it.
+    /// Upserts <paramref name="entry"/> into the cache of the library folder that contains
+    /// it. Files outside every loaded library folder aren't cached (they're not in the
+    /// library). Call after every successful TagLib# read so the next scan can use it.
     /// </summary>
     public void Put(string path, long fileSizeBytes, DateTime lastWriteUtc, LibraryEntry entry)
     {
-        _index[path] = CacheEntry.FromLibraryEntry(entry, fileSizeBytes, lastWriteUtc);
+        var fc = FolderFor(path);
+        if (fc == null) return;
+        fc.Index[path] = CacheEntry.FromLibraryEntry(entry, fileSizeBytes, lastWriteUtc);
     }
 
     /// <summary>
@@ -167,79 +177,90 @@ public class LibraryCacheService
     /// </summary>
     public bool UpdateTracks(string path, string? tracks)
     {
-        if (!_index.TryGetValue(path, out var cached)) return false;
+        var fc = FolderFor(path);
+        if (fc == null || !fc.Index.TryGetValue(path, out var cached)) return false;
         cached.Tracks = tracks;
         return true;
     }
 
     /// <summary>
-    /// Clears the in-memory index so every file gets a fresh read on the next scan.
-    /// Call before a manual Scan Library to guarantee recently-embedded files are picked up.
-    /// The disk cache is NOT cleared — it is re-populated incrementally as files are read.
+    /// Clears the in-memory caches so every file gets a fresh read on the next scan.
+    /// The disk caches are NOT cleared — they are re-populated as files are read.
     /// </summary>
-    public void ClearMemoryCache() => _index.Clear();
+    public void ClearMemoryCache()
+    {
+        foreach (var fc in _folders.Values) fc.Index.Clear();
+    }
 
     /// <summary>
-    /// Removes entries for paths that no longer exist on disk (ghost cleanup),
-    /// then persists the updated cache atomically. Call after every scan.
-    /// Fire-and-forget safe — errors are swallowed so they never block the UI.
+    /// Removes entries for paths that are no longer live (ghost cleanup), then persists the
+    /// cache files atomically. Only folders that own at least one of
+    /// <paramref name="liveFilePaths"/> are pruned and saved — so a single-folder scan
+    /// never empties another folder's cache, and a library drive that's offline (none of
+    /// its files in the list) keeps its cache. Fire-and-forget safe.
     /// </summary>
     public async Task SaveAsync(IEnumerable<string> liveFilePaths)
     {
-        if (_currentCachePath == null) return;
+        if (_folders.IsEmpty) return;
 
         await _saveLock.WaitAsync().ConfigureAwait(false);
         try
         {
-            // Evict ghosts — paths that no longer exist on disk
-            var live = new HashSet<string>(liveFilePaths, StringComparer.OrdinalIgnoreCase);
-            var stale = _index.Keys.Where(k => !live.Contains(k)).ToList();
-            foreach (var k in stale) _index.TryRemove(k, out _);
-
-            var file = new CacheFile
+            var liveByFolder = new Dictionary<FolderCache, HashSet<string>>();
+            foreach (var p in liveFilePaths)
             {
-                Version = CacheVersion,
-                Entries = _index.Values.ToList()
-            };
-
-            var json    = JsonConvert.SerializeObject(file, Formatting.None);
-            var tmpPath = _currentCachePath + ".tmp";
-            await File.WriteAllTextAsync(tmpPath, json, Encoding.UTF8).ConfigureAwait(false);
-
-            // File.Replace requires the destination to already exist — on the FIRST
-            // save for a library folder it does not, and File.Replace throws
-            // FileNotFoundException. That used to be swallowed by the catch below,
-            // silently losing the entire first cache write (so nothing persisted until
-            // a second save happened to run). Use atomic replace only when the target
-            // exists; otherwise move the temp file into place.
-            if (File.Exists(_currentCachePath))
-            {
-                File.Replace(tmpPath, _currentCachePath, null);
+                var fc = FolderFor(p);
+                if (fc == null) continue;
+                if (!liveByFolder.TryGetValue(fc, out var set))
+                    liveByFolder[fc] = set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                set.Add(p);
             }
-            else
+
+            foreach (var (fc, live) in liveByFolder)
             {
-                // overwrite:true guards the rare race where the file appears between
-                // the Exists check and the move.
-                File.Move(tmpPath, _currentCachePath, overwrite: true);
+                var stale = fc.Index.Keys.Where(k => !live.Contains(k)).ToList();
+                foreach (var k in stale) fc.Index.TryRemove(k, out _);
+                await WriteFolderAsync(fc).ConfigureAwait(false);
             }
-        }
-        catch (Exception ex)
-        {
-            // Cache save failure is non-fatal (the library rebuilds on next scan),
-            // but log it — a fully silent swallow is how the File.Replace-on-first-save
-            // bug stayed hidden. Clean up any orphaned temp file.
-            System.Diagnostics.Debug.WriteLine($"[LibraryCache] SaveAsync failed: {ex.GetType().Name}: {ex.Message}");
-            try { var tmp = _currentCachePath + ".tmp"; if (File.Exists(tmp)) File.Delete(tmp); } catch { }
         }
         finally { _saveLock.Release(); }
     }
 
-    /// <summary>Deletes the cache file for the given folder and clears the in-memory index.</summary>
+    private static async Task WriteFolderAsync(FolderCache fc)
+    {
+        var tmpPath = fc.CachePath + ".tmp";
+        try
+        {
+            var file = new CacheFile { Version = CacheVersion, Entries = fc.Index.Values.ToList() };
+            var json = JsonConvert.SerializeObject(file, Formatting.None);
+            await File.WriteAllTextAsync(tmpPath, json, Encoding.UTF8).ConfigureAwait(false);
+
+            // File.Replace requires the destination to exist — on the first save it doesn't.
+            if (File.Exists(fc.CachePath)) File.Replace(tmpPath, fc.CachePath, null);
+            else File.Move(tmpPath, fc.CachePath, overwrite: true);
+        }
+        catch (Exception ex)
+        {
+            // Non-fatal (the library rebuilds on the next scan), but not silent.
+            LogService.Warn("Library", $"Couldn't save the library cache: {ex.Message}", ex.ToString(), fc.CachePath);
+            try { if (File.Exists(tmpPath)) File.Delete(tmpPath); } catch { }
+        }
+    }
+
+    /// <summary>Deletes the cache file for the given folder and clears its in-memory index.</summary>
     public void Clear(string libraryFolder)
     {
-        _index.Clear();
+        if (_folders.TryRemove(FolderKey(libraryFolder), out var fc)) fc.Index.Clear();
         var path = CacheFilePath(libraryFolder);
         try { if (File.Exists(path)) File.Delete(path); } catch { }
+    }
+
+    /// <summary>Build 176: clears every loaded folder's cache and deletes every cache file.</summary>
+    public void ClearEverything()
+    {
+        foreach (var fc in _folders.Values) fc.Index.Clear();
+        _folders.Clear();
+        ClearAll();
     }
 
     /// <summary>Deletes ALL cache files created by this app (all library folders).</summary>

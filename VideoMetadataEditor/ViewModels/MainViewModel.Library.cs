@@ -412,10 +412,9 @@ public partial class MainViewModel
 
     private void ClearLibraryCache()
     {
-        if (!string.IsNullOrWhiteSpace(Settings.LibraryFolderPath))
-            _libraryCacheService.Clear(Settings.LibraryFolderPath);
-        else
-            Services.LibraryCacheService.ClearAll();
+        // Build 176: every library folder's cache (the primary and the extra folders).
+        _libraryCacheService.ClearEverything();
+        foreach (var e in LibraryEntries) e.Tracks = null;   // re-read tracks on the next scan too
 
         var thumbs = Services.ArtworkThumbCache.Clear();   // build 170: posters rebuild too
         RaiseProperty(nameof(LibraryCacheInfo));
@@ -589,10 +588,16 @@ public partial class MainViewModel
 
             var seen    = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var scanned = new List<Models.LibraryEntry>();
+            int hits = 0, misses = 0;   // build 176: totals across ALL folders (was: last folder only)
             foreach (var scanFolder in allFolders)
             {
                 var folderEntries = await _libraryScanService.ScanFolderAsync(
                     scanFolder, Settings.LibraryRecursive, progress, ct);
+                hits   += _libraryScanService.LastScanCacheHits;
+                misses += _libraryScanService.LastScanCacheMisses;
+                Services.LogService.Debug("Library",
+                    $"Scanned {scanFolder}: {folderEntries.Count} file(s) — {_libraryScanService.LastScanCacheHits} from cache, " +
+                    $"{_libraryScanService.LastScanCacheMisses} read from disk");
                 foreach (var e in folderEntries)
                     if (seen.Add(e.FilePath)) scanned.Add(e);
             }
@@ -698,8 +703,6 @@ public partial class MainViewModel
             _ = LoadArtworkThenTracksAsync(artTargets, freshPaths, activeTabPath, wholeLibraryScanned, ct);
 
             // Build status line — include cache stats so user knows how many were fast reads
-            var hits   = _libraryScanService.LastScanCacheHits;
-            var misses = _libraryScanService.LastScanCacheMisses;
             LibraryScanStatus = hits > 0
                 ? $"✓  {LibraryEntries.Count} file(s) — {hits} from cache, {misses} read from disk."
                 : $"✓  {LibraryEntries.Count} file(s) scanned.";

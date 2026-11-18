@@ -78,13 +78,15 @@ public static class OperationJournal
         private bool _closed;
         // Build 175: every batch is also a timed operation in the activity log, so the
         // Log tab shows when it started, everything it did, and when it finished.
-        private readonly LogService.Operation _op;
+        // Build 176: only when nothing else is timing this work — a Move/Copy is already
+        // one operation in the log, so its History batch doesn't open a second one.
+        private readonly LogService.Operation? _op;
 
         internal Batch(string kind, string summary, Batch? parent)
         {
             Rec = new Record { Kind = kind, Summary = summary };
             _parent = parent;
-            _op = LogService.Begin(LogCategoryFor(kind), summary);
+            _op = LogService.CurrentOperation == null ? LogService.Begin(LogCategoryFor(kind), summary) : null;
         }
 
         /// <summary>Replace the summary once the outcome is known ("Renamed 12 of 14").</summary>
@@ -99,6 +101,7 @@ public static class OperationJournal
             Current.Value = _parent;
             if (Rec.Items.Count > 0) Append(Rec);   // nothing happened → nothing recorded
 
+            if (_op == null) return;
             var files = Rec.Items.Count;
             // (Embeds aren't journaled, so "0 recorded" doesn't mean nothing happened.)
             _op.Outcome = files == 0
@@ -131,7 +134,10 @@ public static class OperationJournal
         LogService.Write(LogLevel.Debug, LogCategoryFor(kind),
             string.Equals(from, to, StringComparison.OrdinalIgnoreCase)
                 ? $"History: {kind} — {Path.GetFileName(to)}"
-                : $"History: {kind} — {Path.GetFileName(from)} → {Path.GetFileName(to)}",
+                : string.Equals(Path.GetFileName(from), Path.GetFileName(to), StringComparison.OrdinalIgnoreCase)
+                    // Same name, new folder (Move/Copy): say where it went.
+                    ? $"History: {kind} — {Path.GetFileName(to)} → {Path.GetDirectoryName(to)}"
+                    : $"History: {kind} — {Path.GetFileName(from)} → {Path.GetFileName(to)}",
             $"From: {from}{Environment.NewLine}To:   {to}", to);
 
         var batch = Current.Value;
