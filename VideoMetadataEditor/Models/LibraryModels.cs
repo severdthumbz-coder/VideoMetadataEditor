@@ -78,6 +78,39 @@ public class LibraryEntry : INotifyPropertyChanged
     public bool               HasSubtitles  => Subtitles.Count > 0;
     public string             SubtitleSummary => Services.SubtitleDetector.BuildSummary(Subtitles);
 
+    // ── Tracks inside the file (build 175) ────────────────────────────────────
+    private string? _tracks;
+    /// <summary>
+    /// Audio and subtitle tracks inside the video, encoded by <see cref="Services.TrackSummary"/>
+    /// ("a:en:aac|a:ja:aac|s:en:subrip"). null = not read yet (filled in by the Library's
+    /// background track pass, then cached); "" = read, no audio or subtitle tracks.
+    /// </summary>
+    public string? Tracks
+    {
+        get => _tracks;
+        set
+        {
+            if (_tracks == value) return;
+            _tracks = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(TracksChecked));
+            OnPropertyChanged(nameof(AudioTracksDisplay));
+            OnPropertyChanged(nameof(EmbeddedSubtitlesDisplay));
+            OnPropertyChanged(nameof(TracksToolTip));
+        }
+    }
+
+    [Newtonsoft.Json.JsonIgnore] public bool   TracksChecked            => _tracks != null;
+    [Newtonsoft.Json.JsonIgnore] public string AudioTracksDisplay       => Services.TrackSummary.AudioDisplay(_tracks);
+    [Newtonsoft.Json.JsonIgnore] public string EmbeddedSubtitlesDisplay => Services.TrackSummary.SubtitleDisplay(_tracks);
+    [Newtonsoft.Json.JsonIgnore] public string TracksToolTip            => Services.TrackSummary.Describe(_tracks);
+
+    /// <summary>Languages of the sidecar subtitle files next to the video (two-letter where known).</summary>
+    [Newtonsoft.Json.JsonIgnore]
+    public IEnumerable<string> SidecarSubtitleLanguages =>
+        Subtitles.Where(s => !string.IsNullOrWhiteSpace(s.LanguageCode))
+                 .Select(s => Services.TrackSummary.NormalizeLang(s.LanguageCode));
+
     /// <summary>
     /// True when this entry was built by a fresh TagLib# read (cache miss or forced read).
     /// Used by the in-place scan merge to know when it's safe to overwrite in-memory

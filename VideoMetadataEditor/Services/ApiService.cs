@@ -69,8 +69,39 @@ public class ApiService
     // ── Resilient HTTP get with retry ─────────────────────────────────────────
     // Retries on transient failures (network, 5xx, 429) with exponential back-off.
     // Returns (json, errorMessage) — errorMessage is null on success.
+    // Build 175: every lookup is in the activity log (Search, detail level) with the
+    // endpoint, time taken and outcome. API keys are masked.
+    private static readonly System.Text.RegularExpressions.Regex KeyParam = new(
+        @"((?:api_?key|apikey|token)=)[^&]+",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    internal static string MaskKeys(string url) => KeyParam.Replace(url, "$1•••");
+
     private static async Task<(string? json, string? error)> GetWithRetryAsync(
         string url, CancellationToken ct = default, int maxAttempts = 3)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var (json, error) = await GetWithRetryCoreAsync(url, ct, maxAttempts).ConfigureAwait(false);
+        sw.Stop();
+        string endpoint;
+        try { var u = new Uri(url); endpoint = u.Host + u.AbsolutePath; } catch { endpoint = "request"; }
+        if (error == null)
+            LogService.Write(LogLevel.Debug, "Search", $"GET {endpoint} — OK ({(json?.Length ?? 0):N0} bytes)",
+                MaskKeys(url), null, sw.Elapsed);
+        else
+        {
+            // "Not found" is a normal answer, and auto-search cancels superseded lookups —
+            // neither is worth a warning. A real timeout still is.
+            bool benign = error == "Not found." ||
+                          (error == "Request cancelled or timed out." && ct.IsCancellationRequested);
+            LogService.Write(benign ? LogLevel.Debug : LogLevel.Warning, "Search",
+                $"GET {endpoint} — {error}", MaskKeys(url), null, sw.Elapsed);
+        }
+        return (json, error);
+    }
+
+    private static async Task<(string? json, string? error)> GetWithRetryCoreAsync(
+        string url, CancellationToken ct, int maxAttempts)
     {
         int delay = 600;
         for (int attempt = 1; attempt <= maxAttempts; attempt++)

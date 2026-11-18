@@ -1708,7 +1708,8 @@
 
                             <!-- Console / log -->
                             <Expander Grid.Row="2" Header="📋 Processing Log" Margin="0,12,0,0">
-                                <ListBox ItemsSource="{Binding ConsoleLog}"
+                                <ListBox ItemsSource="{Binding RecentLogView}"
+                                         DisplayMemberPath="Display"
                                          Height="120"
                                          FontFamily="Consolas"
                                          FontSize="11"
@@ -4005,10 +4006,25 @@
                                         <ComboBoxItem Tag="Untagged"       Content="🏷 Untagged (no metadata)"/>
                                         <ComboBoxItem Tag="Attention"      Content="⚠ Needs attention (either)"/>
                                     </ComboBox>
+                                    <!-- Build 175: filter by the tracks inside the file -->
+                                    <TextBlock Text="Audio:" VerticalAlignment="Center" Margin="10,0,6,0"
+                                               Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                                    <ComboBox MinWidth="140" MaxWidth="220"
+                                              ItemsSource="{Binding LibraryAudioOptions}"
+                                              DisplayMemberPath="Label" SelectedValuePath="Key"
+                                              SelectedValue="{Binding LibraryAudioFilter}"
+                                              ToolTip="Show titles with an audio track in this language, or with more than one audio track. Counts are files."/>
+                                    <TextBlock Text="Subs:" VerticalAlignment="Center" Margin="10,0,6,0"
+                                               Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                                    <ComboBox MinWidth="150" MaxWidth="240"
+                                              ItemsSource="{Binding LibrarySubtitleOptions}"
+                                              DisplayMemberPath="Label" SelectedValuePath="Key"
+                                              SelectedValue="{Binding LibrarySubtitleFilter}"
+                                              ToolTip="Subtitles inside the file or as a sidecar file next to it (Movie.en.srt). 'No … subtitles' finds titles to fetch subtitles for."/>
                                     <TextBlock Style="{StaticResource HintMarker}" Margin="6,0,0,0">
                                         <TextBlock.ToolTip>
                                             <ToolTip MaxWidth="320">
-                                                <TextBlock TextWrapping="Wrap" Text="Find titles to fix. Missing poster = no artwork embedded in the file. Untagged = metadata was never fetched (no IMDb/TMDB ID, genre or synopsis). Combine with the tab and text filter, then use Load into Files to re-embed them. Fixed titles drop off the list as you embed."/>
+                                                <TextBlock TextWrapping="Wrap" Text="Find titles to fix. Missing poster = no artwork embedded in the file. Untagged = metadata was never fetched (no IMDb/TMDB ID, genre or synopsis). Audio and Subs filter by the tracks inside each file (read in the background after a scan, needs FFmpeg) — Subs also counts sidecar .srt files. Combine with the tab and text filter, then use Load into Files to work on them. Fixed titles drop off the list as you embed."/>
                                             </ToolTip>
                                         </TextBlock.ToolTip>
                                     </TextBlock>
@@ -4358,9 +4374,28 @@
                                     <DataGridTextColumn Header="Resolution" Binding="{Binding Resolution}"     Width="90"  x:Name="ColRes"/>
                                     <DataGridTextColumn Header="Added"      Binding="{Binding DownloadDateDisplay}" Width="90" x:Name="ColDate"/>
                                     <DataGridTextColumn Header="IMDB ID"    Binding="{Binding ImdbId}"         Width="90"  x:Name="ColImdb"/>
-                                    <DataGridTextColumn Header="Subtitles"  Binding="{Binding SubtitleSummary}" Width="130" x:Name="ColSubs"
+                                    <DataGridTextColumn Header="Subtitle files"  Binding="{Binding SubtitleSummary}" Width="130" x:Name="ColSubs"
                                                                         Visibility="Collapsed"
                                                                         ElementStyle="{StaticResource BaseText}"/>
+                                    <!-- Build 175: tracks inside the file (read in the background with ffprobe) -->
+                                    <DataGridTextColumn Header="Audio" Binding="{Binding AudioTracksDisplay}" Width="100" x:Name="ColAudio">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                                <Setter Property="ToolTip" Value="{Binding TracksToolTip}"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Subs in file" Binding="{Binding EmbeddedSubtitlesDisplay}" Width="120" x:Name="ColEmbSubs">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                                <Setter Property="ToolTip" Value="{Binding TracksToolTip}"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
                                     <DataGridTextColumn Header="Synopsis"   Binding="{Binding Description}"    Width="220" x:Name="ColDesc"/>
                                     <!-- TV-specific columns — hidden by default, shown when TV tab is active -->
                                     <DataGridTextColumn Header="Show Title"    Binding="{Binding ShowTitle}"     Width="180" x:Name="ColShow"     Visibility="Collapsed"/>
@@ -5680,6 +5715,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 175 — A detailed activity log, and audio/subtitle tracks in the Library
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        The Log tab is now a full activity log. Every line has the time to the millisecond, a level (error, warning, success, info, detail), a category (Rename, Copy/Move, Library, FFmpeg, Search…), the file it's about and, for timed steps, how long it took. Batch Rename, Batch Process, TV Batch, Move/Copy, library scans, duplicate scans, health fixes and undo are logged as operations: when they started, everything they did, and when they finished with the result. Select a line to see its full details (paths, the exact ffmpeg command and output, exceptions); click 'Show this operation' to see only one run. Filter by level, category or text, copy or export what's shown, and open the logs folder: each day is saved to logs\VME_yyyy-MM-dd.log next to the EXE and kept 14 days. The Library has two new columns, Audio and Subs in file, read in the background after a scan with ffprobe and cached, plus Audio and Subs filters: by language, 2+ audio tracks, no subtitles at all, or 'No English subtitles' (sidecar .srt files count). History now shows how many files are still to put back after a partial undo, and a retry only touches those.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 174 — Preview before changes, and a History you can undo from
                                     </TextBlock>
@@ -8187,16 +8228,30 @@ ative\ on first run. Registers
                         <Grid Margin="12">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
                                 <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="160"/>
+                                <RowDefinition Height="*" MinHeight="120"/>
+                                <RowDefinition Height="6"/>
+                                <RowDefinition Height="200" MinHeight="90"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <!-- Log header + actions -->
+                            <!-- Header + actions -->
                             <Grid Grid.Row="0" Margin="0,0,0,8">
-                                <TextBlock Text="Processing Log"
-                                           Style="{StaticResource SectionHeader}"
-                                           VerticalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Activity Log"
+                                               Style="{StaticResource SectionHeader}"
+                                               VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding LogCountSummary}" Margin="12,0,0,0"
+                                               VerticalAlignment="Center" FontSize="12"
+                                               Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                                    <TextBlock Style="{StaticResource HintMarker}" Margin="8,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock.ToolTip>
+                                            <ToolTip MaxWidth="380">
+                                                <TextBlock TextWrapping="Wrap" Text="Everything VME does, to the millisecond: what started, each file it touched, what it ran, what went wrong and how long it took. Batches, copies and scans are grouped — select a line and click 'Show this operation' to see only that run. Each day is also saved to logs\VME_yyyy-MM-dd.log next to the EXE (kept 14 days), so you can read it after a restart or attach it to a bug report."/>
+                                            </ToolTip>
+                                        </TextBlock.ToolTip>
+                                    </TextBlock>
+                                </StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                     <Button Content="🕘 History"
                                             Style="{StaticResource PrimaryButton}"
@@ -8223,38 +8278,252 @@ ative\ on first run. Registers
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Log entries -->
-                            <ListBox Grid.Row="1"
-                                     ItemsSource="{Binding ConsoleLog}"
-                                     FontFamily="Consolas"
-                                     FontSize="11"
-                                     Background="{DynamicResource SurfaceAltBrush}"
-                                     BorderThickness="1"
-                                     BorderBrush="{DynamicResource BorderBrush}"
-                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
-                                <ListBox.ItemContainerStyle>
-                                    <Style TargetType="ListBoxItem">
-                                        <Setter Property="Padding" Value="6,2"/>
-                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                    </Style>
-                                </ListBox.ItemContainerStyle>
-                            </ListBox>
+                            <!-- Filter bar -->
+                            <Grid Grid.Row="1" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <CheckBox Content="✕ Errors" IsChecked="{Binding LogShowError}" Margin="0,0,10,0"
+                                              VerticalAlignment="Center" Foreground="{DynamicResource ErrorBrush}"/>
+                                    <CheckBox Content="⚠ Warnings" IsChecked="{Binding LogShowWarning}" Margin="0,0,10,0"
+                                              VerticalAlignment="Center" Foreground="{DynamicResource WarningBrush}"/>
+                                    <CheckBox Content="✓ Success" IsChecked="{Binding LogShowSuccess}" Margin="0,0,10,0"
+                                              VerticalAlignment="Center" Foreground="{DynamicResource SuccessBrush}"/>
+                                    <CheckBox Content="ℹ Info" IsChecked="{Binding LogShowInfo}" Margin="0,0,10,0"
+                                              VerticalAlignment="Center"/>
+                                    <CheckBox Content="· Detail" IsChecked="{Binding LogShowDebug}" Margin="0,0,10,0"
+                                              VerticalAlignment="Center" Foreground="{DynamicResource ForegroundMutedBrush}"
+                                              ToolTip="Step-by-step detail: commands run, track probes, each file recorded in History, timings."/>
+                                    <Button Content="Problems only" Style="{StaticResource SecondaryButton}"
+                                            Command="{Binding LogProblemsOnlyCommand}"
+                                            Padding="8,3" FontSize="11" Margin="0,0,12,0"
+                                            ToolTip="Show only errors and warnings"/>
+                                    <TextBlock Text="Category:" VerticalAlignment="Center" Margin="0,0,6,0"
+                                               Foreground="{DynamicResource ForegroundMutedBrush}"/>
+                                    <ComboBox ItemsSource="{Binding LogCategories}"
+                                              SelectedItem="{Binding LogCategoryFilter}"
+                                              MinWidth="120" Margin="0,0,10,0"/>
+                                    <TextBox Text="{Binding LogSearchText, UpdateSourceTrigger=PropertyChanged, Delay=200}"
+                                             conv:WatermarkHelper.Watermark="🔎  Search messages, files, details…"
+                                             Width="240" Padding="6,4" Margin="0,0,10,0"/>
+                                    <Border CornerRadius="10" Padding="8,2" Margin="0,0,8,0"
+                                            Background="{DynamicResource SelectionBrush}"
+                                            Visibility="{Binding IsLogOperationFilterActive, Converter={StaticResource BoolVis}}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock VerticalAlignment="Center" FontSize="12">
+                                                <Run Text="Operation: "/><Run Text="{Binding LogOperationFilterName, Mode=OneWay}" FontWeight="SemiBold"/>
+                                            </TextBlock>
+                                            <Button Content="✕" Margin="6,0,0,0" Padding="4,0" FontSize="10"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Command="{Binding ClearLogOperationFilterCommand}"
+                                                    ToolTip="Show all operations again"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Button Content="Reset filters" Style="{StaticResource SecondaryButton}"
+                                            Command="{Binding ResetLogFiltersCommand}"
+                                            Padding="8,3" FontSize="11"
+                                            Visibility="{Binding IsLogFilterActive, Converter={StaticResource BoolVis}}"/>
+                                </WrapPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                                    <Button Content="📋 Copy shown" Style="{StaticResource SecondaryButton}"
+                                            Command="{Binding CopyShownLogCommand}"
+                                            Padding="8,4" FontSize="11" Margin="6,0,0,0"
+                                            ToolTip="Copy every entry in the list (as filtered) to the clipboard"/>
+                                    <Button Content="💾 Export…" Style="{StaticResource SecondaryButton}"
+                                            Command="{Binding ExportLogCommand}"
+                                            Padding="8,4" FontSize="11" Margin="6,0,0,0"
+                                            ToolTip="Save the entries in the list (as filtered) to a .log file"/>
+                                    <Button Content="📂 Log files" Style="{StaticResource SecondaryButton}"
+                                            Command="{Binding OpenLogFolderCommand}"
+                                            Padding="8,4" FontSize="11" Margin="6,0,0,0"
+                                            ToolTip="Open the logs folder next to the EXE (one file per day, kept 14 days)"/>
+                                    <Button Content="Clear" Style="{StaticResource SecondaryButton}"
+                                            Click="ClearLog_Click"
+                                            Padding="8,4" FontSize="11" Margin="6,0,0,0"
+                                            ToolTip="Clear the list on screen. Today's log file keeps everything."/>
+                                </StackPanel>
+                            </Grid>
 
-                            <!-- Clear log button -->
-                            <Button Grid.Row="2"
-                                    Content="Clear Log"
-                                    Style="{StaticResource SecondaryButton}"
-                                    Padding="10,5" FontSize="11"
-                                    HorizontalAlignment="Right"
-                                    Margin="0,6,0,6"
-                                    Click="ClearLog_Click"/>
+                            <!-- Entries -->
+                            <DataGrid Grid.Row="2" x:Name="LogGrid"
+                                      ItemsSource="{Binding LogView}"
+                                      SelectedItem="{Binding SelectedLogEntry}"
+                                      AutoGenerateColumns="False" IsReadOnly="True"
+                                      CanUserAddRows="False" CanUserDeleteRows="False"
+                                      CanUserReorderColumns="False"
+                                      SelectionMode="Single" SelectionUnit="FullRow"
+                                      HeadersVisibility="Column" GridLinesVisibility="None"
+                                      EnableRowVirtualization="True"
+                                      VirtualizingPanel.IsVirtualizing="True"
+                                      VirtualizingPanel.VirtualizationMode="Recycling"
+                                      FontFamily="Consolas" FontSize="12"
+                                      Background="{DynamicResource SurfaceAltBrush}"
+                                      RowBackground="Transparent"
+                                      Foreground="{DynamicResource ForegroundBrush}"
+                                      BorderThickness="1"
+                                      BorderBrush="{DynamicResource BorderBrush}"
+                                      MouseDoubleClick="LogGrid_MouseDoubleClick">
+                                <DataGrid.Resources>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource ForegroundMutedBrush}"/>
+                                        <Setter Property="FontFamily" Value="Segoe UI"/>
+                                        <Setter Property="FontSize" Value="11"/>
+                                        <Setter Property="Padding" Value="6,4"/>
+                                        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                                    </Style>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Padding" Value="6,1"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=DataGridRow}}"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter Property="Background" Value="Transparent"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGrid.Resources>
+                                <DataGrid.RowStyle>
+                                    <Style TargetType="DataGridRow">
+                                        <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="ToolTip" Value="{Binding Detail}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasDetail}" Value="False">
+                                                <Setter Property="ToolTip" Value="{x:Null}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsDebug}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource ForegroundMutedBrush}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsSuccess}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                            </DataTrigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter Property="Background" Value="#3007A7E3"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGrid.RowStyle>
+                                <DataGrid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="📋 Copy this entry" Command="{Binding CopyLogEntryCommand}"/>
+                                        <MenuItem Header="🔎 Show only this operation" Command="{Binding ShowLogOperationCommand}"/>
+                                        <MenuItem Header="📂 Show file in Explorer" Command="{Binding OpenLogEntryFileCommand}"/>
+                                        <Separator/>
+                                        <MenuItem Header="⚠ Problems only" Command="{Binding LogProblemsOnlyCommand}"/>
+                                        <MenuItem Header="Reset filters" Command="{Binding ResetLogFiltersCommand}"/>
+                                    </ContextMenu>
+                                </DataGrid.ContextMenu>
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Time"     Binding="{Binding TimeText}"    Width="92"/>
+                                    <DataGridTextColumn Header=""         Binding="{Binding LevelIcon}"   Width="24"/>
+                                    <DataGridTextColumn Header="Level"    Binding="{Binding LevelText}"   Width="52"/>
+                                    <DataGridTextColumn Header="Category" Binding="{Binding Category}"    Width="92"/>
+                                    <DataGridTextColumn Header="Message"  Binding="{Binding Message}"     Width="*"/>
+                                    <DataGridTextColumn Header="File"     Binding="{Binding FileName}"    Width="220"/>
+                                    <DataGridTextColumn Header="Took"     Binding="{Binding ElapsedText}" Width="70"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <GridSplitter Grid.Row="3" Height="6" HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Center" ResizeDirection="Rows"
+                                          Background="Transparent" Cursor="SizeNS"
+                                          ToolTip="Drag to resize the details pane"/>
+
+                            <!-- Details of the selected entry -->
+                            <Border Grid.Row="4"
+                                    Background="{DynamicResource SurfaceAltBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="1" CornerRadius="6" Padding="10,8">
+                                <Grid>
+                                    <TextBlock Text="Select an entry to see its full details — file path, operation, timing and any error or command output."
+                                               Foreground="{DynamicResource ForegroundMutedBrush}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" TextWrapping="Wrap"
+                                               Visibility="{Binding HasSelectedLogEntry, Converter={StaticResource InvBoolVis}}"/>
+                                    <Grid Visibility="{Binding HasSelectedLogEntry, Converter={StaticResource BoolVis}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="300"/>
+                                            <ColumnDefinition Width="12"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <ScrollViewer Grid.Column="0" Grid.Row="0" VerticalScrollBarVisibility="Auto">
+                                            <StackPanel>
+                                                <TextBlock Style="{StaticResource LabelText}" Text="WHEN"/>
+                                                <TextBlock Text="{Binding SelectedLogEntry.DateTimeText}" FontFamily="Consolas" Margin="0,0,0,6"/>
+                                                <TextBlock Style="{StaticResource LabelText}" Text="LEVEL · CATEGORY"/>
+                                                <TextBlock Margin="0,0,0,6">
+                                                    <Run Text="{Binding SelectedLogEntry.LevelText, Mode=OneWay}" FontWeight="SemiBold"/><Run Text="  ·  "/><Run Text="{Binding SelectedLogEntry.Category, Mode=OneWay}"/>
+                                                </TextBlock>
+                                                <TextBlock Style="{StaticResource LabelText}" Text="OPERATION"
+                                                           Visibility="{Binding SelectedLogEntry.HasOperation, Converter={StaticResource BoolVis}}"/>
+                                                <TextBlock Text="{Binding SelectedLogEntry.OperationName}" TextWrapping="Wrap" Margin="0,0,0,6"
+                                                           Visibility="{Binding SelectedLogEntry.HasOperation, Converter={StaticResource BoolVis}}"/>
+                                                <TextBlock Style="{StaticResource LabelText}" Text="TOOK"
+                                                           Visibility="{Binding SelectedLogEntry.ElapsedText, Converter={StaticResource NullVis}}"/>
+                                                <TextBlock Text="{Binding SelectedLogEntry.ElapsedText}" Margin="0,0,0,6"
+                                                           Visibility="{Binding SelectedLogEntry.ElapsedText, Converter={StaticResource NullVis}}"/>
+                                                <TextBlock Style="{StaticResource LabelText}" Text="FILE"
+                                                           Visibility="{Binding SelectedLogEntry.HasFile, Converter={StaticResource BoolVis}}"/>
+                                                <TextBox Text="{Binding SelectedLogEntry.FilePath, Mode=OneWay}" IsReadOnly="True"
+                                                         TextWrapping="Wrap" BorderThickness="0" Background="Transparent"
+                                                         Foreground="{DynamicResource ForegroundBrush}" Padding="0"
+                                                         Visibility="{Binding SelectedLogEntry.HasFile, Converter={StaticResource BoolVis}}"/>
+                                            </StackPanel>
+                                        </ScrollViewer>
+                                        <Grid Grid.Column="2" Grid.Row="0">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+                                            <TextBox Grid.Row="0" Text="{Binding SelectedLogEntry.Message, Mode=OneWay}"
+                                                     IsReadOnly="True" TextWrapping="Wrap" FontWeight="SemiBold"
+                                                     BorderThickness="0" Background="Transparent" Padding="0"
+                                                     Foreground="{DynamicResource ForegroundBrush}" Margin="0,0,0,6"/>
+                                            <TextBox Grid.Row="1" Text="{Binding SelectedLogEntry.Detail, Mode=OneWay}"
+                                                     IsReadOnly="True" TextWrapping="NoWrap" AcceptsReturn="True"
+                                                     FontFamily="Consolas" FontSize="11"
+                                                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                                     Background="{DynamicResource InputBackgroundBrush}"
+                                                     Foreground="{DynamicResource ForegroundBrush}"
+                                                     Visibility="{Binding SelectedLogEntry.HasDetail, Converter={StaticResource BoolVis}}"/>
+                                        </Grid>
+                                        <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal"
+                                                    HorizontalAlignment="Right" Margin="0,6,0,0">
+                                            <Button Content="📋 Copy" Style="{StaticResource SecondaryButton}"
+                                                    Command="{Binding CopyLogEntryCommand}" Padding="8,3" FontSize="11"/>
+                                            <Button Content="🔎 Show this operation" Style="{StaticResource SecondaryButton}"
+                                                    Command="{Binding ShowLogOperationCommand}" Padding="8,3" FontSize="11" Margin="6,0,0,0"
+                                                    ToolTip="Show only the entries logged while this batch, copy or scan was running"/>
+                                            <Button Content="📂 Show file" Style="{StaticResource SecondaryButton}"
+                                                    Command="{Binding OpenLogEntryFileCommand}" Padding="8,3" FontSize="11" Margin="6,0,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                            </Border>
 
                             <!-- Duplicates panel -->
-                            <Border Grid.Row="3"
+                            <Border Grid.Row="5" Margin="0,8,0,0" MaxHeight="160"
                                     Background="{DynamicResource SurfaceAltBrush}"
                                     BorderBrush="{DynamicResource BorderBrush}"
                                     BorderThickness="1" CornerRadius="6"
-                                    Visibility="{Binding Duplicates.Count, Converter={StaticResource NullVis}}">
+                                    Visibility="{Binding Duplicates.Count, Converter={StaticResource ZeroToCollapsedConverter}}">
                                 <Grid Margin="10,8">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>

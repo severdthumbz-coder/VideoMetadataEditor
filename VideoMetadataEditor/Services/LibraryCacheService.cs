@@ -160,6 +160,19 @@ public class LibraryCacheService
     }
 
     /// <summary>
+    /// Build 175: stores the audio/subtitle tracks read for <paramref name="path"/> on its
+    /// existing cache entry, without touching anything else. The entry keeps its size and
+    /// modified-time key, so if the file changes the tracks are read again with the tags.
+    /// Returns false when the file isn't cached (nothing to update).
+    /// </summary>
+    public bool UpdateTracks(string path, string? tracks)
+    {
+        if (!_index.TryGetValue(path, out var cached)) return false;
+        cached.Tracks = tracks;
+        return true;
+    }
+
+    /// <summary>
     /// Clears the in-memory index so every file gets a fresh read on the next scan.
     /// Call before a manual Scan Library to guarantee recently-embedded files are picked up.
     /// The disk cache is NOT cleared — it is re-populated incrementally as files are read.
@@ -294,6 +307,8 @@ public class LibraryCacheService
         public string   Resolution     { get; set; } = string.Empty;
         public string   Format         { get; set; } = string.Empty;
         public DateTime? DownloadDate  { get; set; }
+        /// <summary>Build 175: encoded audio/subtitle tracks; null = not read yet (old caches too).</summary>
+        public string?  Tracks         { get; set; }
 
         public LibraryEntry ToLibraryEntry() => new()
         {
@@ -323,6 +338,7 @@ public class LibraryCacheService
             Resolution    = Resolution,
             Format        = Format,
             DownloadDate  = DownloadDate,
+            Tracks        = Tracks,
             // CoverArt intentionally null — loaded by artwork pass
         };
 
@@ -356,6 +372,7 @@ public class LibraryCacheService
             Resolution    = e.Resolution,
             Format        = e.Format,
             DownloadDate  = e.DownloadDate,
+            Tracks        = e.Tracks,
         };
     }
 }

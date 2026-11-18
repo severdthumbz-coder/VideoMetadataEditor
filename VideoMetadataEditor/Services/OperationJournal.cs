@@ -76,11 +76,15 @@ public static class OperationJournal
         private readonly Batch? _parent;
         internal readonly Record Rec;
         private bool _closed;
+        // Build 175: every batch is also a timed operation in the activity log, so the
+        // Log tab shows when it started, everything it did, and when it finished.
+        private readonly LogService.Operation _op;
 
         internal Batch(string kind, string summary, Batch? parent)
         {
             Rec = new Record { Kind = kind, Summary = summary };
             _parent = parent;
+            _op = LogService.Begin(LogCategoryFor(kind), summary);
         }
 
         /// <summary>Replace the summary once the outcome is known ("Renamed 12 of 14").</summary>
@@ -94,6 +98,15 @@ public static class OperationJournal
             _closed = true;
             Current.Value = _parent;
             if (Rec.Items.Count > 0) Append(Rec);   // nothing happened → nothing recorded
+
+            var files = Rec.Items.Count;
+            // (Embeds aren't journaled, so "0 recorded" doesn't mean nothing happened.)
+            _op.Outcome = files == 0
+                ? (Rec.Summary == _op.Name ? null : Rec.Summary)
+                : $"{Rec.Summary} — {files} file change(s) recorded in History";
+            var (level, _, _) = LogService.Classify(Rec.Summary);
+            if (level >= LogLevel.Warning) _op.Warn();
+            _op.Dispose();
         }
     }
 
@@ -112,6 +125,15 @@ public static class OperationJournal
     public static void Note(string kind, string from, string to)
     {
         var item = new Item { Kind = kind, From = from, To = to };
+
+        // Build 175: every change recorded in History also shows in the activity log,
+        // with both full paths.
+        LogService.Write(LogLevel.Debug, LogCategoryFor(kind),
+            string.Equals(from, to, StringComparison.OrdinalIgnoreCase)
+                ? $"History: {kind} — {Path.GetFileName(to)}"
+                : $"History: {kind} — {Path.GetFileName(from)} → {Path.GetFileName(to)}",
+            $"From: {from}{Environment.NewLine}To:   {to}", to);
+
         var batch = Current.Value;
         if (batch != null) { batch.Add(item); return; }
 
@@ -124,6 +146,17 @@ public static class OperationJournal
             Items = { item }
         });
     }
+
+    private static string LogCategoryFor(string kind) => kind switch
+    {
+        "Rename"                                      => "Rename",
+        "Move" or "Copy"                              => "Copy/Move",
+        "ExtensionFix" or "Fix All Issues"            => "Health",
+        "Fix Faststart" or "Faststart" or "Remux"     => "FFmpeg",
+        "Batch Process"                               => "Embed",
+        "TV Batch"                                    => "TV",
+        _                                             => "History"
+    };
 
     // ── Storage ───────────────────────────────────────────────────────────────
 
@@ -197,11 +230,47 @@ public static class OperationJournal
     /// </summary>
     public static UndoOutcome Undo(Record rec)
     {
+        using var op = LogService.Begin("History", $"Undo “{rec.Summary}”");
+        var outcome = UndoCore(rec);
+        if (outcome.Skipped.Count > 0)
+            foreach (var why in outcome.Skipped)
+                LogService.Write(LogLevel.Warning, "History", $"Undo skipped — {why}");
+        op.Outcome = $"{outcome.Restored} put back, {outcome.Skipped.Count} skipped";
+        if (outcome.Restored == 0 && outcome.Skipped.Count > 0) op.Fail(op.Outcome);
+        else if (outcome.Skipped.Count > 0) op.Warn();
+        return outcome;
+    }
+
+    /// <summary>
+    /// Build 175: the reversible items of <paramref name="rec"/> that haven't been put back
+    /// yet. A partial undo records an "Undo" entry for what it restored; those items are
+    /// left out, so History shows the right count and a retry only touches what's left.
+    /// </summary>
+    public static List<Item> RemainingItems(Record rec, IEnumerable<Record> all)
+    {
+        // An undo item is the original reversed: From = where VME had put it, To = original.
+        var restored = all.Where(r => r.UndoOf == rec.Id).SelectMany(r => r.Items).ToList();
+        var remaining = new List<Item>();
+        foreach (var it in rec.ReversibleItems)
+        {
+            int i = restored.FindIndex(u => string.Equals(u.From, it.To, StringComparison.Ordinal) &&
+                                            string.Equals(u.To, it.From, StringComparison.Ordinal));
+            if (i >= 0) { restored.RemoveAt(i); continue; }
+            remaining.Add(it);
+        }
+        return remaining;
+    }
+
+    private static UndoOutcome UndoCore(Record rec)
+    {
         int restored = 0;
         var skipped = new List<string>();
         var undoItems = new List<Item>();
+        List<Item> todo;
+        try { todo = RemainingItems(rec, Load()); }
+        catch { todo = rec.ReversibleItems.ToList(); }
 
-        foreach (var item in rec.ReversibleItems.Reverse())
+        foreach (var item in Enumerable.Reverse(todo))
         {
             var name = Path.GetFileName(item.To);
             if (!File.Exists(item.To)) { skipped.Add($"{name}: no longer at {item.To}"); continue; }
@@ -217,6 +286,8 @@ public static class OperationJournal
                     File.Move(item.To, temp);
                     File.Move(temp, item.From);
                     restored++;
+                    LogService.Write(LogLevel.Success, "History",
+                        $"Put back: {Path.GetFileName(item.To)} → {Path.GetFileName(item.From)}", null, item.From);
                     undoItems.Add(new Item { Kind = item.Kind, From = item.To, To = item.From });
                 }
                 catch (Exception ex) { skipped.Add($"{name}: {ex.Message}"); }
@@ -231,13 +302,15 @@ public static class OperationJournal
                 if (!string.IsNullOrEmpty(fromDir)) Directory.CreateDirectory(fromDir);
                 File.Move(item.To, item.From);
                 restored++;
+                LogService.Write(LogLevel.Success, "History",
+                    $"Put back: {Path.GetFileName(item.To)} → {item.From}", null, item.From);
                 undoItems.Add(new Item { Kind = item.Kind, From = item.To, To = item.From });
                 MoveSidecarsBack(item.To, item.From);
             }
             catch (Exception ex) { skipped.Add($"{name}: {ex.Message}"); }
         }
 
-        // Fully undone only when everything went back. A partial undo stays retryable
+        // Fully undone only when everything left went back. A partial undo stays retryable
         // (e.g. after freeing a name that was taken); nothing restored = nothing changed.
         bool complete = restored > 0 && skipped.Count == 0;
         if (restored == 0) return new UndoOutcome(0, skipped);

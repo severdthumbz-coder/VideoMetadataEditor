@@ -917,7 +917,15 @@ public partial class MainWindow : Window
     // ── Log tab ───────────────────────────────────────────────────────────────
 
     private void ClearLog_Click(object sender, RoutedEventArgs e)
-        => VM.ConsoleLog.Clear();
+        => VM.ClearActivityLog();
+
+    /// <summary>Double-click a log line: show only the operation it belongs to.</summary>
+    private void LogGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (VM.SelectedLogEntry is { HasOperation: true } entry &&
+            VM.ShowLogOperationCommand.CanExecute(entry))
+            VM.ShowLogOperationCommand.Execute(entry);
+    }
 
     private void RenamePreset_DoubleClick(object sender, MouseButtonEventArgs e)
     {
@@ -1110,6 +1118,8 @@ public partial class MainWindow : Window
             ["AiredDate"]           = ColAired,
             ["CoverArt"]            = ColCover,
             ["SubtitleSummary"]     = ColSubs,
+            ["AudioTracksDisplay"]  = ColAudio,
+            ["EmbeddedSubtitlesDisplay"] = ColEmbSubs,
         };
 
     public void SyncLibraryColumnVisibility()
@@ -1150,15 +1160,15 @@ public partial class MainWindow : Window
     {
         // Log to console first
         foreach (var c in candidates)
-            VM.ConsoleLog.Insert(0,
-                $"[{DateTime.Now:HH:mm:ss}] ⚠ Recovery candidate: {c.FileName} ({c.Description})");
+            VideoMetadataEditor.Services.LogService.Warn("Recovery",
+                $"Recovery candidate: {c.FileName} ({c.Description})");
 
         // Open the recovery dialog
         var dlg = new VideoMetadataEditor.Views.RecoveryDialog(
             candidates,
             msg =>
             {
-                VM.ConsoleLog.Insert(0, $"[{DateTime.Now:HH:mm:ss}] {msg}");
+                VideoMetadataEditor.Services.LogService.WriteLegacy(msg);
                 VM.StatusText = msg;
             },
             owner: this);
@@ -1391,6 +1401,7 @@ public partial class MainWindow : Window
         VM.CopyCompleted            -= OnCopyCompleted;
         VM.MoveCompleted            -= OnMoveCompleted;
         VM.DeleteFileRequested      -= OnDeleteFileRequested;
+        VM.DetachActivityLog();
 
         // Cancel in-flight operations
         VM._traktDeviceCts?.Cancel();

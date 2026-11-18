@@ -2,6 +2,59 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 175 — A detailed activity log, and audio/subtitle tracks in the Library
+
+**Activity log (Log tab)**
+- Every line now has:
+  - the time to the millisecond;
+  - a level: Error, Warning, Success, Info or Detail;
+  - a category: Rename, Copy/Move, Library, FFmpeg, Search, Embed, TV, Health, History, Watch, Trakt, Subtitles, App…;
+  - the file it's about, and how long the step took when it was timed.
+- **Operations are timed and grouped.** These log a start line, everything they did, and a finish line with the result and duration:
+  - Batch Rename, Batch Process, TV Batch, Move/Copy;
+  - library scans, the background track pass, duplicate scans;
+  - Fix All Issues, Fix Faststart and History undo.
+  Select any line and click **Show this operation**, or double-click it, to see only that run.
+- **New detail in the log:**
+  - every ffmpeg run, with the full command line, exit code and time; failures include the end of ffmpeg's output;
+  - the stream layout before and after each Fix Faststart and Remux;
+  - every metadata lookup: endpoint, time, size and outcome, with API keys masked;
+  - every change recorded in History, with both full paths;
+  - startup: version, Windows, .NET, culture, app folder, and which ffmpeg/ffprobe/mkvpropedit was found;
+  - crashes and background errors, with the full exception.
+- **Details pane:** select a line to see its full time, level, category, operation, duration, file path, and any detail such as an exception, command line or probe result. Copy it, show the operation, or show the file in Explorer.
+- **Filters:**
+  - level checkboxes and a one-click "Problems only";
+  - category, and a search across messages, files and details;
+  - the operation filter, and Reset filters;
+  - a count line shows how many entries are shown and how many are errors or warnings.
+- **Copy shown / Export…** saves the entries currently shown, oldest first, to a `.log` file with a header.
+- **Log files:** each day is written to `logs\VME_yyyy-MM-dd.log` next to the EXE, so a session can be read after a restart or attached to a bug report. Files older than 14 days are removed at startup. **📂 Log files** opens the folder. `logs/` is in `.gitignore`.
+- The 164 existing log calls are kept. Their level and category are worked out from the text: "3 succeeded, 0 failed" is a success, "2 succeeded, 1 failed" is a warning, "WRITE FAILED" is an error.
+- The empty Duplicate Groups box no longer takes up space at the bottom of the Log tab when there are no results.
+
+**Audio and subtitle tracks in the Library**
+- Two new columns:
+  - **Audio**, e.g. "2 · EN, JA";
+  - **Subs in file**, e.g. "3 · EN, ES, FR [F]".
+  Hover for one line per track with language, codec and the forced flag. The old sidecar column is now headed "Subtitle files".
+- Tracks are read in the background after a scan, after the posters, three files at a time with ffprobe, or ffmpeg if ffprobe isn't there. Files in the tab you're looking at go first.
+- Results are stored in the scan cache, so only new or changed files are read again. Older caches simply read every file once.
+- Files added by Library Watch are read as they arrive.
+- If FFmpeg isn't installed, the Show filter's tooltip and the Log say so.
+- **Two new filters** next to Show. They work with the tab, the text filter, the Show filter, Load into Files and the TV tree:
+  - **Audio:** any language in the library (with counts), or 2+ audio tracks;
+  - **Subs:** a language, "No subtitles at all", or "No ⟨language⟩ subtitles". These count subtitles inside the file and sidecar files next to it, e.g. `Movie.en.srt`.
+- Language codes are normalised, so `eng`, `en`, `en-US` all match English, and MKV's `fre`/`ger`/`chi` match French, German and Chinese.
+
+**History**
+- After a partial undo, History shows "1 of 3 file(s) still to put back" and marks the entry "partly undone".
+- A retry only touches the files that are left.
+
+Tests added for log level and category classification, the log file format, operations (timing, tagging inside parallel workers, failure and cancel, nesting), History batches as operations, log pruning, track encoding from ffprobe and ffmpeg output, the forced flag and bibliographic language codes, track display, the Audio and Subs filters including sidecars, filter options, tracks surviving the scan cache, and partial undo with retry.
+
+---
+
 ## v1.4.0 Build 174 — Preview before changes, and a History you can undo from
 
 Second of the safety builds.

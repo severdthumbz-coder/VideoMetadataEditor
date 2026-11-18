@@ -23,7 +23,12 @@ public static class MediaProbeService
 {
     public enum StreamKind { Video, Cover, Audio, Subtitle, Data, Attachment, Other }
 
-    public sealed record StreamInfo(StreamKind Kind, string Codec, string Language);
+    /// <summary>
+    /// One stream. <paramref name="Forced"/> and <paramref name="Title"/> (build 175) feed the
+    /// Library's track columns; they're not part of the before/after rewrite check.
+    /// </summary>
+    public sealed record StreamInfo(StreamKind Kind, string Codec, string Language,
+                                    bool Forced = false, string Title = "");
 
     public sealed record ProbeResult(IReadOnlyList<StreamInfo> Streams, double? DurationSeconds)
     {
@@ -64,10 +69,13 @@ public static class MediaProbeService
                     var lang  = s.TryGetProperty("tags", out var tags) &&
                                 (tags.TryGetProperty("language", out var l) || tags.TryGetProperty("LANGUAGE", out l))
                         ? l.GetString() ?? "" : "";
-                    var cover = s.TryGetProperty("disposition", out var d) &&
-                                d.TryGetProperty("attached_pic", out var ap) && ap.ValueKind == JsonValueKind.Number &&
-                                ap.GetInt32() == 1;
-                    streams.Add(new StreamInfo(KindFrom(type, cover), codec, NormalizeLang(lang)));
+                    var hasDisp = s.TryGetProperty("disposition", out var d);
+                    var cover  = hasDisp && Flag(d, "attached_pic");
+                    var forced = hasDisp && Flag(d, "forced");
+                    var title  = s.TryGetProperty("tags", out var tags2) &&
+                                 (tags2.TryGetProperty("title", out var ti) || tags2.TryGetProperty("TITLE", out ti))
+                        ? ti.GetString() ?? "" : "";
+                    streams.Add(new StreamInfo(KindFrom(type, cover), codec, NormalizeLang(lang), forced, title.Trim()));
                 }
             }
             double? duration = null;
@@ -78,6 +86,9 @@ public static class MediaProbeService
         }
         catch { return null; }
     }
+
+    private static bool Flag(JsonElement disposition, string name) =>
+        disposition.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number && v.GetInt32() == 1;
 
     private static readonly Regex StreamLine = new(
         @"Stream #\d+:\d+(?:\[0x[0-9a-fA-F]+\])?(?:\((?<lang>[^)]+)\))?: (?<type>Video|Audio|Subtitle|Data|Attachment): (?<codec>[^\s,]+)",
@@ -113,7 +124,8 @@ public static class MediaProbeService
             streams.Add(new StreamInfo(
                 KindFrom(sm.Groups["type"].Value.ToLowerInvariant(), cover),
                 sm.Groups["codec"].Value,
-                NormalizeLang(sm.Groups["lang"].Success ? sm.Groups["lang"].Value : "")));
+                NormalizeLang(sm.Groups["lang"].Success ? sm.Groups["lang"].Value : ""),
+                Forced: line.Contains("(forced)", StringComparison.Ordinal)));
         }
         return streams.Count == 0 ? null : new ProbeResult(streams, duration);
     }

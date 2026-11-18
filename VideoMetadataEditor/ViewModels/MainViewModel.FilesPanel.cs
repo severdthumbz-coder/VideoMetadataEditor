@@ -621,7 +621,8 @@ public partial class MainViewModel
         IsBusy = true;
         ProgressValue = 0;
         StatusText = $"Scanning {Files.Count(f => !f.IsSeparator)} files for duplicates…";
-        Log( $"[{DateTime.Now:HH:mm:ss}] Duplicate scan started — {Files.Count(f => !f.IsSeparator)} files");
+        using var dupOp = Services.LogService.Begin("Duplicates",
+            $"Duplicate scan of {Files.Count(f => !f.IsSeparator)} file(s)");
 
         try
         {
@@ -657,13 +658,16 @@ public partial class MainViewModel
         catch (OperationCanceledException)
         {
             StatusText = "Duplicate scan cancelled.";
+            dupOp.Cancel();
         }
         catch (Exception ex)
         {
             StatusText = $"Duplicate scan error: {ex.Message}";
+            dupOp.Fail(ex);
         }
         finally
         {
+            dupOp.Outcome ??= StatusText;
             EndOperation();
         }
     }

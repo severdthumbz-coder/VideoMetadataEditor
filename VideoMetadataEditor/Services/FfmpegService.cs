@@ -154,6 +154,7 @@ public static class FfmpegService
         MediaProbeService.ProbeResult? before;
         try { before = await MediaProbeService.ProbeAsync(filePath, ct); }
         catch (OperationCanceledException) { return new FixResult(false, "Cancelled.", null); }
+        LogProbe("Faststart — streams before", before, filePath);
 
         // -map 0      keep EVERY stream: all video incl. cover art, all audio, all subtitles
         // -dn         except data streams (timecode etc.), which the MP4 muxer often rejects
@@ -202,6 +203,7 @@ public static class FfmpegService
                 TryDelete(tempOut);
                 return new FixResult(false, "Couldn't read the fixed copy to verify it. Original left unchanged.", null);
             }
+            LogProbe("Faststart — streams after", after, tempOut);
             var problem = MediaProbeService.Compare(before, after);
             if (problem != null)
             {
@@ -279,6 +281,7 @@ public static class FfmpegService
         MediaProbeService.ProbeResult? before;
         try { before = await MediaProbeService.ProbeAsync(filePath, ct); }
         catch (OperationCanceledException) { return new FixResult(false, "Cancelled.", null); }
+        LogProbe("Remux — streams before", before, filePath);
         bool toMkv = targetExt.Equals(".mkv", StringComparison.OrdinalIgnoreCase);
         bool toMp4 = targetExt.Equals(".mp4", StringComparison.OrdinalIgnoreCase);
 
@@ -324,6 +327,7 @@ public static class FfmpegService
                 TryDelete(outPath);
                 return new FixResult(false, "Cancelled.", null);
             }
+            LogProbe("Remux — streams after", after, outPath);
             var problem = after == null ? "couldn't read the new file"
                                         : MediaProbeService.Compare(before, after, ignoreCover: toMkv);
             if (problem != null && toMkv)
@@ -348,6 +352,8 @@ public static class FfmpegService
         string exe, string args, CancellationToken ct)
     {
         Process? proc = null;
+        var sw = Stopwatch.StartNew();
+        var command = $"{Path.GetFileName(exe)} {args}";
         try
         {
             proc = new Process
@@ -363,6 +369,14 @@ public static class FfmpegService
             _ = proc.StandardOutput.ReadToEndAsync();
             await proc.WaitForExitAsync(ct);
             var stderr = await stderrTask;
+            sw.Stop();
+            // Build 175: every ffmpeg run is in the activity log with its full command line,
+            // exit code and time; a failure carries the end of ffmpeg's output.
+            if (proc.ExitCode == 0)
+                LogService.Write(LogLevel.Debug, "FFmpeg", "ffmpeg finished (exit 0)", command, null, sw.Elapsed);
+            else
+                LogService.Write(LogLevel.Error, "FFmpeg", $"ffmpeg failed (exit {proc.ExitCode}): {LastLine(stderr)}",
+                    command + Environment.NewLine + Environment.NewLine + Tail(stderr, 25), null, sw.Elapsed);
             // ffmpeg writes normal progress to stderr; only treat as error on non-zero exit
             return (proc.ExitCode == 0,
                 proc.ExitCode == 0 ? string.Empty : LastLine(stderr));
@@ -380,11 +394,28 @@ public static class FfmpegService
                 }
             }
             catch { /* already gone */ }
+            LogService.Write(LogLevel.Warning, "FFmpeg", "ffmpeg stopped (cancelled)", command, null, sw.Elapsed);
             return (false, "Cancelled.");
         }
-        catch (Exception ex) { return (false, ex.Message); }
+        catch (Exception ex)
+        {
+            LogService.Write(LogLevel.Error, "FFmpeg", $"ffmpeg couldn't run: {ex.Message}",
+                command + Environment.NewLine + ex, null, sw.Elapsed);
+            return (false, ex.Message);
+        }
         finally { proc?.Dispose(); }
     }
+
+    private static string Tail(string s, int lines)
+    {
+        var all = s.Replace("\r", "").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        return string.Join(Environment.NewLine, all.Skip(Math.Max(0, all.Length - lines)));
+    }
+
+    private static void LogProbe(string what, MediaProbeService.ProbeResult? probe, string path) =>
+        LogService.Write(LogLevel.Debug, "FFmpeg",
+            probe == null ? $"{what}: couldn't read (no ffprobe, or unreadable)" : $"{what}: {probe.Describe()}",
+            null, path);
 
     private static string LastLine(string s)
     {

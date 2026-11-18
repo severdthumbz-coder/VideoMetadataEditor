@@ -149,6 +149,12 @@ public partial class MainViewModel
 
         DiskSpaceStatus = analysis.Message;
 
+        // Build 175: the whole transfer is one timed operation in the activity log.
+        using var transferOp = Services.LogService.Begin("Copy/Move",
+            $"{(mode == CopyMode.Copy ? "Copy" : "Move")} {selected.Count} file(s) → {CopyDestination}",
+            $"Destination: {CopyDestination}{Environment.NewLine}Space: {analysis.Message}{Environment.NewLine}" +
+            $"Conflict mode: {ConflictMode}");
+
         IsBusy = true;
         ProgressValue = 0;
         StatusText = $"{verb} {selected.Count} file(s)  ·  {analysis.RequiredDisplay} needed  ·  {analysis.AvailableDisplay} free";
@@ -393,10 +399,12 @@ public partial class MainViewModel
         catch (Exception ex)
         {
             StatusText = $"{verb} error: {ex.Message}";
-            Log( $"[{DateTime.Now:HH:mm:ss}] ERROR: {ex.Message}");
+            Services.LogService.Error("Copy/Move", $"{verb} error", ex);
+            transferOp.Fail(ex);
         }
         finally
         {
+            transferOp.Outcome ??= StatusText;
             EndOperation();
             RaiseProperty(nameof(CanCopyMove));
         }

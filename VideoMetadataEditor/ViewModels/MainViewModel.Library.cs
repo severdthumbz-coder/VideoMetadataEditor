@@ -264,6 +264,17 @@ public partial class MainViewModel
 
     private static string NormalizeFolder(string? path) => Services.LibraryFolderList.Normalize(path);
 
+    /// <summary>Posters first, then audio/subtitle tracks (build 175).</summary>
+    private async Task LoadArtworkThenTracksAsync(List<Models.LibraryEntry> entries, HashSet<string> freshPaths,
+                                                  string? activeTabPath, bool pruneStaleThumbs, CancellationToken ct)
+    {
+        await LoadLibraryArtworkAsync(entries, freshPaths, activeTabPath, pruneStaleThumbs, ct);
+        if (ct.IsCancellationRequested) return;
+        try { await LoadLibraryTracksAsync(entries, activeTabPath, ct); }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { Services.LogService.Error("Library", "Track pass failed", ex); }
+    }
+
     /// <summary>
     /// Fills in Library artwork (grid covers and TV show posters) in priority order:
     ///   1. one episode per show / every movie in the active tab
@@ -529,6 +540,13 @@ public partial class MainViewModel
 
         IsLibraryScanning = true;
 
+        // Build 175: timed in the activity log (start, cache hits, finish).
+        using var scanOp = Services.LogService.Begin("Library", "Library scan",
+            "Folders:" + Environment.NewLine + string.Join(Environment.NewLine,
+                new[] { Settings.LibraryFolderPath }.Concat(ExtraLibraryFolders)
+                    .Where(f => !string.IsNullOrWhiteSpace(f))
+                    .Select(f => "  " + f + (Directory.Exists(f) ? "" : "   (not reachable)"))));
+
         // Stop the library watch service for the duration of the scan.
         // Without this, the watch service fires FileDetected for every file
         // in the folder (because LibraryEntries.Clear() makes them all look
@@ -607,6 +625,10 @@ public partial class MainViewModel
                     current.Format        = se.Format;
                     current.FileSizeBytes = se.FileSizeBytes;
                     current.Subtitles     = se.Subtitles;
+                    // Build 175: a fresh read means the file changed — read its tracks again.
+                    // A cache hit carries the tracks read earlier (if any).
+                    if (se.IsFreshRead)          current.Tracks = null;
+                    else if (se.Tracks != null)  current.Tracks = se.Tracks;
 
                     // Only overwrite metadata if the scan did a FRESH TagLib# read
                     // (cache miss or MarkAsEmbedded forced read). Cache hits may be
@@ -671,7 +693,9 @@ public partial class MainViewModel
             bool wholeLibraryScanned =
                 Directory.Exists(Settings.LibraryFolderPath) &&
                 Settings.ExtraLibraryFolders.All(f => string.IsNullOrWhiteSpace(f) || Directory.Exists(f));
-            _ = LoadLibraryArtworkAsync(artTargets, freshPaths, activeTabPath, wholeLibraryScanned, ct);
+            // Build 175: then the audio/subtitle tracks — after the posters, so the two
+            // passes don't compete for the same disk.
+            _ = LoadArtworkThenTracksAsync(artTargets, freshPaths, activeTabPath, wholeLibraryScanned, ct);
 
             // Build status line — include cache stats so user knows how many were fast reads
             var hits   = _libraryScanService.LastScanCacheHits;
@@ -713,14 +737,17 @@ public partial class MainViewModel
         catch (OperationCanceledException)
         {
             LibraryScanStatus = "Scan cancelled.";
+            scanOp.Cancel();
         }
         catch (Exception ex)
         {
             LibraryScanStatus = $"Scan error: {ex.Message}";
+            scanOp.Fail(ex);
         }
         finally
         {
             IsLibraryScanning = false;
+            scanOp.Outcome ??= LibraryScanStatus.TrimStart('✓', ' ');
 
             // Always restart watch if it was running before the scan — even on cancel/error.
             // Leaving it stopped means new files would be missed indefinitely.

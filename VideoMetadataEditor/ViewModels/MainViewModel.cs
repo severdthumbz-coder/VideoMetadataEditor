@@ -121,7 +121,7 @@ public partial class MainViewModel : INotifyPropertyChanged
     {
         get
         {
-            if (string.IsNullOrWhiteSpace(_libraryFilterText) && _libraryAttentionFilter == "All") return string.Empty;
+            if (string.IsNullOrWhiteSpace(_libraryFilterText) && !IsAttentionFilterActive) return string.Empty;
             var visible = LibraryEntries.Count(e => MatchesLibraryFilter(e));
             return $"{visible} / {LibraryEntries.Count}";
         }
@@ -158,6 +158,9 @@ public partial class MainViewModel : INotifyPropertyChanged
             var text = $"{MissingArtworkCount} missing a poster  ·  {UntaggedCount} untagged";
             var pending = ArtworkPendingCount;
             if (pending > 0) text += $"  ·  checking posters… {pending} left";
+            var tracks = TracksPendingCount;
+            if (tracks > 0) text += $"  ·  reading audio/subtitle tracks… {tracks} left";
+            else if (TrackToolMissing) text += "  ·  track info needs FFmpeg (Settings → External Tools)";
             return text;
         }
     }
@@ -175,7 +178,7 @@ public partial class MainViewModel : INotifyPropertyChanged
     /// <summary>Re-applies the Show filter after data changes (UI thread).</summary>
     private void RefreshLibraryAttention()
     {
-        if (_libraryAttentionFilter != "All")
+        if (IsAttentionFilterActive)
         {
             LibraryView.Refresh();
             RaiseProperty(nameof(TvShowTree));
@@ -183,7 +186,8 @@ public partial class MainViewModel : INotifyPropertyChanged
         RaiseLibraryAttentionCounts();
     }
 
-    public bool IsAttentionFilterActive => _libraryAttentionFilter != "All";
+    /// <summary>Any of the Show / Audio / Subtitles filters is narrowing the list.</summary>
+    public bool IsAttentionFilterActive => _libraryAttentionFilter != "All" || IsTrackFilterActive;
 
     // ── History (build 174) ──────────────────────────────────────────────────
     private ICommand? _openHistoryCommand;
@@ -254,6 +258,7 @@ public partial class MainViewModel : INotifyPropertyChanged
     private bool MatchesLibraryFilter(Models.LibraryEntry e)
     {
         if (!MatchesAttentionFilter(e)) return false;
+        if (!MatchesTrackFilters(e)) return false;   // build 175
 
         // Tab filter — only apply when tabbed mode is on and a tab is selected
         if (Settings.LibraryTabbedMode && _selectedLibraryTab != null)
@@ -807,22 +812,14 @@ public partial class MainViewModel : INotifyPropertyChanged
     // Show progress bar whenever there's active work or live progress
     public bool IsProgressVisible => IsBusy || ProgressValue > 0;
 
-    public ObservableCollection<string> ConsoleLog { get; } = [];
-
     /// <summary>
-    /// Thread-safe ConsoleLog insert. Safe to call from any thread — dispatches
-    /// to the UI thread automatically if needed. Replaces direct Log(...)
-    /// calls from background tasks which throw NotSupportedException on WPF collection views.
+    /// Writes a line to the activity log (Log tab + logs\VME_yyyy-MM-dd.log). Safe from any
+    /// thread. Takes the older "[HH:mm:ss] ⚠ message" form: the timestamp is replaced by
+    /// a precise one and the level and category are worked out from the text (build 175).
+    /// New code can call <see cref="Services.LogService"/> directly for an explicit level,
+    /// category, file and detail.
     /// </summary>
-    private void Log(string message)
-    {
-        var dispatcher = System.Windows.Application.Current?.Dispatcher;
-        if (dispatcher == null || dispatcher.CheckAccess())
-            ConsoleLog.Insert(0, message);
-        else
-            dispatcher.InvokeAsync(() => ConsoleLog.Insert(0, message),
-                System.Windows.Threading.DispatcherPriority.Background);
-    }
+    private void Log(string message) => Services.LogService.WriteLegacy(message);
 
     // ── Copy / Move Tab ───────────────────────────────────────────────────────
 
@@ -1691,6 +1688,9 @@ public partial class MainViewModel : INotifyPropertyChanged
 
     public MainViewModel()
     {
+        // Build 175: activity log first, so everything from here on reaches the Log tab.
+        InitActivityLog();
+
         // ── Initialise services the library scan/cache paths depend on ────────
         // MUST happen before any code that touches the library, since the scan
         // service wraps the cache service and both are used throughout this VM.
@@ -2144,6 +2144,9 @@ public partial class MainViewModel : INotifyPropertyChanged
                             LibraryEntries.Add(entry);
                             RefreshLibraryAttention();   // build 172
                             Log( $"[{DateTime.Now:HH:mm:ss}] 📚 Library watch: {entry.FileName} added.");
+                            // Build 175: read its audio/subtitle tracks too.
+                            var added = entry;
+                            _ = LoadLibraryTracksAsync(new[] { added }, null, CancellationToken.None);
                             StatusText = $"Library: {entry.FileName} detected.";
                         }
                     }, System.Windows.Threading.DispatcherPriority.Background);

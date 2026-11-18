@@ -1395,7 +1395,8 @@ public partial class MainViewModel
             }
 
             // Build 172: the Library "Show" filter (missing poster / untagged) applies here too.
-            var episodes = source.Where(e => e.IsEpisode && MatchesAttentionFilter(e)).ToList();
+            // Build 175: and the Audio / Subtitles track filters.
+            var episodes = source.Where(e => e.IsEpisode && MatchesAttentionFilter(e) && MatchesTrackFilters(e)).ToList();
 
             // Build nodes
             var grouped = episodes
@@ -2153,7 +2154,9 @@ public partial class MainViewModel
         ("res",      "Resolution", "Resolution",          90),
         ("date",     "Added",      "DownloadDateDisplay", 90),
         ("imdb",     "IMDB ID",    "ImdbId",              90),
-        ("subs",     "Subtitles",  "SubtitleSummary",     130),
+        ("subs",     "Subtitle files", "SubtitleSummary",  130),
+        ("audio",    "Audio",      "AudioTracksDisplay",  100),
+        ("embsubs",  "Subs in file", "EmbeddedSubtitlesDisplay", 120),
         ("desc",     "Synopsis",   "Description",         220),
     };
 
@@ -2177,7 +2180,9 @@ public partial class MainViewModel
         ("format",   "Format",         "Format",              55),
         ("date",     "Added",          "DownloadDateDisplay", 90),
         ("imdb",     "IMDB ID",        "ImdbId",              90),
-        ("subs",     "Subtitles",      "SubtitleSummary",     130),
+        ("subs",     "Subtitle files", "SubtitleSummary",     130),
+        ("audio",    "Audio",          "AudioTracksDisplay",  100),
+        ("embsubs",  "Subs in file",   "EmbeddedSubtitlesDisplay", 120),
         ("desc",     "Synopsis",       "Description",         220),
     };
 

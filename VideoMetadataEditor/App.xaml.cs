@@ -70,6 +70,9 @@ public partial class App : System.Windows.Application
             ConfigService.Load();
             IsDarkTheme = ConfigService.Settings.IsDarkTheme;
 
+            // Build 175: open today's activity log with what this session is running on.
+            StartActivityLog(build);
+
             if (!IsDarkTheme)
                 ApplyTheme(false);
 
@@ -137,8 +140,42 @@ public partial class App : System.Windows.Application
         }
     }
 
+    private static void StartActivityLog(string build)
+    {
+        try
+        {
+            var removed = LogService.StartSession($"Video Metadata Editor v{build} started", new[]
+            {
+                $"Windows:  {Environment.OSVersion.VersionString} ({(Environment.Is64BitProcess ? "64-bit" : "32-bit")})",
+                $".NET:     {Environment.Version}",
+                $"Culture:  {System.Globalization.CultureInfo.CurrentCulture.Name}",
+                $"App:      {AppContext.BaseDirectory}",
+                $"Log file: {LogService.CurrentFilePath}",
+            });
+            if (removed > 0)
+                LogService.Debug("App", $"Removed {removed} log file(s) older than {LogService.KeepDays} days");
+
+            // External tools — detected off the UI thread so startup isn't slowed.
+            Services.BackgroundTask.RunDelayed(3000, () =>
+            {
+                var ffmpeg  = FfmpegService.Detect();
+                var ffprobe = MediaProbeService.FindFfprobe();
+                LogService.Info("App", "External tools", string.Join(Environment.NewLine, new[]
+                {
+                    $"ffmpeg:      {ffmpeg ?? "not found"}",
+                    $"ffprobe:     {ffprobe ?? "not found (track info and stream checks fall back to ffmpeg)"}",
+                    $"mkvpropedit: {(MkvPropEditService.IsAvailable ? MkvPropEditService.ExePath : "not found")}",
+                }));
+                return Task.CompletedTask;
+            }, "Startup tool detection");
+        }
+        catch { /* logging must never stop the app starting */ }
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
+        LogService.Info("App", $"Video Metadata Editor closed (exit code {e.ApplicationExitCode})");
+        LogService.Close();
         _instance?.Dispose();
         _instance = null;
         base.OnExit(e);
@@ -146,6 +183,14 @@ public partial class App : System.Windows.Application
 
     private static void LogError(string context, string? message)
     {
+        // Build 175: crashes and background errors also go to the activity log, with the
+        // full exception in the details pane.
+        try
+        {
+            var first = (message ?? string.Empty).Split('\n')[0].Trim();
+            LogService.Error("App", $"{context}: {first}", message);
+        }
+        catch { }
         try
         {
             var log = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error.log");

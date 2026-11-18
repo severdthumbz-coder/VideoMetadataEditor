@@ -18,13 +18,18 @@ public sealed class HistoryWindow : Window
     private sealed class EntryRow
     {
         public required OperationJournal.Record Rec { get; init; }
+        /// <summary>Build 175: reversible items not put back yet (a partial undo lowers this).</summary>
+        public required int Remaining { get; init; }
+        public bool   CanUndo => Rec.CanUndo && Remaining > 0;
+        public bool   Partly  => CanUndo && Remaining < Rec.ReversibleItems.Count();
         public string When    => Rec.When.ToString("yyyy-MM-dd  HH:mm");
         public string Kind    => Rec.Kind;
         public string Summary => Rec.Summary;
         public int    Files   => Rec.Items.Count;
         public string Status  => Rec.UndoOf != null ? "↩ undo"
-                               : Rec.Undone ? "undone"
-                               : Rec.CanUndo ? "can undo"
+                               : Rec.Undone || (Rec.CanUndo && Remaining == 0) ? "undone"
+                               : Partly ? "partly undone"
+                               : CanUndo ? "can undo"
                                : string.Empty;
     }
 
@@ -147,7 +152,12 @@ public sealed class HistoryWindow : Window
 
     private void Reload(string? selectId = null)
     {
-        var rows = OperationJournal.Load().Select(r => new EntryRow { Rec = r }).ToList();
+        var all  = OperationJournal.Load();
+        var rows = all.Select(r => new EntryRow
+        {
+            Rec = r,
+            Remaining = r.CanUndo ? OperationJournal.RemainingItems(r, all).Count : 0
+        }).ToList();
         _entries.ItemsSource = rows;
         var pick = selectId != null ? rows.FirstOrDefault(r => r.Rec.Id == selectId) : rows.FirstOrDefault();
         _entries.SelectedItem = pick;
@@ -159,19 +169,21 @@ public sealed class HistoryWindow : Window
     {
         var row = _entries.SelectedItem as EntryRow;
         _items.ItemsSource = row?.Rec.Items;
-        _undo.IsEnabled = row?.Rec.CanUndo == true;
+        _undo.IsEnabled = row?.CanUndo == true;
         if (row == null) return;
-        _hint.Text = row.Rec.CanUndo
-            ? $"{row.Rec.ReversibleItems.Count()} file(s) can be put back"
-            : row.Rec.Undone ? "Already undone"
+        _hint.Text = row.CanUndo
+            ? row.Partly
+                ? $"{row.Remaining} of {row.Rec.ReversibleItems.Count()} file(s) still to put back"
+                : $"{row.Remaining} file(s) can be put back"
+            : row.Rec.Undone || (row.Rec.CanUndo && row.Remaining == 0) ? "Already undone"
             : row.Rec.UndoOf != null ? "This entry is itself an undo"
             : "This kind of change can't be undone from here (in-place rewrites and copies)";
     }
 
     private void UndoSelected()
     {
-        if (_entries.SelectedItem is not EntryRow row || !row.Rec.CanUndo) return;
-        var count = row.Rec.ReversibleItems.Count();
+        if (_entries.SelectedItem is not EntryRow row || !row.CanUndo) return;
+        var count = row.Remaining;
 
         var answer = MessageBox.Show(this,
             $"Put {count} file(s) back where they were before:\n\n“{row.Rec.Summary}”\n\n" +
