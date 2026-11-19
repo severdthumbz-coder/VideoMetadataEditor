@@ -172,6 +172,16 @@
                             Command="{Binding BatchEditFieldsCommand}"
                             Padding="10,6" Margin="8,0,0,0"
                             ToolTip="Apply one or more shared field values (Genre, Cast, Director, MPA, Year, Show title, Watched) across all selected files at once. Per-file values like Title, Episode and IDs are not changed. Revertible with ↩ Undo Batch."/>
+                    <!-- Build 178: watch-folder files waiting for you to confirm their match -->
+                    <Button Style="{StaticResource PrimaryButton}"
+                            Command="{Binding OpenReviewQueueCommand}"
+                            Padding="10,6" Margin="8,0,0,0"
+                            Visibility="{Binding HasReviewItems, Converter={StaticResource BoolVis}}"
+                            ToolTip="New files auto-embed didn't embed on its own — more than one match fits, or it wasn't confident. Pick the right match.">
+                        <TextBlock>
+                            <Run Text="🗂 Review ("/><Run Text="{Binding ReviewQueueCount, Mode=OneWay}"/><Run Text=")"/>
+                        </TextBlock>
+                    </Button>
                     <Button Content="{Binding CancelButtonLabel}"
                             Style="{StaticResource SecondaryButton}"
                             Command="{Binding CancelOperationCommand}"
@@ -3476,7 +3486,7 @@
                                                   IsChecked="{Binding AutoEmbedEnabled}"
                                                   IsEnabled="{Binding WatchFolderEnabled}"
                                                   Margin="0,0,0,6"
-                                                  ToolTip="Automatically searches TMDB/OMDB and embeds metadata when a new file appears. Files below the confidence threshold are queued for manual processing (yellow)."/>
+                                                  ToolTip="Automatically searches TMDB and embeds metadata when a new file appears. Ambiguous or low-confidence matches go to the 🗂 Review queue instead."/>
                                         <StackPanel Margin="18,0,0,0"
                                                     IsEnabled="{Binding AutoEmbedEnabled}">
                                             <TextBlock Text="CONFIDENCE THRESHOLD" Style="{StaticResource LabelText}" Margin="0,0,0,3"/>
@@ -3489,10 +3499,17 @@
                                             </ComboBox>
                                             <TextBlock FontSize="11" TextWrapping="Wrap"
                                                        Foreground="{DynamicResource ForegroundMutedBrush}"
-                                                       Margin="0,0,0,4">
-                                                Files below the threshold are still added to the Files panel
-                                                highlighted yellow for manual processing.
+                                                       Margin="0,0,0,6">
+                                                Clear-cut matches are embedded straight away. Files where more than one
+                                                entry fits (same title and year, or two shows with the same name), or the
+                                                match isn't confident, go to the 🗂 Review queue in the toolbar with the
+                                                candidates side by side. Files that already have a TMDB/IMDb ID are left alone;
+                                                a bare title and year from the release group doesn't count.
                                             </TextBlock>
+                                            <CheckBox Content="Always let me choose movies (episodes are still auto-embedded)"
+                                                      IsChecked="{Binding AutoEmbedReviewMovies}"
+                                                      Margin="0,0,0,6"
+                                                      ToolTip="Every new movie goes to the review queue with its candidates instead of being embedded automatically. Ambiguous matches always go there regardless."/>
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="Last auto-embed: " FontSize="11"
                                                            Foreground="{DynamicResource ForegroundMutedBrush}"/>
@@ -5721,6 +5738,12 @@
 
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 178 — Review queue for watch-folder auto-embed
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        With auto-embed on, clear-cut matches are still embedded straight away, but anything VME can't be sure about now waits in the 🗂 Review queue (toolbar) with the candidates side by side: poster, title, year, IDs and overview. That covers two entries with the same title and year (like the two "One Last Shot" listings), the same title with no year in the filename, same-named shows, weak matches, and years that don't fit. Pick one and click Embed. Files from release groups that only carry a title and year are now matched too; previously they were skipped as "already tagged". New episodes of a show you already have go to the same show automatically, and files arriving during a batch are auto-embedded once it finishes. Settings → Watch folder → "Always let me choose movies" sends every movie to the queue.
+                                    </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 177 — A trailing space no longer fails an embed
                                     </TextBlock>

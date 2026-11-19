@@ -166,6 +166,8 @@ public class AppSettings
     public bool   ConfirmTypeMismatchRename  { get; set; } = true;
     // Confidence required before auto-embedding: 0=Low, 1=Medium, 2=High, 3=ExactOnly
     public int    AutoEmbedConfidenceLevel  { get; set; } = 2;
+    /// <summary>Build 178: send every movie match to the review queue instead of auto-embedding it.</summary>
+    public bool   AutoEmbedReviewMovies     { get; set; } = false;
     public string LastAutoEmbedTime         { get; set; } = string.Empty;
 
     // Library tab

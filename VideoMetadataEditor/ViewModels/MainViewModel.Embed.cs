@@ -2127,7 +2127,8 @@ public partial class MainViewModel
                     StatusText = $"{Files.Count(f => !f.IsSeparator)} file(s) loaded.";
 
                     // Auto-embed if enabled and this file was detected by the watch folder
-                    if (isNew && Settings.AutoEmbedEnabled && !IsBusy)
+                    // (Build 178: also when busy — AutoEmbedFileAsync waits for the batch to finish.)
+                    if (isNew && Settings.AutoEmbedEnabled)
                         _ = AutoEmbedFileAsync(vf);
                 }, System.Windows.Threading.DispatcherPriority.Background);
             }
@@ -2567,39 +2568,11 @@ public partial class MainViewModel
         return scored.result;
     }
 
-    private static string NormaliseShowTitle(string title)
-    {
-        // Remove common noise: year in brackets, "the", punctuation normalisation
-        var t = title.ToLowerInvariant();
-        t = System.Text.RegularExpressions.Regex.Replace(t, @"\s*\(\d{4}\)\s*$", "");
-        // Strip apostrophes/quotes by REMOVING them (not replacing with space), so a
-        // possessive like "Marvel's" collapses to "marvels" and matches a filename that
-        // dropped the apostrophe ("Marvels.The.Defenders"). Handles straight and curly
-        // apostrophes. Doing this before the general punctuation pass below is what makes
-        // "Marvel's The Defenders" and "Marvels The Defenders" score as identical.
-        t = System.Text.RegularExpressions.Regex.Replace(t, @"[''`]", "");
-        t = System.Text.RegularExpressions.Regex.Replace(t, @"[^a-z0-9\s]", " ");
-        t = System.Text.RegularExpressions.Regex.Replace(t, @"\s{2,}", " ").Trim();
-        return t;
-    }
+    // Build 178: one implementation, shared with AutoMatch (unit-tested there).
+    private static string NormaliseShowTitle(string title) => AutoMatch.NormaliseTitle(title);
 
-    /// <summary>
-    /// Returns 0.0–1.0 similarity between two normalised title strings.
-    /// Uses longest-common-subsequence ratio as a fast proxy.
-    /// </summary>
-    private static double TitleSimilarity(string a, string b)
-    {
-        if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return 0;
-        if (a == b) return 1.0;
-        if (a.Contains(b) || b.Contains(a)) return 0.9;
-
-        // Word overlap ratio
-        var wa = new HashSet<string>(a.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-        var wb = new HashSet<string>(b.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-        int common = wa.Intersect(wb).Count();
-        int total  = wa.Union(wb).Count();
-        return total == 0 ? 0 : (double)common / total;
-    }
+    /// <summary>0.0–1.0 similarity between two normalised titles (see AutoMatch.Similarity).</summary>
+    private static double TitleSimilarity(string a, string b) => AutoMatch.Similarity(a, b);
     // ══════════════════════════════════════════════════════════════════════════
     // AUTO-EMBED ON WATCH FOLDER DETECTION  (Build 78)
     // ══════════════════════════════════════════════════════════════════════════
@@ -2614,122 +2587,115 @@ public partial class MainViewModel
     private async Task AutoEmbedFileAsync(VideoFile vf)
     {
         if (vf == null || !File.Exists(vf.FilePath)) return;
+        // (Build 176: the watcher only hands over files that have finished arriving.)
 
-        // Small delay — let the file system settle (copy-in-progress guard)
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        // Build 178: a batch or copy in progress used to make auto-embed skip the file
+        // entirely. Wait for it to finish instead (up to 30 minutes).
+        for (int waited = 0; IsBusy && waited < 360; waited++) await Task.Delay(5000);
         if (!File.Exists(vf.FilePath)) return;
 
-        // Skip if file already has valid embedded metadata (non-empty title + year/episode info)
-        // This prevents re-processing files that were already correctly tagged
-        if (!string.IsNullOrWhiteSpace(vf.EmbeddedMetadata?.Title)
-            && (!string.IsNullOrWhiteSpace(vf.EmbeddedMetadata?.Year)
-                || vf.EmbeddedMetadata?.IsEpisode == true))
+        // Build 178: "already tagged" means it has a database ID. Release groups put a bare
+        // title and year on their MP4s — that used to count, so those movies were never matched.
+        if (AutoMatch.AlreadyIdentified(vf.EmbeddedMetadata))
         {
-            Log(
-                $"[{DateTime.Now:HH:mm:ss}] ⏭ Auto-embed skipped: '{vf.FileName}' already has metadata " +
-                $"(Title='{vf.EmbeddedMetadata.Title}', Year='{vf.EmbeddedMetadata.Year}')");
+            LogService.Info("Embed",
+                $"⏭ Auto-embed skipped: {vf.FileName} is already identified " +
+                $"(\"{vf.EmbeddedMetadata.Title}\", {IdText(vf.EmbeddedMetadata)})", null, vf.FilePath);
             return;
         }
 
+        var query = vf.ParsedTitle ?? Path.GetFileNameWithoutExtension(vf.FileName);
+        var year  = vf.ParsedYear;
+        var threshold = AutoMatch.ThresholdFor(Settings.AutoEmbedConfidenceLevel);
+        var epParsed  = FilenameParser.ParseEpisode(Path.GetFileNameWithoutExtension(vf.FileName));
+        if (!string.IsNullOrWhiteSpace(vf.EmbeddedMetadata?.Title))
+            LogService.Debug("Embed",
+                $"Auto-embed: {vf.FileName} has a title but no database ID (\"{vf.EmbeddedMetadata!.Title}\") — matching it", null, vf.FilePath);
+
+        using var op = LogService.Begin(epParsed.HasValue ? "TV" : "Embed", $"Auto-embed {vf.FileName}");
         try
         {
-            Log(
-                $"[{DateTime.Now:HH:mm:ss}] 🔍 Auto-embed: searching for '{vf.ParsedTitle ?? vf.FileName}'…");
-
-            // Search TMDB
-            var query = vf.ParsedTitle ?? Path.GetFileNameWithoutExtension(vf.FileName);
-            var year  = vf.ParsedYear;
-
-            // Try episode parse first
-            var epParsed = FilenameParser.ParseEpisode(
-                Path.GetFileNameWithoutExtension(vf.FileName));
-
             MovieMetadata? meta = null;
 
             if (epParsed.HasValue)
             {
-                // Use ParseEpisode's built-in showTitle — it correctly extracts
-                // everything before the S##E## code and cleans it.
-                // e.g. "Dr.Stone.S01E02.720p.x264-ESub..." → showTitle="Dr Stone"
-                var showQuery = epParsed.Value.showTitle;
+                var (showQuery, season, episode) = (epParsed.Value.showTitle, epParsed.Value.season, epParsed.Value.episode);
+                LogService.Info("TV", $"Auto-embed TV: \"{showQuery}\" S{season:D2}E{episode:D2}", null, vf.FilePath);
 
-                Log(
-                    $"[{DateTime.Now:HH:mm:ss}] 🔍 Auto-embed TV: query='{showQuery}' " +
-                    $"S{epParsed.Value.season:D2}E{epParsed.Value.episode:D2}");
-
-                // TV episode — search TV
-                var (tvResults, _) = await _apiService.SearchTvAsync(showQuery, TmdbKey);
-                if (tvResults?.Count > 0)
+                var (tvResults, err) = await _apiService.SearchTvAsync(showQuery, TmdbKey);
+                var d = AutoMatch.DecideShow(tvResults ?? new(), showQuery, threshold, KnownSeriesIdsFor(showQuery));
+                switch (d.Kind)
                 {
-                    var bestResult = PickBestTvResult(tvResults, showQuery);
-                    if (bestResult != null && MeetsConfidenceThreshold(bestResult.Title, showQuery))
-                    {
-                        var (epMeta, _) = await _apiService.GetTvEpisodeAsync(
-                            bestResult.TmdbId.ToString(), epParsed.Value.season,
-                            epParsed.Value.episode, TmdbKey);
+                    case AutoMatch.Kind.Auto:
+                        LogService.Info("TV", $"Auto-embed: matched {d.Reason}", null, vf.FilePath);
+                        var (epMeta, epErr) = await _apiService.GetTvEpisodeAsync(d.Best!.TmdbId, season, episode, TmdbKey);
                         if (epMeta != null)
                         {
                             epMeta.IsEpisode    = true;
-                            epMeta.TmdbSeriesId = bestResult.TmdbId.ToString();
+                            epMeta.TmdbSeriesId = d.Best.TmdbId;
                             meta = epMeta;
                         }
-                    }
+                        else
+                        {
+                            // The show is right but the episode isn't on TMDB (yet) — let the user decide.
+                            QueueForReview(vf, d with { Kind = AutoMatch.Kind.Review,
+                                Reason = $"S{season:D2}E{episode:D2} of \"{d.Best.Title}\" wasn't found ({epErr})" },
+                                showQuery, null, true, season, episode);
+                            op.Outcome = "sent to the review queue";
+                            return;
+                        }
+                        break;
+                    case AutoMatch.Kind.Review:
+                        QueueForReview(vf, d, showQuery, null, true, season, episode);
+                        op.Outcome = "sent to the review queue";
+                        return;
+                    default:
+                        op.Warn($"no match ({err ?? d.Reason}) — left for manual search");
+                        vf.IsNewFile = true;
+                        return;
                 }
             }
             else
             {
-                // Movie — search TMDB with year if available
-                // Pass year as separate param to TMDB — more accurate than appending to query string
-                var (tmdbResults, _) = await _apiService.SearchTmdbAsync(query, TmdbKey, year);
+                var (tmdbResults, err) = await _apiService.SearchTmdbAsync(query, TmdbKey, year);
+                // TMDB's search with a year filter can miss a film listed under a different
+                // year — retry without it before giving up.
+                if ((tmdbResults == null || tmdbResults.Count == 0) && !string.IsNullOrWhiteSpace(year))
+                    (tmdbResults, err) = await _apiService.SearchTmdbAsync(query, TmdbKey);
 
-                if (tmdbResults?.Count > 0)
+                var d = AutoMatch.DecideMovie(tmdbResults ?? new(), query, year, threshold, Settings.AutoEmbedReviewMovies);
+                switch (d.Kind)
                 {
-                    // Score all results — pick the BEST match, not just [0]
-                    var best = tmdbResults
-                        .Select(r => (result: r,
-                            titleScore: TitleSimilarity(
-                                NormaliseShowTitle(r.Title), NormaliseShowTitle(query)),
-                            yearMatch: !string.IsNullOrWhiteSpace(year) && r.Year == year))
-                        .OrderByDescending(x => x.yearMatch ? x.titleScore + 0.3 : x.titleScore)
-                        .FirstOrDefault();
-
-                    // Auto-embed requires BOTH confidence AND a reasonable title match
-                    // Never auto-embed if year mismatch and title score is poor
-                    bool passesConfidence = MeetsConfidenceThreshold(best.result.Title, query);
-                    bool yearOk = string.IsNullOrWhiteSpace(year) || best.yearMatch
-                        || best.titleScore >= 0.80; // very high title similarity = ignore year
-
-                    if (passesConfidence && yearOk)
-                    {
-                        Log(
-                            $"[{DateTime.Now:HH:mm:ss}] 🔍 Auto-embed: best match '{best.result.Title}' " +
-                            $"({best.result.Year}) score={best.titleScore:F2} yearMatch={best.yearMatch}");
-
-                        var (loadedMeta, _) = await _apiService.GetTmdbDetailsAsync(
-                            best.result.TmdbId.ToString(), TmdbKey);
-                        meta = loadedMeta;
-                    }
-                    else
-                    {
-                        Log(
-                            $"[{DateTime.Now:HH:mm:ss}] ⚠ Auto-embed: rejected '{best.result.Title}' " +
-                            $"({best.result.Year}) for query '{query}' ({year}) — " +
-                            $"score={best.titleScore:F2} yearMatch={best.yearMatch} confidence={passesConfidence}");
-                    }
+                    case AutoMatch.Kind.Auto:
+                        LogService.Info("Embed", $"Auto-embed: matched {d.Reason}", null, vf.FilePath);
+                        var (loaded, detErr) = await _apiService.GetTmdbDetailsAsync(d.Best!.TmdbId, TmdbKey);
+                        if (loaded == null)
+                        {
+                            op.Warn($"couldn't load details ({detErr}) — left for manual search");
+                            vf.IsNewFile = true;
+                            return;
+                        }
+                        meta = loaded;
+                        break;
+                    case AutoMatch.Kind.Review:
+                        QueueForReview(vf, d, query, year, false);
+                        op.Outcome = "sent to the review queue";
+                        return;
+                    default:
+                        op.Warn($"no match ({err ?? d.Reason}) — left for manual search");
+                        vf.IsNewFile = true;
+                        return;
                 }
             }
 
-            if (meta == null)
+            await EmbedTvEpisodeAsync(vf, meta!, CancellationToken.None);
+
+            if (vf.WriteStatus == WriteStatus.Failed)
             {
-                Log(
-                    $"[{DateTime.Now:HH:mm:ss}] ⚠ Auto-embed: no confident match for '{query}' — " +
-                    $"file queued for manual processing.");
-                vf.IsNewFile = true; // keep yellow highlight
+                op.Fail("the write failed — see the lines above");
+                vf.IsNewFile = true;
                 return;
             }
-
-            // Embed
-            await EmbedTvEpisodeAsync(vf, meta, CancellationToken.None);
 
             Settings.LastAutoEmbedTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             RaiseProperty(nameof(LastAutoEmbedTime));
@@ -2737,15 +2703,38 @@ public partial class MainViewModel
 
             vf.IsNewFile = false;
             StatusText = $"✓ Auto-embedded: {Path.GetFileName(vf.FilePath)}";
-            Log(
-                $"[{DateTime.Now:HH:mm:ss}] ✓ Auto-embedded: {vf.FileName} → {meta.Title}");
+            op.Outcome = $"embedded as \"{meta!.Title}\"";
         }
         catch (Exception ex)
         {
-            Log(
-                $"[{DateTime.Now:HH:mm:ss}] ✗ Auto-embed failed for '{vf.FileName}': {ex.Message}");
+            op.Fail(ex);
+            vf.IsNewFile = true;
         }
     }
+
+    /// <summary>
+    /// Build 178: TMDB series IDs already used for this show — by Library episodes or files
+    /// in the Files panel — so auto-embed picks the same show for new episodes.
+    /// </summary>
+    private HashSet<string> KnownSeriesIdsFor(string showTitle)
+    {
+        var norm = AutoMatch.NormaliseTitle(showTitle);
+        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var e in LibraryEntries)
+            if (e.IsEpisode && !string.IsNullOrWhiteSpace(e.TmdbSeriesId) &&
+                AutoMatch.NormaliseTitle(e.ShowTitle) == norm)
+                ids.Add(e.TmdbSeriesId);
+        foreach (var f in Files)
+            if (!f.IsSeparator && f.EmbeddedMetadata is { IsEpisode: true } m &&
+                !string.IsNullOrWhiteSpace(m.TmdbSeriesId) && AutoMatch.NormaliseTitle(m.ShowTitle) == norm)
+                ids.Add(m.TmdbSeriesId);
+        return ids;
+    }
+
+    private static string IdText(MovieMetadata m) =>
+        !string.IsNullOrWhiteSpace(m.TmdbId) ? $"TMDB {m.TmdbId}"
+      : !string.IsNullOrWhiteSpace(m.ImdbId) ? m.ImdbId
+      : $"TMDB series {m.TmdbSeriesId}";
 
     /// <summary>
     /// Returns true if the candidate title meets the user's configured

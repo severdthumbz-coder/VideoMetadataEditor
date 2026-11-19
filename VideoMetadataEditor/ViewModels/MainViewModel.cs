@@ -670,6 +670,10 @@ public partial class MainViewModel : INotifyPropertyChanged
             RaiseProperty(nameof(SelectedFileCount));
             RaiseProperty(nameof(CanCopyMove));
 
+            // Build 178: files that leave the panel (moved, removed, cleared) leave the review queue.
+            if (e.Action != System.Collections.Specialized.NotifyCollectionChangedAction.Add && ReviewQueue.Count > 0)
+                PruneReviewQueue();
+
             // Unhook removed files so they (and their captured handlers) can be collected.
             if (e.OldItems != null)
                 foreach (VideoFile vf in e.OldItems)

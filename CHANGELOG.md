@@ -2,6 +2,47 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 178 — Review queue for watch-folder auto-embed
+
+The last of the safety builds (173–178). With **auto-embed** on, clear-cut matches are still embedded the moment a file arrives. Anything VME can't be sure about now waits for you with the candidates side by side, instead of being guessed or silently left behind.
+
+**What went wrong before**
+- **Movies from release groups were never matched.** Auto-embed skipped any file that already had a title and year, which is exactly what release groups put on their MP4s (e.g. "Auto-embed skipped: 'One.Last.Shot…' already has metadata"). They sat yellow until you searched by hand.
+- **Ambiguous titles were guessed.** The match check compared titles only. Two TMDB entries called "One Last Shot" (2026) both scored 100%, so auto-embed would have taken whichever TMDB listed first. Here, that was the one you rejected.
+- **A near-exact title ignored the year completely,** so a 1975 film could be embedded into a 2026 file with the same name.
+- **New files that arrived during a batch or copy were never auto-embedded.**
+
+**Now**
+- **"Already tagged" means it has a TMDB or IMDb ID.** A bare title and year from the release group no longer counts, so those files are matched like any other.
+- **Embedded straight away** only when exactly one result clearly fits:
+  - it passes the confidence threshold;
+  - its year agrees with the filename (one year either way allows for festival vs. release dates);
+  - no other result has the same title and year (or, when the filename has no year, the same title at all).
+- **Sent to the 🗂 Review queue** with the candidates:
+  - same title and year (One Last Shot);
+  - same title, no year in the filename (Dune 1984 / 2021);
+  - two shows with the same name (Doctor Who 1963 / 2005);
+  - a weak title match, or a year more than one off;
+  - a show that's right but whose episode isn't on TMDB yet.
+- **TV shows use your library:** if you already have episodes of one of the same-named shows, new episodes go to that one automatically.
+- **Arriving during a batch or copy:** auto-embed now waits for it to finish (up to 30 minutes).
+- If TMDB's year-filtered search finds nothing, VME searches again without the year before giving up.
+
+**The review queue**
+- A **🗂 Review (n)** button appears in the toolbar while files are waiting.
+- It opens a window listing the files, each with why it's there. Next to it are the candidates, each with poster, title, year, TMDB/IMDb ID and overview, and the most likely one preselected.
+- **✓ Embed this match** (or double-click a candidate) fetches the full details, embeds and renames, exactly as auto-embed would. It's logged as an operation.
+- **🔎 Search myself** selects the file and opens Retrieved Data. **Skip** takes it off the queue and leaves it highlighted in the Files panel.
+- The window is modeless, so files keep arriving while it's open. Files that leave the Files panel (moved, removed, cleared) leave the queue.
+- **Settings → Watch folder → "Always let me choose movies"** sends every movie to the queue (episodes are still auto-embedded). Off by default.
+
+**Log**
+- Each auto-embed is one operation: what it searched for, what it matched and why, or why it went to the queue, with the candidate list (title, year, TMDB/IMDb ID) in the details.
+
+Tests added for every decision rule: same title and year → review; one clear match → embed; the filename year choosing between same-named films; no year → review; one year off is fine, far off is reviewed; weak match → review; no match; "always let me choose movies"; same-named shows → review unless the library already knows which; release-group title and year not counting as identified; title normalisation.
+
+---
+
 ## v1.4.0 Build 177 — A trailing space no longer fails an embed
 
 Fixes found in the build 176 activity log.
