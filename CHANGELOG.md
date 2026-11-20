@@ -2,6 +2,18 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 179 — Guided tour covers builds 174–178
+
+- The guided tour (Help → replay, or first run) now covers the recent features:
+  - **Move / Copy:** the preview before anything moves.
+  - **Library:** the Show, Audio and Subs filters and Load into Files.
+  - **Health Check:** fixes are verified before they're kept.
+  - **New step, Watch folder & the review queue:** opens Settings → Library, where auto-embed lives.
+  - **New step, Log & History:** the activity log, and undoing renames and moves.
+- 10 steps, up from 8.
+
+---
+
 ## v1.4.0 Build 178 — Review queue for watch-folder auto-embed
 
 The last of the safety builds (173–178). With **auto-embed** on, clear-cut matches are still embedded the moment a file arrives. Anything VME can't be sure about now waits for you with the candidates side by side, instead of being guessed or silently left behind.

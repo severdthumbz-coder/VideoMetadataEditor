@@ -2688,7 +2688,7 @@ public partial class MainViewModel : INotifyPropertyChanged
     /// <summary>
     /// The tour script. Tab indices match the TabControl order:
     /// 0 Raw Data · 1 Retrieved Data · 2 Move/Copy · 3 Settings · 4 Library ·
-    /// 5 Duplicates · 6 Health Check · 7 Help.
+    /// 5 Duplicates · 6 Health Check · 7 Help · 8 Log.
     /// </summary>
     private readonly List<TourStep> _tourSteps = new()
     {
@@ -2699,11 +2699,15 @@ public partial class MainViewModel : INotifyPropertyChanged
         new(1, "Retrieved Data — look it up online",
             "Search TMDB / OMDB for the correct title, cast, artwork, and rating. Pick a result and it fills the Raw Data fields for you. This tab also has the 🗒 Subtitles panel for OpenSubtitles downloads."),
         new(2, "Move / Copy — organise your library",
-            "Move or copy the checked files to another folder. The Custom Fast engine also carries matching subtitle sidecars and renames them so they stay paired in Plex/Jellyfin."),
+            "Move or copy the checked files to another folder. Before anything moves you get a preview of every file and where it's going, with files that already exist there flagged. The Custom Fast engine also carries matching subtitle sidecars so they stay paired in Plex/Jellyfin."),
         new(4, "Library — see your whole collection",
-            "Point this at your movie/TV folders and Scan Library to index everything already tagged. It's read-only unless you ask it to act, and you can export CSV / XLSX / NFO from here."),
+            "Point this at your movie/TV folders and Scan Library to index everything. The Show, Audio and Subs filters find titles that need work: missing a poster, untagged, no English subtitles, two audio tracks… then Load into Files to fix them. Audio and subtitle tracks are read in the background after a scan."),
         new(5, "Duplicates & Health Check",
-            "Duplicates finds repeated or alternate-quality copies so you can reclaim space. Health Check spots files that would fail to embed or play, with optional lossless fixes. Nothing is deleted or changed without your confirmation."),
+            "Duplicates finds repeated or alternate-quality copies so you can reclaim space. Health Check spots files that would fail to embed or play, with lossless fixes that are verified before they're kept. Nothing is deleted or changed without your confirmation."),
+        new(3, "Watch folder & the review queue",
+            "Turn on the Watch Folder and auto-embed, and new downloads are matched, embedded and renamed as they arrive — once they've finished copying. When more than one entry fits (two films with the same title and year), the file waits in the 🗂 Review queue in the toolbar with the candidates side by side, so nothing is guessed.", SettingsPage: 6),
+        new(8, "Log & History — what happened, and undo",
+            "The Log tab records everything VME does, to the millisecond: each batch, copy and scan from start to finish, every file it touched, and any error with its details. 🕘 History lists every rename, move and fix — renames and moves can be undone here, even after a restart, and nothing is ever overwritten."),
         new(3, "Settings — make it yours",
             "Add your API keys (TMDB / OMDB / OpenSubtitles), set naming patterns, and tune behaviour. These onboarding helpers — the ❔ Legend, the ⓘ hints, and this tour — can be turned off any time under Behaviour (on this page, further down).", SettingsPage: 1),
         new(7, "You're all set",
