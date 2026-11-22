@@ -2,6 +2,29 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 180 — Library Watch no longer re-adds the whole library at startup
+
+Found in the 2026-11-21 activity log: title lookups were timing out after 20 seconds.
+
+**What happened**
+- Library Watch knows which files are "already there" from the Library's file list, and it starts at launch. That list is empty until the library has been scanned.
+- The startup library scan is skipped if VME is busy at that moment, and this time it was, still loading the watch folder into the Files panel.
+- So the watcher started knowing nothing. Its first poll, a minute later, reported **all 4,409 library files as new arrivals** (11:39–11:50).
+- For each one, VME re-read the tags and artwork and started a separate ffprobe track read, with no overall limit. That saturated the disk and the thread pool, so title lookups were still timing out at 12:18.
+- The underlying ordering bug is old, but before build 175 there was no track read per file, so the cost was much smaller.
+
+**Fixed**
+- **Library Watch waits for the library.** It only starts once the library has been scanned, so it knows every existing file. The log says when it's waiting.
+- **The startup library scan waits instead of being skipped** if VME is busy loading the watch folder. It waits up to 4 minutes, then scans.
+- **Files Library Watch does add are throttled:**
+  - at most two tag reads at a time;
+  - their track reads are gathered for a few seconds and run as one pass with the usual per-drive limit, instead of one ffprobe pass per file.
+- **Film titles no longer decide the log level.** "12th Fail (2023).mp4 added" was logged as an **error**, "Missing (2023)" as a warning and "A Complete Unknown" as a success. File names and quoted titles are now ignored when VME works out the level and category of a line, and the Library Watch line is written with an explicit level.
+
+Tests added for title-proof log classification (12th Fail, Missing, A Complete Unknown, a file with "Copy Error" in the title, and real failures still logged as errors).
+
+---
+
 ## v1.4.0 Build 179 — Guided tour covers builds 174–178
 
 - The guided tour (Help → replay, or first run) now covers the recent features:

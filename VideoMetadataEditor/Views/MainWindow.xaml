@@ -5739,6 +5739,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 180 — Library Watch no longer re-adds the whole library at startup
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        If the startup library scan didn't run (VME was busy loading the watch folder), Library Watch started without knowing which files already existed, and its first poll re-added every library file. Each one was re-read and had its tracks read at the same time, which slowed everything down, including title lookups. Library Watch now waits for the library scan, and the startup scan waits instead of being skipped. Files Library Watch adds are read two at a time, with their tracks read in one batched pass. Film titles like "12th Fail" or "Missing" no longer make a log line look like an error or warning.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 179 — Guided tour covers the latest features
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

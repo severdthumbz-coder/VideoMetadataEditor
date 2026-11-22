@@ -1857,6 +1857,17 @@ public partial class MainViewModel
         allFolders.AddRange(ExtraLibraryFolders.Where(f =>
             !string.IsNullOrWhiteSpace(f) && Directory.Exists(f)));
 
+        // Build 180: the watcher's "already known" list is the Library itself. Started before
+        // the library is loaded (startup, scan skipped) it knew nothing, so its first poll
+        // reported all 4,409 files as new arrivals — each re-read and track-probed at once.
+        // Wait for the scan instead; ScanLibraryAsync starts the watch when it finishes.
+        if (LibraryEntries.Count == 0)
+        {
+            Services.LogService.Info("Library",
+                "Library watch will start once the library scan has finished (so existing files aren't reported as new)");
+            return;
+        }
+
         var existing = LibraryEntries.Select(e => e.FilePath);
         _libraryWatchService.Start(allFolders, existing,
             Settings.LibraryWatchPollMinutes);

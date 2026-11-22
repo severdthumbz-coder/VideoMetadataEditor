@@ -299,6 +299,39 @@ public partial class MainViewModel
         await SaveLibraryCacheAsync();
     }
 
+    // ── Files added one by one (Library Watch) — build 180 ──────────────────
+    // Each added file used to start its own track pass with its own limit, so many files
+    // arriving together meant many ffprobe processes at once. They now wait a few seconds
+    // to gather and go through one pass, with the usual per-drive limit.
+    private readonly List<Models.LibraryEntry> _trackBacklog = new();
+    private bool _trackBacklogRunning;
+
+    /// <summary>Queues one entry for a track read (UI thread).</summary>
+    private void QueueTracksFor(Models.LibraryEntry entry)
+    {
+        if (entry.Tracks != null) return;
+        _trackBacklog.Add(entry);
+        if (_trackBacklogRunning) return;
+        _trackBacklogRunning = true;
+        _ = RunTrackBacklogAsync();
+    }
+
+    private async Task RunTrackBacklogAsync()
+    {
+        try
+        {
+            await Task.Delay(5000);   // let files that arrive together gather
+            while (_trackBacklog.Count > 0)
+            {
+                var batch = _trackBacklog.Where(e => e.Tracks == null).Distinct().ToList();
+                _trackBacklog.Clear();
+                if (batch.Count > 0) await LoadLibraryTracksAsync(batch, null, CancellationToken.None);
+            }
+        }
+        catch (Exception ex) { LogService.Error("Library", "Track read for new files failed", ex); }
+        finally { _trackBacklogRunning = false; }
+    }
+
     /// <summary>Saves the library cache for every file currently in the Library.</summary>
     private async Task SaveLibraryCacheAsync()
     {

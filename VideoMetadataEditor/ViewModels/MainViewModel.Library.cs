@@ -725,7 +725,7 @@ public partial class MainViewModel
 
             // Re-seed library watch with all scanned paths so it only fires for new arrivals,
             // then restart it (was stopped at top of scan to prevent double-add).
-            if (Settings.LibraryWatchEnabled && watchWasActive)
+            if (Settings.LibraryWatchEnabled)   // build 180: also when it was waiting for this scan
             {
                 var existingPaths = LibraryEntries.Select(e => e.FilePath).ToList();
                 var allWatchFolders = new List<string>();
@@ -754,7 +754,7 @@ public partial class MainViewModel
 
             // Always restart watch if it was running before the scan — even on cancel/error.
             // Leaving it stopped means new files would be missed indefinitely.
-            if (Settings.LibraryWatchEnabled && watchWasActive && !_libraryWatchService.IsActive)
+            if (Settings.LibraryWatchEnabled && !_libraryWatchService.IsActive && LibraryEntries.Count > 0)
             {
                 var existingPaths = LibraryEntries.Select(e => e.FilePath).ToList();
                 var allWatchFolders2 = new List<string>();

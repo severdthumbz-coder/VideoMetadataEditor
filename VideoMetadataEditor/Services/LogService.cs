@@ -398,11 +398,27 @@ public static class LogService
         ("startup", "App"),
     };
 
+    // A file name: starts at the beginning, or after a colon, arrow or em dash ("Writing tags: X.mp4",
+    // "a.mp4 → b.mp4", "WRITE FAILED — X.mp4"), and runs up to a media/sidecar extension.
+    private static readonly Regex FileNameToken = new(
+        @"(?<=^|[:→—]\s{0,3})[^\s'""“”][^:→—'""“”\n]*?\.(?:mp4|m4v|mkv|mov|avi|wmv|webm|ts|m2ts|mpg|mpeg|flv|srt|ass|ssa|vtt|sub|idx|nfo|jpg|jpeg|png|webp)\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex QuotedToken = new(@"'[^'\n]*'|""[^""\n]*""|“[^”\n]*”|‘[^’\n]*’",
+        RegexOptions.CultureInvariant);
+
+    /// <summary>The message without file names and quoted titles — used to judge the level.</summary>
+    internal static string Scrub(string msg) =>
+        FileNameToken.Replace(QuotedToken.Replace(msg, " "), " ");
+
     /// <summary>Works out level and category for a free-text line and strips its timestamp.</summary>
     public static (LogLevel Level, string Category, string Message) Classify(string raw)
     {
         var msg = LeadingTime.Replace(raw ?? string.Empty, string.Empty).TrimEnd();
         var trimmed = msg.TrimStart();
+
+        // Build 180: file names and quoted titles never decide the level — "12th Fail (2023).mp4"
+        // isn't an error, "Missing (2023).mp4" isn't a warning, "A Complete Unknown" isn't a success.
+        var plain = Scrub(msg);
 
         LogLevel level = LogLevel.Info;
         bool leadingMark = false;
@@ -418,22 +434,22 @@ public static class LogService
 
         if (!leadingMark)
         {
-            var counted = CountFailed.Matches(msg);
+            var counted = CountFailed.Matches(plain);
             bool anyCountedFailure = counted.Any(m => int.TryParse(m.Groups[1].Value, out var n) && n > 0);
             bool onlyZeroCounts    = counted.Count > 0 && !anyCountedFailure;
             // "3 succeeded, 0 failed" is a success; "2 succeeded, 1 failed" is a warning.
-            var withoutCounts = CountFailed.Replace(msg, string.Empty);
+            var withoutCounts = CountFailed.Replace(plain, string.Empty);
 
             // Build 177: "X failed — falling back to Y" is a step that recovered (or is still
             // trying), not the final error — that comes on its own line if it happens.
-            bool recovering = FallbackWords.IsMatch(msg);
+            bool recovering = FallbackWords.IsMatch(plain);
 
             if (anyCountedFailure || (recovering && (ErrorWords.IsMatch(withoutCounts) || FailedWord.IsMatch(withoutCounts))))
                                                          level = LogLevel.Warning;
             else if (ErrorWords.IsMatch(withoutCounts) ||
                      FailedWord.IsMatch(withoutCounts))  level = LogLevel.Error;
-            else if (WarnWords.IsMatch(msg))             level = LogLevel.Warning;
-            else if (OkWords.IsMatch(msg) || onlyZeroCounts ||
+            else if (WarnWords.IsMatch(plain))           level = LogLevel.Warning;
+            else if (OkWords.IsMatch(plain) || onlyZeroCounts ||
                      msg.StartsWith("Done:", StringComparison.Ordinal)) level = LogLevel.Success;
         }
         else
@@ -442,10 +458,14 @@ public static class LogService
             msg = trimmed.Substring(1).TrimStart('\uFE0F', ' ', '\t');
         }
 
-        var lower = msg.ToLowerInvariant();
+        // Categories also come from the words around the file name, not the title itself.
         var category = "General";
-        foreach (var (key, cat) in CategoryKeys)
-            if (lower.Contains(key)) { category = cat; break; }
+        foreach (var text in new[] { Scrub(msg).ToLowerInvariant(), msg.ToLowerInvariant() })
+        {
+            foreach (var (key, cat) in CategoryKeys)
+                if (text.Contains(key)) { category = cat; break; }
+            if (category != "General") break;
+        }
 
         return (level, category, msg);
     }

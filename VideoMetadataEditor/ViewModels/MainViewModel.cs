@@ -828,6 +828,7 @@ public partial class MainViewModel : INotifyPropertyChanged
     // Build 176: files a watcher has reported that are still arriving (one waiter each).
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _filesAwaitingReady =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly SemaphoreSlim _libraryWatchGate = new(2, 2);
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _libraryAwaitingReady =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -1958,10 +1959,13 @@ public partial class MainViewModel : INotifyPropertyChanged
             {
                 try
                 {
+                    // Build 180: if VME is busy (e.g. loading the watch folder into the Files
+                    // panel), wait for it — skipping left the Library empty and the Library
+                    // watch with nothing to compare against.
                     if (!string.IsNullOrWhiteSpace(Settings.LibraryFolderPath) &&
-                        Directory.Exists(Settings.LibraryFolderPath) &&
-                        !IsBusy)
+                        Directory.Exists(Settings.LibraryFolderPath))
                     {
+                        for (int i = 0; IsBusy && i < 120; i++) await Task.Delay(2000);
                         await ScanLibraryAsync();
                     }
                     else if (LibraryEntries.Any())
@@ -2193,7 +2197,11 @@ public partial class MainViewModel : INotifyPropertyChanged
                         return;
                     }
 
-                    var entry = await _libraryScanService.BuildSingleEntryAsync(path);
+                    // Build 180: at most two of these reads at once, whatever arrives together.
+                    Models.LibraryEntry? entry;
+                    await _libraryWatchGate.WaitAsync();
+                    try { entry = await _libraryScanService.BuildSingleEntryAsync(path); }
+                    finally { _libraryWatchGate.Release(); }
                     if (entry == null) return;
                     System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
                     {
@@ -2201,10 +2209,11 @@ public partial class MainViewModel : INotifyPropertyChanged
                         {
                             LibraryEntries.Add(entry);
                             RefreshLibraryAttention();   // build 172
-                            Log( $"[{DateTime.Now:HH:mm:ss}] 📚 Library watch: {entry.FileName} added.");
-                            // Build 175: read its audio/subtitle tracks too.
-                            var added = entry;
-                            _ = LoadLibraryTracksAsync(new[] { added }, null, CancellationToken.None);
+                            // Structured, so a title like "12th Fail" isn't logged as an error.
+                            Services.LogService.Info("Library", $"📚 Library watch: {entry.FileName} added", file: entry.FilePath);
+                            // Build 175/180: read its audio/subtitle tracks — batched with
+                            // anything else arriving, in one throttled pass.
+                            QueueTracksFor(entry);
                             StatusText = $"Library: {entry.FileName} detected.";
                         }
                     }, System.Windows.Threading.DispatcherPriority.Background);
