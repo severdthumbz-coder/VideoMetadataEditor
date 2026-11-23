@@ -120,6 +120,7 @@ public partial class MainViewModel
             else
             {
                 (meta, err) = await _apiService.GetTmdbDetailsAsync(choice.TmdbId, TmdbKey);
+                if (meta != null && string.IsNullOrWhiteSpace(meta.MpaRating)) meta.MpaRating = "NR";
             }
 
             if (meta == null)

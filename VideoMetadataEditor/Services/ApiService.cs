@@ -18,6 +18,12 @@ public class ApiService
     /// </summary>
     public static string MetadataLanguage { get; set; } = "en-US";
 
+    /// <summary>
+    /// Build 181: supplies the (decrypted) OMDb key so TMDB lookups can carry the real IMDb
+    /// rating. Set by the main ViewModel; null or empty = keep TMDB's user score.
+    /// </summary>
+    public static Func<string?>? OmdbKeyProvider { get; set; }
+
     // ── Static HttpClient — shared to avoid socket exhaustion ────────────────
     // HttpClient is thread-safe and designed to be reused for the lifetime of the app.
     private static readonly HttpClient _http = new()
@@ -193,7 +199,7 @@ public class ApiService
 
     public async Task<(MovieMetadata? meta, string? error)> GetTmdbDetailsAsync(
         string tmdbId, string apiKey, CancellationToken ct = default,
-        bool downloadArtwork = true)
+        bool downloadArtwork = true, bool imdbRating = true)
     {
         if (string.IsNullOrWhiteSpace(apiKey))
             return (null, "TMDB API key is not set.");
@@ -273,6 +279,9 @@ public class ApiService
                 try { meta.ArtworkBytes = await _http.GetByteArrayAsync(meta.PosterUrl, ct); }
                 catch { /* artwork optional */ }
             }
+
+            // Build 181: the rating VME writes is labelled IMDb — make it IMDb's.
+            if (imdbRating) await ApplyImdbRatingAsync(meta, ct);
 
             SetCached(cacheKey, meta);
             return (meta, null);
@@ -616,6 +625,10 @@ public class ApiService
                 try { meta.ArtworkBytes = await _http.GetByteArrayAsync(meta.PosterUrl, ct); } catch { }
             }
 
+            // Build 181: the episode's own IMDb rating (TMDB often has no votes for an
+            // episode, and fell back to the whole series' TMDB score).
+            await ApplyImdbRatingAsync(meta, ct);
+
             return (meta, null);
         }
         catch (Exception ex) { return (null, ex.Message); }
@@ -751,6 +764,65 @@ public class ApiService
 
         SetCached(epCacheKey, meta);
         return (meta, null);
+    }
+
+    // ── IMDb rating (build 181) ───────────────────────────────────────────────
+
+    private sealed record ImdbRatingResult(float Rating, int Votes);
+
+    /// <summary>
+    /// Replaces TMDB's user score on <paramref name="meta"/> with the IMDb rating from OMDb,
+    /// when there's an IMDb ID and an OMDb key. Episodes use the series' IMDb ID with the
+    /// season and episode, which gives that episode's own rating. If OMDb has no rating
+    /// (brand-new titles) or isn't reachable, TMDB's score is kept. Never throws.
+    /// </summary>
+    private async Task ApplyImdbRatingAsync(MovieMetadata meta, CancellationToken ct)
+    {
+        var key = OmdbKeyProvider?.Invoke();
+        if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(meta.ImdbId)) return;
+
+        bool episode = meta.IsEpisode && meta.Season is int && meta.Episode is int;
+        var cacheKey = episode ? $"omdb:rating:{meta.ImdbId}:{meta.Season}:{meta.Episode}" : $"omdb:rating:{meta.ImdbId}";
+        var label = episode ? $"{meta.ShowTitle} S{meta.Season:D2}E{meta.Episode:D2}" : $"{meta.Title} ({meta.Year})";
+
+        try
+        {
+            var found = GetCached<ImdbRatingResult>(cacheKey);
+            if (found == null)
+            {
+                var url = episode
+                    ? $"https://www.omdbapi.com/?i={meta.ImdbId}&Season={meta.Season}&Episode={meta.Episode}&apikey={key}"
+                    : $"https://www.omdbapi.com/?i={meta.ImdbId}&apikey={key}";
+                var (json, err) = await GetWithRetryAsync(url, ct, maxAttempts: 2).ConfigureAwait(false);
+                if (json == null)
+                {
+                    LogService.Debug("Search", $"IMDb rating for {label} not available ({err}) — keeping TMDB's {meta.Rating:0.0}");
+                    return;
+                }
+                var obj = JObject.Parse(json);
+                if (obj["Response"]?.ToString() != "True" ||
+                    !float.TryParse(obj["imdbRating"]?.ToString(), System.Globalization.NumberStyles.Float,
+                                    System.Globalization.CultureInfo.InvariantCulture, out var r) || r <= 0)
+                {
+                    LogService.Debug("Search", $"No IMDb rating yet for {label} — keeping TMDB's {meta.Rating:0.0}");
+                    return;
+                }
+                int.TryParse((obj["imdbVotes"]?.ToString() ?? "").Replace(",", ""), out var votes);
+                found = new ImdbRatingResult(MathF.Round(r, 1), votes);
+                SetCached(cacheKey, found);
+            }
+
+            var tmdbScore = meta.Rating;
+            meta.Rating      = found.Rating;
+            meta.RatingVotes = found.Votes;
+            LogService.Debug("Search",
+                $"IMDb rating for {label}: {found.Rating:0.0} ({found.Votes:N0} votes) — replaces TMDB's {tmdbScore:0.0}");
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            LogService.Debug("Search", $"IMDb rating for {label} failed ({ex.Message}) — keeping TMDB's {meta.Rating:0.0}");
+        }
     }
 
     private static string NormaliseRating(string? raw) =>

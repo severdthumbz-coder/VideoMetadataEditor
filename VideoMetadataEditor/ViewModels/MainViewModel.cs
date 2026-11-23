@@ -1716,6 +1716,9 @@ public partial class MainViewModel : INotifyPropertyChanged
         // Build 175: activity log first, so everything from here on reaches the Log tab.
         InitActivityLog();
 
+        // Build 181: TMDB lookups fetch the real IMDb rating through OMDb when a key is set.
+        Services.ApiService.OmdbKeyProvider = () => OmdbKey;
+
         // ── Initialise services the library scan/cache paths depend on ────────
         // MUST happen before any code that touches the library, since the scan
         // service wraps the cache service and both are used throughout this VM.

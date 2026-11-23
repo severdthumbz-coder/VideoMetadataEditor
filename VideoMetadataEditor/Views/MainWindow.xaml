@@ -5739,6 +5739,12 @@
                                                                         <!-- ═══ Recent builds — v1.4.0 Builds 46–90 ═══════════════ -->
 
                                     <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
+                                        v1.4.0  ·  Build 181 — Auto-embedded files show what was written; real IMDb ratings
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">
+                                        After a watch-folder auto-embed, review-queue embed or TV Batch, the Raw Data form still showed the file as it arrived, with no IMDb/TMDB ID and no rating, even though they had been written. Apply + Embed from that form could have written the blanks back. The form now always shows what's actually in the file. The rating VME writes is labelled IMDb but used to be TMDB's user score; with an OMDb key set it's now the real IMDb rating (the episode's own rating for TV), falling back to TMDB's score when IMDb has none yet. Library Watch now logs when it starts after the library scan.
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource BaseText}" FontWeight="SemiBold" Margin="0,0,0,2">
                                         v1.4.0  ·  Build 180 — Library Watch no longer re-adds the whole library at startup
                                     </TextBlock>
                                     <TextBlock Style="{StaticResource BaseText}" Foreground="{DynamicResource ForegroundMutedBrush}" Margin="8,0,0,12" TextWrapping="Wrap">

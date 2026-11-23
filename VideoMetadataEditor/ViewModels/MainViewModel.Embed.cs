@@ -2687,6 +2687,8 @@ public partial class MainViewModel
                             return;
                         }
                         meta = loaded;
+                        // Same as a manual lookup: no US certification → "NR".
+                        if (string.IsNullOrWhiteSpace(meta.MpaRating)) meta.MpaRating = "NR";
                         break;
                     case AutoMatch.Kind.Review:
                         QueueForReview(vf, d, query, year, false);

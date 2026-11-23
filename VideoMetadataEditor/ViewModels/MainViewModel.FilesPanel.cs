@@ -288,7 +288,7 @@ public partial class MainViewModel
                 try
                 {
                     (MovieMetadata? meta, string? _artErr) = await _apiService.GetTmdbDetailsAsync(
-                        vf.EmbeddedMetadata.TmdbId, TmdbKey, ct);
+                        vf.EmbeddedMetadata.TmdbId, TmdbKey, ct, imdbRating: false);   // artwork only
                     if (meta?.ArtworkBytes is { Length: > 0 })
                     {
                         vf.EmbeddedMetadata.ArtworkBytes = meta.ArtworkBytes;
@@ -359,7 +359,7 @@ public partial class MainViewModel
                     if (art is null && !string.IsNullOrWhiteSpace(vf.EmbeddedMetadata.TmdbId))
                     {
                         var (meta, _) = await _apiService.GetTmdbDetailsAsync(
-                            vf.EmbeddedMetadata.TmdbId, TmdbKey, ct);
+                            vf.EmbeddedMetadata.TmdbId, TmdbKey, ct, imdbRating: false);   // artwork only
                         if (meta?.ArtworkBytes is { Length: > 0 })
                         {
                             art = meta.ArtworkBytes;

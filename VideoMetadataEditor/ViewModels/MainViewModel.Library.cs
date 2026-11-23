@@ -735,6 +735,10 @@ public partial class MainViewModel
                     !string.IsNullOrWhiteSpace(f) && Directory.Exists(f)));
                 _libraryWatchService.Start(allWatchFolders, existingPaths,
                     Settings.LibraryWatchPollMinutes);
+                // Build 181: say so — the first start after launch used to be silent.
+                Services.LogService.Write(watchWasActive ? Services.LogLevel.Debug : Services.LogLevel.Info, "Library",
+                    $"📚 Library watch {(watchWasActive ? "resumed" : "started")}: " +
+                    $"{string.Join(", ", allWatchFolders.Select(Path.GetFileName))} — knows {existingPaths.Count:N0} existing file(s)");
             }
         }
         catch (OperationCanceledException)
@@ -1417,6 +1421,20 @@ public partial class MainViewModel
             try
             {
                 filesPanelFile.EmbeddedMetadata = disk;
+
+                // Build 181: the Raw Data tab loads a file's PendingMetadata, which only the
+                // manual embed kept up to date. After auto-embed, the review queue or TV
+                // Batch it still held the pre-embed snapshot (the release group's title and
+                // year, no IMDb/TMDB ID, no rating), so the embedded values looked missing —
+                // and Apply + Embed from that form would have written the blanks back.
+                // Every write path now leaves the form showing exactly what's on disk.
+                filesPanelFile.PendingMetadata = disk.Clone();
+                if (ReferenceEquals(SelectedFile, filesPanelFile))
+                {
+                    var d = System.Windows.Application.Current?.Dispatcher;
+                    if (d == null || d.CheckAccess()) OnSelectedFileChanged();
+                    else d.InvokeAsync(() => { if (ReferenceEquals(SelectedFile, filesPanelFile)) OnSelectedFileChanged(); });
+                }
 
                 // "What's actually on disk" signal: compare what we intended to write
                 // (fallback) against what we just read back from disk. A clean match

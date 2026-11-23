@@ -2,6 +2,26 @@
 
 All notable changes to Video Metadata Editor are documented here.
 
+## v1.4.0 Build 181 — Auto-embedded files show what was written; real IMDb ratings
+
+**After an auto-embed, Raw Data showed blanks**
+- The watch folder's auto-embed (and the review queue and TV Batch) did write the TMDB ID, the IMDb ID and a rating. The check after writing confirms them, and the Library row was refreshed from the file.
+- But the **Raw Data** form shows a file's pending edits, and those were only refreshed by a manual embed. For a watch-folder file they were a copy taken when the file arrived: the release group's title and year, no IDs, no rating. So after an auto-embed the form looked as if nothing had been written.
+- **Risk:** pressing Apply + Embed on that form would have written the blanks back over the correct values.
+- **Fix:** every write path now refreshes the form from what's actually in the file. If the file is selected, the form updates at once.
+
+**The rating is now IMDb's**
+- The rating VME writes is labelled IMDb, but it came from **TMDB's user score** on every path, manual lookups included. The two often differ by half a point or more.
+- When an OMDb key is set, every TMDB lookup now fetches the real IMDb rating and vote count from OMDb. For episodes it's the episode's own IMDb rating, where TMDB often fell back to the whole series' score.
+- If OMDb has no rating yet (brand-new titles) or can't be reached, TMDB's score is kept. The log says which was used ("IMDb rating for X: 7.4 (12,345 votes) — replaces TMDB's 6.9").
+- Artwork-only lookups don't spend OMDb requests. Free OMDb keys allow 1,000 requests a day, and results are cached for the session.
+
+**Also**
+- Auto-embed and the review queue fill MPA "NR" when TMDB has no US certification, as a manual lookup always did.
+- Library Watch logs when it starts after the library scan, and how many existing files it knows. Build 180's first start was silent.
+
+---
+
 ## v1.4.0 Build 180 — Library Watch no longer re-adds the whole library at startup
 
 Found in the 2026-11-21 activity log: title lookups were timing out after 20 seconds.
